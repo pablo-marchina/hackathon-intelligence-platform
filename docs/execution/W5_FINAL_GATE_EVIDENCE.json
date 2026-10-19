@@ -1,0 +1,45 @@
+{
+  "wave": "W5",
+  "status": "CLOSED",
+  "issues_done": 6,
+  "points_done": 42,
+  "points_total": 42,
+  "postgresql_gate": {
+    "version": "17.6",
+    "preference_versions": 2,
+    "missing_preserved": 1,
+    "explicit_false_preserved": 1,
+    "reproducible_recommendation_rows": 1,
+    "duplicate_saved_searches_safe": 2,
+    "dedup_alert_rows": 1,
+    "idempotent_delivery_rows": 1,
+    "exact_email_override": true,
+    "wildcard_email_setting": false
+  },
+  "github_actions": {
+    "run_id": 35905927315,
+    "conclusion": "success",
+    "web_typecheck": true,
+    "next_production_build": true,
+    "production_route_smokes": ["/preferences", "/recommendations", "/saved-searches", "/alerts"],
+    "smtp_mailpit": {
+      "delivered_messages": 1,
+      "message_id": "w5-mailpit-gate-1",
+      "changed_field": true,
+      "deadline_local": true,
+      "direct_link": true,
+      "timezone": true
+    }
+  },
+  "recommendation_eval": {
+    "metric": "recommendation_ndcg_at_5",
+    "value": 1.0,
+    "threshold": 0.9,
+    "ineligible_scored": 0
+  },
+  "cleanup": {
+    "temporary_branch_reset_to_main": true,
+    "w5_gate_schema_removed": true,
+    "supabase_sandbox_paused": true
+  }
+}

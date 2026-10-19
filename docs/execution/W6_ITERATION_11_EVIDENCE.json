@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-15",
+  "iteration": 11,
+  "previous_local_tests": 248,
+  "local_tests_passed": 283,
+  "evaluation_baseline": "w6-baseline-v1",
+  "evaluation_passed": true,
+  "sql_tables": 75,
+  "postgres_extensions": 5,
+  "python_compileall_passed": true,
+  "ci_yaml_parsed": true,
+  "ci_job_count": 6,
+  "integration_real_postgresql_executed": false,
+  "redis_celery_real_executed": false,
+  "nextjs_build_executed": false,
+  "production_approved": false,
+  "new_functionality": "opt-in saved-search match producer, transactional cursor, explicit email opt-in, CI drill"
+}

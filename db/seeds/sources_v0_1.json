@@ -1,0 +1,362 @@
+[
+  {
+    "key": "devpost",
+    "name": "Devpost",
+    "domain": "devpost.com",
+    "source_family": "devpost",
+    "source_type": "hackathon_platform",
+    "ingestion_mode": "DISCOVERY_ONLY",
+    "permission_status": "RESTRICTED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": false,
+    "priority": 100,
+    "trust_score": 0.8,
+    "seed_urls": [
+      "https://devpost.com/hackathons"
+    ],
+    "notes": "Automation/scraping restricted by current terms; keep discovery/partner path only until authorized."
+  },
+  {
+    "key": "mlh",
+    "name": "Major League Hacking",
+    "domain": "mlh.io",
+    "source_family": "mlh",
+    "source_type": "hackathon_network",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 98,
+    "seed_urls": [
+      "https://mlh.io/seasons/2026/events"
+    ]
+  },
+  {
+    "key": "devfolio",
+    "name": "Devfolio",
+    "domain": "devfolio.co",
+    "source_family": "devfolio",
+    "source_type": "hackathon_platform",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 95,
+    "seed_urls": [
+      "https://devfolio.co/hackathons"
+    ]
+  },
+  {
+    "key": "hackerearth",
+    "name": "HackerEarth",
+    "domain": "hackerearth.com",
+    "source_family": "hackerearth",
+    "source_type": "challenge_platform",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 94,
+    "seed_urls": [
+      "https://www.hackerearth.com/challenges/hackathon/"
+    ]
+  },
+  {
+    "key": "hack2skill",
+    "name": "Hack2Skill",
+    "domain": "hack2skill.com",
+    "source_family": "hack2skill",
+    "source_type": "hackathon_platform",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 92,
+    "seed_urls": [
+      "https://hack2skill.com/"
+    ]
+  },
+  {
+    "key": "taikai",
+    "name": "TAIKAI",
+    "domain": "taikai.network",
+    "source_family": "taikai",
+    "source_type": "hackathon_platform",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 92,
+    "seed_urls": [
+      "https://taikai.network/en/hackathons"
+    ]
+  },
+  {
+    "key": "ethglobal",
+    "name": "ETHGlobal",
+    "domain": "ethglobal.com",
+    "source_family": "ethglobal",
+    "source_type": "hackathon_network",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 92,
+    "seed_urls": [
+      "https://ethglobal.com/events"
+    ]
+  },
+  {
+    "key": "encode_club",
+    "name": "Encode Club",
+    "domain": "encode.club",
+    "source_family": "encode_club",
+    "source_type": "hackathon_network",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 87,
+    "seed_urls": [
+      "https://www.encode.club/programmes"
+    ]
+  },
+  {
+    "key": "dorahacks",
+    "name": "DoraHacks",
+    "domain": "dorahacks.io",
+    "source_family": "dorahacks",
+    "source_type": "hackathon_platform",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 90,
+    "seed_urls": [
+      "https://dorahacks.io/hackathon"
+    ]
+  },
+  {
+    "key": "nasa_space_apps",
+    "name": "NASA International Space Apps Challenge",
+    "domain": "spaceappschallenge.org",
+    "source_family": "nasa_space_apps",
+    "source_type": "official_program",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 90,
+    "trust_score": 1.0,
+    "seed_urls": [
+      "https://www.spaceappschallenge.org/"
+    ]
+  },
+  {
+    "key": "global_game_jam",
+    "name": "Global Game Jam",
+    "domain": "globalgamejam.org",
+    "source_family": "global_game_jam",
+    "source_type": "game_jam_network",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 86,
+    "seed_urls": [
+      "https://globalgamejam.org/"
+    ]
+  },
+  {
+    "key": "kaggle",
+    "name": "Kaggle Competitions",
+    "domain": "kaggle.com",
+    "source_family": "kaggle",
+    "source_type": "data_competition_platform",
+    "ingestion_mode": "API",
+    "permission_status": "PARTNER_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 80,
+    "seed_urls": [
+      "https://www.kaggle.com/competitions"
+    ]
+  },
+  {
+    "key": "zindi",
+    "name": "Zindi",
+    "domain": "zindi.africa",
+    "source_family": "zindi",
+    "source_type": "data_competition_platform",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 76,
+    "seed_urls": [
+      "https://zindi.africa/competitions"
+    ]
+  },
+  {
+    "key": "drivendata",
+    "name": "DrivenData",
+    "domain": "drivendata.org",
+    "source_family": "drivendata",
+    "source_type": "data_competition_platform",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 74,
+    "seed_urls": [
+      "https://www.drivendata.org/competitions/"
+    ]
+  },
+  {
+    "key": "luma",
+    "name": "Luma",
+    "domain": "lu.ma",
+    "source_family": "luma",
+    "source_type": "event_platform",
+    "ingestion_mode": "SEARCH_DISCOVERY",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 82,
+    "seed_urls": [
+      "https://lu.ma/tech"
+    ]
+  },
+  {
+    "key": "eventbrite",
+    "name": "Eventbrite",
+    "domain": "eventbrite.com",
+    "source_family": "eventbrite",
+    "source_type": "event_platform",
+    "ingestion_mode": "SEARCH_DISCOVERY",
+    "permission_status": "PARTNER_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 72,
+    "seed_urls": [
+      "https://www.eventbrite.com/"
+    ]
+  },
+  {
+    "key": "meetup",
+    "name": "Meetup",
+    "domain": "meetup.com",
+    "source_family": "meetup",
+    "source_type": "event_platform",
+    "ingestion_mode": "SEARCH_DISCOVERY",
+    "permission_status": "PARTNER_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 70,
+    "seed_urls": [
+      "https://www.meetup.com/"
+    ]
+  },
+  {
+    "key": "sympla",
+    "name": "Sympla",
+    "domain": "sympla.com.br",
+    "source_family": "sympla",
+    "source_type": "event_platform_brazil",
+    "ingestion_mode": "SEARCH_DISCOVERY",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 80,
+    "seed_urls": [
+      "https://www.sympla.com.br/"
+    ]
+  },
+  {
+    "key": "gov_br",
+    "name": "gov.br",
+    "domain": "gov.br",
+    "source_family": "gov_br",
+    "source_type": "government_discovery",
+    "ingestion_mode": "SEARCH_DISCOVERY",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 84,
+    "trust_score": 1.0,
+    "seed_urls": [
+      "https://www.gov.br/"
+    ]
+  },
+  {
+    "key": "agenda_tech_brasil",
+    "name": "Agenda Tech Brasil",
+    "domain": "api.github.com",
+    "source_family": "agenda_tech_brasil",
+    "source_type": "community_calendar",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "detail_extraction_enabled": true,
+    "priority": 76,
+    "seed_urls": [
+      "https://api.github.com/repos/agenda-tech-brasil/agenda-tech-brasil/contents/src/db/database.json"
+    ],
+    "rate_limit_per_minute": 10,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "api.github.com"
+    ],
+    "notes": "Public GitHub Contents API over community-maintained factual event metadata; preserve provenance and only ingest factual fields."
+  },
+  {
+    "key": "hackclub_hackathons",
+    "name": "Hack Club Hackathons",
+    "domain": "dash.hackathons.hackclub.com",
+    "source_family": "hackclub_hackathons",
+    "source_type": "hackathon_directory",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 99,
+    "trust_score": 0.95,
+    "refresh_interval_seconds": 21600,
+    "rate_limit_per_minute": 12,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "dash.hackathons.hackclub.com"
+    ],
+    "seed_urls": [
+      "https://dash.hackathons.hackclub.com/api/v1/hackathons"
+    ],
+    "notes": "Official Hack Club hackathon directory JSON API; endpoint is consumed by the open-source Hack Club frontend."
+  },
+  {
+    "key": "hackclub_programs",
+    "name": "Hack Club Programs",
+    "domain": "hackclub.com",
+    "source_family": "hackclub_programs",
+    "source_type": "official_programs_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 88,
+    "trust_score": 1.0,
+    "refresh_interval_seconds": 10800,
+    "rate_limit_per_minute": 12,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "hackclub.com"
+    ],
+    "seed_urls": [
+      "https://hackclub.com/api/v1/events"
+    ],
+    "notes": "Documented official API linked directly from Hack Club Programs; classifier filters hackathon-like programs."
+  },
+  {
+    "key": "hackclub_community_events",
+    "name": "Hack Club Community Events",
+    "domain": "events.hackclub.com",
+    "source_family": "hackclub_community_events",
+    "source_type": "community_events_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 70,
+    "trust_score": 0.9,
+    "refresh_interval_seconds": 10800,
+    "rate_limit_per_minute": 12,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "events.hackclub.com"
+    ],
+    "seed_urls": [
+      "https://events.hackclub.com/api/events/upcoming"
+    ],
+    "notes": "Official JSON API documented by events.hackclub.com; classifier filters hackathon-like community events."
+  }
+]

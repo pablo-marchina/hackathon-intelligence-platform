@@ -1,0 +1,642 @@
+[
+  {
+    "language": "en",
+    "source_url": "https://www.spaceappschallenge.org/",
+    "title": "NASA Space Apps Challenge 2026",
+    "text": "Annual global hackathon November 14-15, 2026. Registration open. Join a local event, form a team, build a project and submit your solution.",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "en",
+    "source_url": "https://www.spaceappschallenge.org/2026/local-events/ramallah/",
+    "title": "NASA Space Apps Challenge – Ramallah 2026",
+    "text": "Join the global hackathon November 14-15, 2026. Register for the local event, form a team, build a prototype and submit.",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://www.gov.br/saude/pt-br/acesso-a-informacao/participacao-social/chamamentos-publicos/2026/chamamento-publico-no-02-2026-sctie",
+    "title": "Hackathon SUS 2026",
+    "text": "Hackathon Desafio Tecnológico para o SUS. Inscrição de participantes, equipes e premiação de R$ 100 mil, R$ 50 mil e R$ 30 mil.",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "fr",
+    "source_url": "https://hackathon2026.assemblee-nationale.fr/",
+    "title": "Assemblée nationale — Hackathon 2026",
+    "text": "Hackathon les 3 et 4 juillet 2026. Inscription uniquement, défis à réaliser en équipe, programme et règlement disponibles.",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "ja",
+    "source_url": "https://www.aifestival.jp/2026",
+    "title": "全日本AIハッカソン 2026",
+    "text": "AI ハッカソン 2026。チームで参加、登録受付、決勝戦、賞金、スケジュール。",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "ja",
+    "source_url": "https://www.metro.tokyo.lg.jp/information/press/2026/09/2026091813",
+    "title": "都知事杯オープンデータ・ハッカソン2026",
+    "text": "ハッカソン2026 Final Stage。チームによる提案、最終審査、受賞、日程 10月17日。",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://presidential-hackathon.taiwan.gov.tw/",
+    "title": "2026 總統盃黑客松",
+    "text": "2026 總統盃黑客松，7月31日至8月31日报名，团队使用开放数据提出创新方案，获奖团队接受颁奖。",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://www.beijing.gov.cn/fuwu/lqfw/gggs/202606/t20260605_4688097.html",
+    "title": "2026全球OPC共创节 AI黑客松",
+    "text": "AI黑客松：8小时开发，开发者团队报名，截止6月20日，现场构建可演示AI应用。",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://www.gzw.sh.gov.cn/shgzw_xwzx_gzyw/20260518/b779bb44d5c646f4901b01cf62e23c20.html",
+    "title": "2026 CICC智能体开放主题黑客松挑战赛",
+    "text": "黑客松挑战赛启动，133支团队报名，发布赛事规则和赛题，团队开发并路演。",
+    "label": true,
+    "category": "real_official"
+  },
+  {
+    "language": "es",
+    "source_url": "https://example.es/hackaton-ia-2026",
+    "title": "Hackatón IA Madrid 2026",
+    "text": "Inscripción abierta. Equipos construirán un prototipo, fecha límite 5 de octubre y premios para los ganadores.",
+    "label": true,
+    "category": "multilingual_fixture"
+  },
+  {
+    "language": "de",
+    "source_url": "https://example.de/ki-hackathon-2026",
+    "title": "KI Hackathon 2026",
+    "text": "Anmeldung geöffnet. Teams bauen einen Prototyp. Frist 20. Oktober 2026 und Preis für die Gewinner.",
+    "label": true,
+    "category": "multilingual_fixture"
+  },
+  {
+    "language": "it",
+    "source_url": "https://example.it/hackathon-ai-2026",
+    "title": "Hackathon IA 2026",
+    "text": "Iscrizione aperta. Squadra, prototipo, scadenza e premio finale.",
+    "label": true,
+    "category": "multilingual_fixture"
+  },
+  {
+    "language": "ko",
+    "source_url": "https://example.kr/ai-hackathon-2026",
+    "title": "AI 해커톤 2026",
+    "text": "등록 오픈. 팀이 프로토타입을 만들고 마감 전에 제출하며 상금을 받을 수 있습니다.",
+    "label": true,
+    "category": "multilingual_fixture"
+  },
+  {
+    "language": "hi",
+    "source_url": "https://example.in/ai-hackathon-2026",
+    "title": "AI हैकाथॉन 2026",
+    "text": "पंजीकरण खुला है। टीम प्रोटोटाइप बनाएगी, समय सीमा से पहले जमा करेगी और पुरस्कार मिलेगा।",
+    "label": true,
+    "category": "multilingual_fixture"
+  },
+  {
+    "language": "en",
+    "source_url": "https://example.org/climate-datathon",
+    "title": "Climate Datathon 2026",
+    "text": "Registration open. Teams work on public datasets, build a model, submit before the deadline and compete for prizes.",
+    "label": true,
+    "category": "adjacent_event"
+  },
+  {
+    "language": "en",
+    "source_url": "https://example.org/global-game-jam",
+    "title": "Global Game Jam 2026",
+    "text": "Game jam weekend. Register your team, build and submit a game before Sunday.",
+    "label": true,
+    "category": "adjacent_event"
+  },
+  {
+    "language": "en",
+    "source_url": "https://example.org/security-ctf",
+    "title": "Cyber CTF 2026",
+    "text": "Capture the flag competition. Registration is open for teams, deadline Friday, awards for top teams.",
+    "label": true,
+    "category": "adjacent_event"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://example.br/desafio-inovacao",
+    "title": "Desafio de inovação 2026",
+    "text": "Inscrição aberta. Equipes devem construir protótipo, enviar até o prazo e concorrer a prêmio.",
+    "label": true,
+    "category": "adjacent_event"
+  },
+  {
+    "language": "fr",
+    "source_url": "https://example.fr/defi-innovation",
+    "title": "Défi d innovation 2026",
+    "text": "Inscription ouverte. Équipe, prototype, date limite et prix pour les finalistes.",
+    "label": true,
+    "category": "adjacent_event"
+  },
+  {
+    "language": "es",
+    "source_url": "https://example.es/reto-innovacion",
+    "title": "Reto de innovación 2026",
+    "text": "Inscripción abierta, equipo, prototipo, fecha límite y premio para los finalistas.",
+    "label": true,
+    "category": "adjacent_event"
+  },
+  {
+    "language": "en",
+    "source_url": "https://events0.openhack.example/en",
+    "title": "NASA Space Apps Challenge 2026 — Registration",
+    "text": "Annual global hackathon November 14-15, 2026. Registration open. Join a local event, form a team, build a project and submit your solution. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "en",
+    "source_url": "https://events1.openhack.example/en",
+    "title": "NASA Space Apps Challenge – Ramallah 2026 — Registration",
+    "text": "Join the global hackathon November 14-15, 2026. Register for the local event, form a team, build a prototype and submit. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://events2.openhack.example/pt",
+    "title": "Hackathon SUS 2026 — Registration",
+    "text": "Hackathon Desafio Tecnológico para o SUS. Inscrição de participantes, equipes e premiação de R$ 100 mil, R$ 50 mil e R$ 30 mil. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "fr",
+    "source_url": "https://events3.openhack.example/fr",
+    "title": "Assemblée nationale — Hackathon 2026 — Registration",
+    "text": "Hackathon les 3 et 4 juillet 2026. Inscription uniquement, défis à réaliser en équipe, programme et règlement disponibles. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "ja",
+    "source_url": "https://events4.openhack.example/ja",
+    "title": "全日本AIハッカソン 2026 — Registration",
+    "text": "AI ハッカソン 2026。チームで参加、登録受付、決勝戦、賞金、スケジュール。 Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "ja",
+    "source_url": "https://events5.openhack.example/ja",
+    "title": "都知事杯オープンデータ・ハッカソン2026 — Registration",
+    "text": "ハッカソン2026 Final Stage。チームによる提案、最終審査、受賞、日程 10月17日。 Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://events6.openhack.example/zh",
+    "title": "2026 總統盃黑客松 — Registration",
+    "text": "2026 總統盃黑客松，7月31日至8月31日报名，团队使用开放数据提出创新方案，获奖团队接受颁奖。 Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://events7.openhack.example/zh",
+    "title": "2026全球OPC共创节 AI黑客松 — Registration",
+    "text": "AI黑客松：8小时开发，开发者团队报名，截止6月20日，现场构建可演示AI应用。 Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://events8.openhack.example/zh",
+    "title": "2026 CICC智能体开放主题黑客松挑战赛 — Registration",
+    "text": "黑客松挑战赛启动，133支团队报名，发布赛事规则和赛题，团队开发并路演。 Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "es",
+    "source_url": "https://events9.openhack.example/es",
+    "title": "Hackatón IA Madrid 2026 — Registration",
+    "text": "Inscripción abierta. Equipos construirán un prototipo, fecha límite 5 de octubre y premios para los ganadores. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "de",
+    "source_url": "https://events10.openhack.example/de",
+    "title": "KI Hackathon 2026 — Registration",
+    "text": "Anmeldung geöffnet. Teams bauen einen Prototyp. Frist 20. Oktober 2026 und Preis für die Gewinner. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "it",
+    "source_url": "https://events11.openhack.example/it",
+    "title": "Hackathon IA 2026 — Registration",
+    "text": "Iscrizione aperta. Squadra, prototipo, scadenza e premio finale. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "ko",
+    "source_url": "https://events12.openhack.example/ko",
+    "title": "AI 해커톤 2026 — Registration",
+    "text": "등록 오픈. 팀이 프로토타입을 만들고 마감 전에 제출하며 상금을 받을 수 있습니다. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "hi",
+    "source_url": "https://events13.openhack.example/hi",
+    "title": "AI हैकाथॉन 2026 — Registration",
+    "text": "पंजीकरण खुला है। टीम प्रोटोटाइप बनाएगी, समय सीमा से पहले जमा करेगी और पुरस्कार मिलेगा। Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "en",
+    "source_url": "https://events14.openhack.example/en",
+    "title": "Climate Datathon 2026 — Registration",
+    "text": "Registration open. Teams work on public datasets, build a model, submit before the deadline and compete for prizes. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "en",
+    "source_url": "https://events15.openhack.example/en",
+    "title": "Global Game Jam 2026 — Registration",
+    "text": "Game jam weekend. Register your team, build and submit a game before Sunday. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "en",
+    "source_url": "https://events16.openhack.example/en",
+    "title": "Cyber CTF 2026 — Registration",
+    "text": "Capture the flag competition. Registration is open for teams, deadline Friday, awards for top teams. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://events17.openhack.example/pt",
+    "title": "Desafio de inovação 2026 — Registration",
+    "text": "Inscrição aberta. Equipes devem construir protótipo, enviar até o prazo e concorrer a prêmio. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "fr",
+    "source_url": "https://events18.openhack.example/fr",
+    "title": "Défi d innovation 2026 — Registration",
+    "text": "Inscription ouverte. Équipe, prototype, date limite et prix pour les finalistes. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "es",
+    "source_url": "https://events19.openhack.example/es",
+    "title": "Reto de innovación 2026 — Registration",
+    "text": "Inscripción abierta, equipo, prototipo, fecha límite y premio para los finalistas. Registration deadline and team participation details are published.",
+    "label": true,
+    "category": "positive_variant"
+  },
+  {
+    "language": "en",
+    "source_url": "https://news.example.com/hackathon-recap",
+    "title": "Hackathon news: winners announced",
+    "text": "News article reporting yesterday’s completed hackathon. Recap of the winning project and interviews.",
+    "label": false,
+    "category": "article"
+  },
+  {
+    "language": "en",
+    "source_url": "https://guide.example.com/how-to-run-hackathon",
+    "title": "How to organize a hackathon",
+    "text": "A practical hackathon guide for community managers. No participant registration.",
+    "label": false,
+    "category": "guide"
+  },
+  {
+    "language": "en",
+    "source_url": "https://jobs.example.com/platform-engineer",
+    "title": "Software engineer job opening",
+    "text": "We are hiring for our hackathon platform team. Job opening and career benefits.",
+    "label": false,
+    "category": "job"
+  },
+  {
+    "language": "en",
+    "source_url": "https://learn.example.com/python-course",
+    "title": "Python course with hackathon exercise",
+    "text": "Online course includes a hackathon exercise at the end. Enroll in the course.",
+    "label": false,
+    "category": "course"
+  },
+  {
+    "language": "en",
+    "source_url": "https://conference.example.com/ai-2026",
+    "title": "AI Conference 2026",
+    "text": "Conference registration open. Keynotes, panels, expo booths and networking. No build competition.",
+    "label": false,
+    "category": "conference"
+  },
+  {
+    "language": "en",
+    "source_url": "https://community.example.com/",
+    "title": "Developer community homepage",
+    "text": "Welcome to our community. Read articles, meet members and browse resources.",
+    "label": false,
+    "category": "generic_landing"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://noticias.example.br/hackathon-resultados",
+    "title": "Hackathon encerra com vencedores",
+    "text": "Notícia sobre o evento concluído. Resultados, entrevista com vencedor e retrospectiva.",
+    "label": false,
+    "category": "article"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://blog.example.br/guia-hackathon",
+    "title": "Guia de hackathon para empresas",
+    "text": "Como organizar um hackathon. Guia de planejamento, orçamento e facilitação.",
+    "label": false,
+    "category": "guide"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://jobs.example.br/vaga",
+    "title": "Vaga para desenvolvedor",
+    "text": "Vaga em empresa que organiza hackathon. Carreira, salário e benefícios.",
+    "label": false,
+    "category": "job"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://curso.example.br/ia",
+    "title": "Curso de IA",
+    "text": "Curso online com projeto final em formato de hackathon.",
+    "label": false,
+    "category": "course"
+  },
+  {
+    "language": "es",
+    "source_url": "https://noticias.example.es/ganadores",
+    "title": "Ganadores del hackatón",
+    "text": "Noticia y entrevista con los ganadores del hackatón del año pasado.",
+    "label": false,
+    "category": "winner_profile"
+  },
+  {
+    "language": "es",
+    "source_url": "https://conference.example.es/ia",
+    "title": "Conferencia de IA 2026",
+    "text": "Conferencia con inscripción, ponentes y networking. No equipos ni prototipos.",
+    "label": false,
+    "category": "conference"
+  },
+  {
+    "language": "fr",
+    "source_url": "https://presse.example.fr/hackathon",
+    "title": "Communiqué: le hackathon est terminé",
+    "text": "Article de presse et résultats du hackathon terminé, portrait du gagnant.",
+    "label": false,
+    "category": "article"
+  },
+  {
+    "language": "fr",
+    "source_url": "https://cours.example.fr/data",
+    "title": "Cours en ligne Data Science",
+    "text": "Cours en ligne avec exercice hackathon pédagogique, pas de compétition publique.",
+    "label": false,
+    "category": "course"
+  },
+  {
+    "language": "de",
+    "source_url": "https://jobs.example.de/hackathon-team",
+    "title": "Stellenangebot Entwickler",
+    "text": "Stellenangebot im Team einer Hackathon-Plattform. Karriere und Bewerbung.",
+    "label": false,
+    "category": "job"
+  },
+  {
+    "language": "de",
+    "source_url": "https://conference.example.de/ai",
+    "title": "KI Konferenz 2026",
+    "text": "Konferenz Anmeldung, Vorträge und Expo. Kein Team-Prototyp-Wettbewerb.",
+    "label": false,
+    "category": "conference"
+  },
+  {
+    "language": "it",
+    "source_url": "https://news.example.it/hackathon",
+    "title": "Risultati hackathon 2026",
+    "text": "Articolo con risultati e intervista ai vincitori del hackathon concluso.",
+    "label": false,
+    "category": "article"
+  },
+  {
+    "language": "it",
+    "source_url": "https://course.example.it/ai",
+    "title": "Corso AI",
+    "text": "Corso online con esercizio finale, non è un evento competitivo aperto.",
+    "label": false,
+    "category": "course"
+  },
+  {
+    "language": "ja",
+    "source_url": "https://news.example.jp/hackathon-report",
+    "title": "ハッカソン成果発表",
+    "text": "ニュース記事。終了したハッカソンの受賞者と成果を紹介する記事です。",
+    "label": false,
+    "category": "article"
+  },
+  {
+    "language": "ja",
+    "source_url": "https://jobs.example.jp/engineer",
+    "title": "エンジニア採用",
+    "text": "採用情報。ハッカソン運営チームの求人です。",
+    "label": false,
+    "category": "job"
+  },
+  {
+    "language": "ko",
+    "source_url": "https://news.example.kr/hackathon",
+    "title": "해커톤 수상팀 인터뷰",
+    "text": "완료된 해커톤의 수상팀 인터뷰와 결과 기사입니다.",
+    "label": false,
+    "category": "winner_profile"
+  },
+  {
+    "language": "ko",
+    "source_url": "https://learn.example.kr/ai",
+    "title": "AI 강좌",
+    "text": "온라인 강좌이며 마지막에 해커톤 형식의 과제가 있습니다.",
+    "label": false,
+    "category": "course"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://news.example.cn/hackathon",
+    "title": "黑客松收官成果发布",
+    "text": "新闻报道，已结束活动的获奖结果和采访，不是报名页面。",
+    "label": false,
+    "category": "article"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://jobs.example.cn/ai",
+    "title": "AI 招聘",
+    "text": "招聘开发工程师，加入黑客松平台团队。",
+    "label": false,
+    "category": "job"
+  },
+  {
+    "language": "hi",
+    "source_url": "https://learn.example.in/course",
+    "title": "AI course",
+    "text": "Course with a hackathon exercise at the end, not a public competition.",
+    "label": false,
+    "category": "course"
+  },
+  {
+    "language": "en",
+    "source_url": "https://challenge.example.com/ideas",
+    "title": "Innovation Challenge ideas",
+    "text": "Applications open for ideas. No team build, no prototype requirement, no prize.",
+    "label": false,
+    "category": "ambiguous_challenge"
+  },
+  {
+    "language": "en",
+    "source_url": "https://competition.example.com/essay",
+    "title": "Global Innovation Competition",
+    "text": "Competition registration open. Individual essay submission and prize; no team build or prototype.",
+    "label": false,
+    "category": "ambiguous_competition"
+  },
+  {
+    "language": "pt",
+    "source_url": "https://desafio.example.br/ideias",
+    "title": "Desafio de inovação de ideias",
+    "text": "Inscrição para envio individual de ideias e prêmio. Não exige equipe nem protótipo.",
+    "label": false,
+    "category": "ambiguous_challenge"
+  },
+  {
+    "language": "es",
+    "source_url": "https://reto.example.es/ideas",
+    "title": "Reto de innovación de ideas",
+    "text": "Inscripción para ideas individuales y premio. Sin equipo y sin prototipo.",
+    "label": false,
+    "category": "ambiguous_challenge"
+  },
+  {
+    "language": "fr",
+    "source_url": "https://concours.example.fr/innovation",
+    "title": "Concours innovation",
+    "text": "Inscription individuelle, prix et présentation, sans équipe ni prototype.",
+    "label": false,
+    "category": "ambiguous_competition"
+  },
+  {
+    "language": "de",
+    "source_url": "https://wettbewerb.example.de/innovation",
+    "title": "Innovationswettbewerb Ideen",
+    "text": "Anmeldung für Einzelideen, Preis, aber kein Team und kein Prototyp.",
+    "label": false,
+    "category": "ambiguous_competition"
+  },
+  {
+    "language": "ja",
+    "source_url": "https://challenge.example.jp/innovation",
+    "title": "イノベーション チャレンジ",
+    "text": "応募と賞金はあるが、チームやプロトタイプ開発は不要です。",
+    "label": false,
+    "category": "ambiguous_challenge"
+  },
+  {
+    "language": "ko",
+    "source_url": "https://challenge.example.kr/innovation",
+    "title": "혁신 챌린지",
+    "text": "신청과 상금은 있지만 팀 개발 또는 프로토타입 요구가 없습니다.",
+    "label": false,
+    "category": "ambiguous_challenge"
+  },
+  {
+    "language": "zh",
+    "source_url": "https://challenge.example.tw/innovation",
+    "title": "创新 挑战赛",
+    "text": "开放申请并有奖金，但不要求团队开发或原型。",
+    "label": false,
+    "category": "ambiguous_challenge"
+  },
+  {
+    "language": "en",
+    "source_url": "https://blog.example.com/hackathon-tools",
+    "title": "10 tools for hackathons",
+    "text": "Blog guide comparing software used to organize a hackathon.",
+    "label": false,
+    "category": "guide"
+  },
+  {
+    "language": "en",
+    "source_url": "https://archive.example.com/hackathon-winners",
+    "title": "2025 Hackathon Winners",
+    "text": "Winner profile archive and gallery from a completed event.",
+    "label": false,
+    "category": "winner_profile"
+  },
+  {
+    "language": "en",
+    "source_url": "https://university.example.edu/course/hackathon",
+    "title": "Hackathon course module",
+    "text": "Course syllabus where students complete a hackathon exercise.",
+    "label": false,
+    "category": "course"
+  },
+  {
+    "language": "en",
+    "source_url": "https://company.example.com/careers/hackathon",
+    "title": "Careers — Hackathon Platform",
+    "text": "Job opening for an engineer working on hackathon infrastructure.",
+    "label": false,
+    "category": "job"
+  },
+  {
+    "language": "en",
+    "source_url": "https://press.example.com/launch",
+    "title": "Company launches hackathon program",
+    "text": "News article announcing a corporate program; participant registration is not available here.",
+    "label": false,
+    "category": "article"
+  },
+  {
+    "language": "en",
+    "source_url": "https://conference2.example.com/build",
+    "title": "Developer Conference Build Day",
+    "text": "Conference workshops and talks, registration open. No hackathon or team prototype competition.",
+    "label": false,
+    "category": "conference"
+  }
+]

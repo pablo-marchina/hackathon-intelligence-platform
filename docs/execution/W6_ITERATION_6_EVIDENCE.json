@@ -1,0 +1,30 @@
+{
+  "checkpoint": "W6 iteration 6",
+  "date": "2026-10-15",
+  "base": "W6 iteration 5",
+  "tests": {"previous": 179, "added": 7, "passed": 186, "environment": "local; socket and DNS mocked for new security cases"},
+  "evals": {"baseline_id": "w6-baseline-v1", "passed": true},
+  "repository_verification": {"sql_tables_static": 74, "postgres_extensions_static": 5, "passed": true},
+  "compileall": true,
+  "implemented": [
+    "connection-time DNS resolution and IP pinning",
+    "public-only DNS answer validation on each new socket",
+    "TLS SNI and HTTP Host preservation",
+    "safe public IP fallback",
+    "robots source transport consolidation",
+    "httpx/httpcore compatibility constraints"
+  ],
+  "not_executed": [
+    "real DNS rebinding and network egress drill",
+    "egress firewall enforcement test",
+    "PostgreSQL concurrency drill",
+    "Redis/Celery multiprocess",
+    "Docker",
+    "Next.js build",
+    "ruff",
+    "mypy",
+    "load testing",
+    "backup restore drill"
+  ],
+  "release_ready": false
+}

@@ -1,0 +1,15 @@
+{
+  "source": "https://www.spaceappschallenge.org/",
+  "verified_at": "2026-09-22T15:00:00Z",
+  "name": "2026 NASA Space Apps Challenge",
+  "event_type": "hackathon",
+  "start_at": "2026-11-14T00:00:00Z",
+  "end_at": "2026-11-15T23:59:59Z",
+  "format": "HYBRID",
+  "organizer": "NASA",
+  "eligible_worldwide": true,
+  "registration_open": true,
+  "registration_close_at": "2026-11-15T23:59:59Z",
+  "topics": ["space", "science", "data"],
+  "notes": "Official 2026 page states registration is open, event is Nov 14-15, and participants may join local events or the Universal virtual event."
+}

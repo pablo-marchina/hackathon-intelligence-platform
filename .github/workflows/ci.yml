@@ -1,0 +1,180 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e '.[dev]'
+      - run: ruff check apps packages scripts db/alembic/versions
+      - run: ruff format --check apps packages scripts db/alembic/versions
+      - run: mypy apps/api/src apps/worker/src packages/shared/src
+      - run: pytest -q
+      - run: python scripts/check_eval_gates.py
+      - run: python scripts/verify_repository.py
+
+  database-migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: hackathon
+          POSTGRES_USER: hackathon
+          POSTGRES_PASSWORD: hackathon
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hackathon -d hackathon"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://hackathon:hackathon@localhost:5432/hackathon
+      HIP_ALLOW_ADMIN_DB_DRILL: "1"
+      HIP_ALLOW_SOURCE_DB_DRILL: "1"
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: alembic -c db/alembic.ini upgrade head
+      - run: alembic -c db/alembic.ini downgrade base
+      - run: alembic -c db/alembic.ini upgrade head
+      - run: python scripts/ops/api_readiness_integration_check.py
+      - run: python scripts/ops/admin_integration_check.py
+      - run: python scripts/ops/source_maintenance_integration_check.py
+      - run: python scripts/ops/source_commit_fence_integration_check.py
+      - run: python scripts/ops/source_multiworker_integration_check.py
+      - name: Saved-search match -> outbox -> fake SMTP -> API
+        env:
+          ALERT_MATCH_ENABLED: "true"
+          ALERT_DISPATCH_ENABLED: "true"
+          HIP_ALLOW_ALERT_DB_DRILL: "1"
+          HIP_ALLOW_MATCH_DB_DRILL: "1"
+          SOURCE_SCHEDULER_ENABLED: "false"
+        run: python -m scripts.ops.saved_search_match_integration_check
+      - name: End-to-end alert outbox with database and fake SMTP
+        env:
+          ALERT_DISPATCH_ENABLED: "true"
+          HIP_ALLOW_ALERT_DB_DRILL: "1"
+          SOURCE_SCHEDULER_ENABLED: "false"
+        run: python scripts/ops/alert_outbox_integration_check.py
+
+  celery-redis-integration:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:8.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      APP_ENV: test
+      HIP_ALLOW_CELERY_DRILL: "1"
+      SOURCE_SCHEDULER_ENABLED: "false"
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/13
+      CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - name: Start isolated worker and verify real broker delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          celery -A hackathon_worker.app:celery_app worker \
+            --pool=solo --concurrency=1 --loglevel=WARNING \
+            --queues=hip-ci-smoke --hostname=hip-smoke@%h \
+            >/tmp/hip-celery-smoke.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          if ! python scripts/ops/celery_redis_integration_check.py; then
+            cat /tmp/hip-celery-smoke.log
+            exit 1
+          fi
+
+  disaster-recovery-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: hackathon
+          POSTGRES_USER: hackathon
+          POSTGRES_PASSWORD: hackathon
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hackathon -d hackathon"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      APP_ENV: test
+      HIP_ALLOW_DR_DB_DRILL: "1"
+      DATABASE_URL: postgresql+psycopg://hackathon:hackathon@localhost:5432/hackathon
+      S3_ENDPOINT_URL: http://127.0.0.1:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - name: Install PostgreSQL client tooling
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client-16
+      - name: Start ephemeral MinIO
+        run: >-
+          docker run -d --rm --name hip-dr-minio -p 9000:9000
+          -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin
+          minio/minio:RELEASE.2025-07-23T15-54-02Z server /data
+      - name: PostgreSQL + MinIO backup/restore and byte-for-byte verification
+        run: python scripts/ops/dr_integration_check.py
+
+  web-quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+  dependency-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e . pip-audit
+      - run: pip-audit --strict

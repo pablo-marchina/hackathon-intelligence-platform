@@ -1,0 +1,46 @@
+{
+  "iteration": 15,
+  "date": "2026-10-19",
+  "base_iteration": 14,
+  "python_tests": {
+    "passed": 351,
+    "warnings": 2,
+    "scope": "local",
+    "new_tests": 13
+  },
+  "email_consent": {
+    "default_deny": true,
+    "scope": "unit tests + new PostgreSQL CI drill"
+  },
+  "eval_gate": {
+    "passed": true,
+    "baseline_id": "w6-baseline-v1",
+    "pythonpath_required": false
+  },
+  "schema_static": {
+    "passed": true,
+    "tables": 75,
+    "extensions": 5
+  },
+  "frontend_dependencies": {
+    "installed": false,
+    "reason": "npm offline cache missing (@types/node)"
+  },
+  "next_build": {
+    "executed": false
+  },
+  "ruff_mypy": {
+    "executed": false
+  },
+  "postgres_integration": {
+    "executed": false,
+    "ci_script_updated": true
+  },
+  "celery_integration": {
+    "executed": false
+  },
+  "smtp_real_integration": {
+    "executed": false
+  },
+  "production_approved": false
+}

@@ -1,0 +1,53 @@
+{
+  "validated_at": "2026-09-23",
+  "w2_pipeline_run_id": "1b3e2b67-b1a7-4535-a4f0-291b17eb87f6",
+  "canonical_state": {
+    "active_canonicals": 250,
+    "event_series": 25,
+    "linked_active_editions": 60,
+    "members_on_inactive": 0,
+    "w2_v2_observations_on_inactive": 0
+  },
+  "dedup_benchmark": {
+    "github_actions_run_id": 35877825109,
+    "pairs": 470,
+    "same_event": 260,
+    "different_event": 210,
+    "auto_merges": 240,
+    "true_positive_auto_merges": 240,
+    "false_positive_auto_merges": 0,
+    "auto_merge_precision": 1.0,
+    "auto_merge_recall": 0.9230769230769231,
+    "review_pairs": 40,
+    "review_same_event": 20,
+    "review_different_event": 20,
+    "wilson_lower_95": 0.9842460800584412
+  },
+  "sierra_transactional_roundtrip": {
+    "survivor_hackathon_id": "ee8e2a73-f6e6-45a3-99a3-a641de155c2c",
+    "retired_hackathon_id": "350026a8-79d6-4c9a-87a9-1b6f9077b3ac",
+    "final_merge_audit_id": "18741a04-094c-4b8d-afda-79bfef47de98",
+    "split_restored_each": {
+      "members": 1,
+      "observations": 14
+    },
+    "final_survivor": {
+      "members": 2,
+      "observations": 28
+    }
+  },
+  "bell_manual_series_correction": {
+    "hackathon_id": "9478e35d-4d31-4644-ae1e-66dc1f4793d4",
+    "series_id": "3ff70794-5cf1-4074-b202-6b76820e658a",
+    "final_edition_label": "2024-02-1",
+    "manual_audit_id": "e731843d-ef98-458d-b729-6fde22f4889e",
+    "correction_audit_id": "dcec91ee-828b-4cd1-80a9-596ee4e32799"
+  },
+  "repository_validation": {
+    "pytest_passed": 66,
+    "sql_tables": 59,
+    "postgres_extensions": 5,
+    "unified_eval": "PASS",
+    "compileall": "PASS"
+  }
+}

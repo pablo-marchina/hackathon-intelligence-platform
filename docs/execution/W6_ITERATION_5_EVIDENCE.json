@@ -1,0 +1,40 @@
+{
+  "checkpoint": "W6 iteration 5",
+  "date": "2026-10-15",
+  "base": "W6 iteration 4",
+  "tests": {
+    "previous": 169,
+    "added": 10,
+    "passed": 179,
+    "environment": "local; PYTHONPATH explicitly set"
+  },
+  "evals": {
+    "baseline_id": "w6-baseline-v1",
+    "passed": true
+  },
+  "repository_verification": {
+    "sql_tables_static": 74,
+    "postgres_extensions_static": 5,
+    "passed": true
+  },
+  "compileall": true,
+  "implemented": [
+    "row-locked source permission check at page commit",
+    "row-locked lease fencing at page commit",
+    "real-time lease expiry checks in PostgreSQL",
+    "expired lease completion rejection",
+    "PostgreSQL concurrency drill configured in CI"
+  ],
+  "not_executed": [
+    "PostgreSQL concurrency drill",
+    "Redis/Celery multiprocess",
+    "Docker",
+    "Next.js build",
+    "ruff",
+    "mypy",
+    "egress/DNS rebinding",
+    "load testing",
+    "backup restore drill"
+  ],
+  "release_ready": false
+}

@@ -1,0 +1,57 @@
+{
+  "wave": "W3",
+  "status": "CLOSED",
+  "date": "2026-09-23",
+  "issues_done": 6,
+  "issues_total": 6,
+  "points_done": 39,
+  "points_total": 39,
+  "repository": {
+    "pytest_passed": 69,
+    "sql_tables": 66,
+    "extensions": 5,
+    "unified_eval": "PASS",
+    "compileall": "PASS"
+  },
+  "classifier": {
+    "version": "w3-rule-precision-v2",
+    "golden_version": "v0.2",
+    "examples": 80,
+    "languages": 10,
+    "domains": 76,
+    "tp": 40,
+    "fp": 0,
+    "tn": 40,
+    "fn": 0,
+    "precision": 1.0,
+    "recall": 1.0
+  },
+  "live_web_gate": {
+    "github_actions_run_id": 35884553285,
+    "conclusion": "success",
+    "python": "3.11",
+    "targets": 4,
+    "policy_resolved": 4,
+    "robots_checked": 2,
+    "fail_closed": 2,
+    "pages_fetched": 2,
+    "hackathon_like_pages": 2,
+    "related_links": 2,
+    "sitemap_candidates": 2
+  },
+  "postgres17_gate": {
+    "migration": "0003_w3_open_web_discovery.sql",
+    "validation_schema": "w3_gate",
+    "exact_migration_applied": true,
+    "query_templates": 1,
+    "queries": 1,
+    "discovery_only_results": 1,
+    "frontier_rows": 1,
+    "accepted_classifications": 1,
+    "false_positive_reviews": 1,
+    "frontier_upsert_final_priority": 95,
+    "frontier_upsert_row_count": 1,
+    "metadata_merge": true
+  },
+  "next_wave": "W4 — API + search + frontend"
+}

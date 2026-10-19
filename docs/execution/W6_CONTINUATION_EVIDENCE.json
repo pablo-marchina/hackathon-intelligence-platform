@@ -1,0 +1,44 @@
+{
+  "wave": "W6",
+  "checkpoint_date": "2026-10-15",
+  "verified_at_utc": "2026-10-15T14:54:30.734079+00:00",
+  "basis": "uploaded W6 checkpoint zip (w5_final root)",
+  "tests": {
+    "local_pytest_passed": 117,
+    "local_pytest_failed": 0,
+    "execution": "python -m pytest -q"
+  },
+  "repository_static": {
+    "tables": 72,
+    "extensions": 5,
+    "passed": true
+  },
+  "evals": {
+    "baseline_id": "w6-baseline-v1",
+    "passed": true,
+    "gate_failures": []
+  },
+  "python_compileall": true,
+  "runtime_gates": {
+    "postgresql_upgrade_downgrade_upgrade": "not run locally",
+    "admin_postgresql_integration": "not run locally; CI configured",
+    "dependency_audit": "not run locally; CI configured",
+    "frontend_build": "not run locally",
+    "production_load_and_disaster_recovery": "not run locally"
+  },
+  "scope": [
+    "RBAC and session CSRF",
+    "service-key admin access",
+    "audit of mutating admin APIs",
+    "PostgreSQL source pause/resume",
+    "review item workflow",
+    "versioned eval CI gates",
+    "repository verification"
+  ],
+  "limitations": [
+    "No shared pause policy for no-persist and REST/Supabase fetch paths",
+    "No live DB integration in this environment",
+    "No deploy/release approval"
+  ],
+  "release_accepted": false
+}

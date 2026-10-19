@@ -1,0 +1,39 @@
+{
+  "checkpoint": "w6-iteration-2-2026-10-15",
+  "base": "hackathon-intelligence-platform-w6-continued-2026-10-15.zip",
+  "local_verification": {
+    "pytest": {
+      "status": "PASS",
+      "passed": 135,
+      "failed": 0
+    },
+    "eval_gates": {
+      "status": "PASS",
+      "baseline_id": "w6-baseline-v1"
+    },
+    "static_schema_inventory": {
+      "status": "PASS",
+      "sql_tables": 72,
+      "postgresql_extensions": 5
+    },
+    "python_compileall": {
+      "status": "PASS"
+    },
+    "typescript_syntax_parse": {
+      "status": "PASS",
+      "scope": "only new TSX syntax; not Next.js build or typecheck"
+    }
+  },
+  "unverified": [
+    "PostgreSQL migration + integration test in live PostgreSQL",
+    "browser OAuth/CORS/cookies",
+    "npm lint/typecheck/build",
+    "DR backup/restore PostgreSQL + MinIO",
+    "production-like load and source isolation",
+    "DNS egress/IP pinning",
+    "adaptive recrawl scheduling",
+    "source health anomaly alerting",
+    "external CI run"
+  ],
+  "release_ready": false
+}

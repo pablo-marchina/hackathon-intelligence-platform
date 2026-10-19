@@ -1,0 +1,40 @@
+{
+  "checkpoint": "W6 iteration 4",
+  "date": "2026-10-15",
+  "base": "W6 iteration 3",
+  "tests": {
+    "passed": 169,
+    "previous": 150,
+    "added": 19,
+    "tool": "pytest",
+    "environment": "local; PYTHONPATH explicitly set"
+  },
+  "evals": {
+    "baseline_id": "w6-baseline-v1",
+    "passed": true
+  },
+  "repository_verification": {
+    "sql_tables_static": 74,
+    "postgres_extensions_static": 5,
+    "passed": true
+  },
+  "compileall": true,
+  "implemented": [
+    "safe robots redirect traversal",
+    "bounded HTTP decoded bodies",
+    "lease renewal with fencing",
+    "post-fetch and post-parser policy checks",
+    "source claim requires extraction enabled"
+  ],
+  "not_executed": [
+    "PostgreSQL integration drill",
+    "Redis/Celery multi-worker",
+    "Next.js build",
+    "ruff",
+    "mypy",
+    "real egress firewall and DNS rebinding",
+    "production-like performance",
+    "recovery restore"
+  ],
+  "release_ready": false
+}

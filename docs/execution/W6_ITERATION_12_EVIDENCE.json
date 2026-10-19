@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-15",
+  "iteration": 12,
+  "baseline_iteration": 11,
+  "previous_local_tests": 283,
+  "local_tests_passed": 293,
+  "local_test_warnings": 2,
+  "evaluation_baseline": "w6-baseline-v1",
+  "evaluation_passed": true,
+  "sql_tables": 75,
+  "postgres_extensions": 5,
+  "python_compileall_passed": true,
+  "ci_real_postgresql_executed": false,
+  "external_smtp_executed": false,
+  "nextjs_build_executed": false,
+  "npm_install_error": "EAI_AGAIN",
+  "production_approved": false,
+  "release_gate": "must execute Postgres transaction/consent tests, frontend build, and external E2E"
+}

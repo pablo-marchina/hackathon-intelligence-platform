@@ -1,0 +1,17 @@
+{
+  "iteration": 14,
+  "date": "2026-10-19",
+  "base_iteration": 13,
+  "baseline_tests": 316,
+  "python_tests": {"passed": 338, "warnings": 2, "scope": "local", "new_tests": 22},
+  "smtp_tls_security_tests": {"passed": 22, "scope": "mocked no network"},
+  "eval_gate": {"passed": true, "baseline_id": "w6-baseline-v1", "pythonpath_required": true},
+  "schema_static": {"passed": true, "tables": 75, "extensions": 5},
+  "typescript_syntax": {"passed": true, "files": 21, "scope": "syntax transpilation only"},
+  "next_build": {"executed": false, "reason": "npm registry DNS EAI_AGAIN"},
+  "ruff_mypy": {"executed": false, "reason": "packages unavailable"},
+  "postgres_integration": {"executed": false},
+  "celery_integration": {"executed": false},
+  "smtp_integration": {"executed": false},
+  "production_approved": false
+}

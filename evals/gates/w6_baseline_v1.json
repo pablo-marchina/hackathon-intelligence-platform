@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "baseline_id": "w6-baseline-v1",
+  "description": "Local fixture baselines, not live traffic or production-level acceptance evidence.",
+  "metrics": {
+    "discovery_precision": {"baseline": 1.0, "floor": 0.95, "maximum_drop": 0.02},
+    "extraction_core_fields": {"baseline": 1.0, "floor": 0.95, "maximum_drop": 0.02},
+    "dedup_auto_merge_precision": {"baseline": 1.0, "floor": 0.98, "maximum_drop": 0.005},
+    "real_fixture_e2e": {"baseline": 1.0, "floor": 1.0, "maximum_drop": 0.0},
+    "recommendation_ndcg_at_5": {"baseline": 1.0, "floor": 0.90, "maximum_drop": 0.05}
+  },
+  "support_gates": {
+    "discovery": {"examples": 80, "languages": 10, "domains": 70, "recall": 0.95},
+    "extraction": {"examples": 8, "assertions": 43, "recall": 0.95},
+    "dedup": {"auto_merges": 200, "pairs": 470, "wilson_lower_95": 0.98, "recall": 0.90}
+  },
+  "exact_gates": {
+    "dedup": {"false_positive_auto_merges": 0}
+  }
+}

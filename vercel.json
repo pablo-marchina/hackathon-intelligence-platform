@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "functions": {
+    "api/live_sources.py": {
+      "maxDuration": 60
+    }
+  }
+}

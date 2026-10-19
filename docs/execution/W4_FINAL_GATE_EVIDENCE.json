@@ -1,0 +1,38 @@
+{
+  "wave": "W4",
+  "status": "DONE",
+  "issues_done": 9,
+  "issues_total": 9,
+  "points_done": 63,
+  "points_total": 63,
+  "local_tests": {"passed": 83, "failed": 0},
+  "repository": {"sql_tables": 69, "extensions": 5},
+  "postgresql_gate": {
+    "version": "17.6",
+    "production_like_hackathons": 50000,
+    "search_documents": 49500,
+    "performance_samples": 60,
+    "min_ms": 39.303,
+    "avg_ms": 40.532,
+    "p50_ms": 40.232,
+    "p95_ms": 41.538,
+    "max_ms": 52.230,
+    "representative_explain_execution_ms": 96.348,
+    "retired_doc_count": 0,
+    "inactive_indexed": 0,
+    "idempotent_user_state_rows": 1,
+    "idempotent_user_state_final": "APPLIED",
+    "session_rows": 1
+  },
+  "frontend_gate": {
+    "github_actions_run_id": 35898513405,
+    "conclusion": "success",
+    "typecheck": "success",
+    "next_build": "success",
+    "production_start": "success",
+    "real_data_smoke": "success",
+    "acceptance_fixture_origin": "real W2 canonical corpus snapshot"
+  },
+  "api_contract": {"version": "v1", "openapi_app_version": "1.0.0"},
+  "unified_eval": "PASS"
+}
