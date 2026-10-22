@@ -82,7 +82,10 @@ async def run_source_once(
                     from urllib.parse import urlsplit
 
                     host = (urlsplit(candidate).hostname or "").lower()
-                    allowed = {adapter.definition.domain.lower(), *(h.lower() for h in adapter.definition.allowed_hosts)}
+                    allowed = {
+                        adapter.definition.domain.lower(),
+                        *(h.lower() for h in adapter.definition.allowed_hosts),
+                    }
                     if host in allowed:
                         queue.append(candidate)
         except Exception as exc:  # source isolation: one bad page does not crash the worker

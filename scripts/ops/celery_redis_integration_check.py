@@ -4,6 +4,7 @@
 Requires a separately started worker listening on the dedicated 'hip-ci-smoke'
 queue. No source collection, email delivery, or external API calls are made.
 """
+
 from __future__ import annotations
 
 import os
@@ -21,9 +22,16 @@ def _allowed(queue: str) -> None:
     for variable, database in (("CELERY_BROKER_URL", "13"), ("CELERY_RESULT_BACKEND", "14")):
         url = os.getenv(variable, "")
         parts = urlsplit(url)
-        if (parts.scheme != "redis" or parts.hostname not in {"localhost", "127.0.0.1"}
-                or parts.port != 6379 or parts.path != f"/{database}"
-                or parts.query or parts.fragment or parts.username or parts.password):
+        if (
+            parts.scheme != "redis"
+            or parts.hostname not in {"localhost", "127.0.0.1"}
+            or parts.port != 6379
+            or parts.path != f"/{database}"
+            or parts.query
+            or parts.fragment
+            or parts.username
+            or parts.password
+        ):
             raise RuntimeError(f"{variable} must point to isolated local Redis DB {database}")
 
 

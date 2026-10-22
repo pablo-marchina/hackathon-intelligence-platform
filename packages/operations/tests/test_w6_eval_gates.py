@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
-import json
 
 from hackathon_operations.evals import run_all
 from hackathon_operations.gates import evaluate_gates

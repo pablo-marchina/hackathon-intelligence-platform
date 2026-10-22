@@ -4,6 +4,7 @@
 This creates one isolated source and performs no network ingestion. Run only
 with APP_ENV=test and HIP_ALLOW_SOURCE_DB_DRILL=1 after Alembic migrations.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,14 +12,13 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from uuid import uuid4
 
-from sqlalchemy import create_engine, text
-
 from hackathon_operations.source_maintenance import (
     LEASE_DURATION,
     claim_due_source,
     complete_lease,
     renew_lease,
 )
+from sqlalchemy import create_engine, text
 
 
 def _allowed() -> str:
@@ -47,23 +47,31 @@ def verify() -> None:
     url = _allowed()
     if url.startswith("postgresql://"):
         url = "postgresql+psycopg://" + url.removeprefix("postgresql://")
-    engine = create_engine(url, pool_pre_ping=True, pool_size=3, connect_args={"connect_timeout": 5})
+    engine = create_engine(
+        url, pool_pre_ping=True, pool_size=3, connect_args={"connect_timeout": 5}
+    )
     sid: str | None = None
     domain = f"w6-multiworker-{uuid4().hex}.test"
     try:
         with engine.begin() as conn:
-            sid = conn.execute(text("""
+            sid = conn.execute(
+                text("""
                 INSERT INTO sources(name, domain, source_family, source_type, ingestion_mode,
                                     permission_status, detail_extraction_enabled, discovery_enabled)
                 VALUES ('Multiworker CI', :domain, 'multiworker-ci', 'API', 'API',
                         'ALLOWED', true, true)
                 RETURNING id::text
-            """), {"domain": domain}).scalar_one()
-            conn.execute(text("""
+            """),
+                {"domain": domain},
+            ).scalar_one()
+            conn.execute(
+                text("""
                 INSERT INTO source_operational_state(
                     source_id, next_due_at, interval_seconds, recrawl_priority
                 ) VALUES (CAST(:sid AS uuid), clock_timestamp()-interval '1 minute', 3600, 1)
-            """), {"sid": sid})
+            """),
+                {"sid": sid},
+            )
 
         barrier = Barrier(2)
 
@@ -82,22 +90,30 @@ def verify() -> None:
         assert owner["source_id"] == sid
         token = owner["lease_token"]
         with engine.begin() as conn:
-            remaining_seconds = conn.execute(text("""
+            remaining_seconds = conn.execute(
+                text("""
                 SELECT EXTRACT(EPOCH FROM lease_until-clock_timestamp())
                   FROM source_operational_state WHERE source_id=CAST(:sid AS uuid)
-            """), {"sid": sid}).scalar_one()
-            assert LEASE_DURATION.total_seconds() - 30 < remaining_seconds <= LEASE_DURATION.total_seconds(), (
-                "lease TTL was not set from PostgreSQL time"
-            )
+            """),
+                {"sid": sid},
+            ).scalar_one()
+            assert (
+                LEASE_DURATION.total_seconds() - 30
+                < remaining_seconds
+                <= LEASE_DURATION.total_seconds()
+            ), "lease TTL was not set from PostgreSQL time"
             assert not renew_lease(conn, source_id=sid, lease_token=str(uuid4()))
             assert not complete_lease(conn, source_id=sid, lease_token=str(uuid4()), success=True)
             assert renew_lease(conn, source_id=sid, lease_token=token)
             # Simulate expiry at the database, never by trusting worker clocks.
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 UPDATE source_operational_state
                    SET lease_until=clock_timestamp()-interval '1 second'
                  WHERE source_id=CAST(:sid AS uuid)
-            """), {"sid": sid})
+            """),
+                {"sid": sid},
+            )
             assert not renew_lease(conn, source_id=sid, lease_token=token)
             assert not complete_lease(conn, source_id=sid, lease_token=token, success=True)
 
@@ -105,7 +121,9 @@ def verify() -> None:
             replacement = claim_due_source(conn, allowed_sources=[(domain, "multiworker-ci")])
             assert replacement is not None and replacement["lease_token"] != token
             assert not complete_lease(conn, source_id=sid, lease_token=token, success=True)
-            conn.execute(text("UPDATE sources SET active=false WHERE id=CAST(:sid AS uuid)"), {"sid": sid})
+            conn.execute(
+                text("UPDATE sources SET active=false WHERE id=CAST(:sid AS uuid)"), {"sid": sid}
+            )
             assert not renew_lease(conn, source_id=sid, lease_token=replacement["lease_token"])
             assert claim_due_source(conn, allowed_sources=[(domain, "multiworker-ci")]) is None
         print("W6 PostgreSQL concurrent claims, DB-clock TTL, expiry, fencing and pause: PASS")

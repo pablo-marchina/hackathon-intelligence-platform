@@ -9,7 +9,29 @@ type Source={id:string;name:string;domain:string;health:string;priority:number;a
 type Review={id:string;queue_type:string;entity_type:string;entity_id:string;severity:string;state:'OPEN'|'IN_REVIEW'|'RESOLVED'|'DISMISSED';payload:unknown;created_at:string;assigned_to_user_id:string|null};
 type Quality={scope_type:string;scope_id:string;overall_score:number|null;measured_at:string};
 type Audit={id:string;action:string;actor_kind:string;actor_user_id:string|null;entity_type:string;entity_id:string;reason:string;created_at:string;request_id:string|null};
-type Tab='sources'|'reviews'|'quality'|'audit';
+type Coverage={
+  as_of:string;recent_window_days:number;
+  source_counts:{registered_in_database:number;active_in_database:number;approved_and_active:number;recent_success:number};
+  catalog:{unique_active:number;upcoming_by_date:number;ongoing_by_date:number;confirmed_registration_window:number;unknown_registration_close:number;with_official_url:number;with_start_end:number;with_primary_location:number;inactive_or_retired:number};
+  growth:{calendar_timezone:string;calendar_days:number;new_active_canonicals:number;daily:Array<{date:string;new_active_canonicals:number}>};
+  field_completeness:{counts:Record<string,number>;percentages:Record<string,number|null>};
+  pipeline:{staged_payloads:number;awaiting_normalization:number;normalized_current_version:number;normalization_errors:number;backlog:Record<string,number>};
+  conversion_funnel:{
+    discovered_url_tasks:number;fetched_discovered_url_tasks:number;fetch_percent:number|null;
+    active_references:number;staged_references:number;legacy_unstaged_references:number;accepted_unlinked_references:number;pending_references:number;
+    accepted_references:number;rejected_references:number;failed_pending_references:number;
+    linked_searchable_references:number;unique_searchable_hackathons:number;
+    staging_percent:number|null;acceptance_percent:number|null;linkage_percent:number|null;
+    distinct_hackathons_percent:number|null;
+  };
+  sources:Array<{source_id:string;name:string;permission_status:string|null;active:boolean;recent_success:boolean;source_refs:number;attributed_unique_active:number;backlog_pending:number;backlog_retry:number;backlog_claimed:number;backlog_done:number;backlog_exhausted:number;backlog_ready_now:number;backlog_expired_claims:number;new_source_refs_recent:number;new_attributed_canonicals_recent:number;discovered_urls:number;fetched_discovered_urls:number;discovery_fetch_percent:number|null;funnel:{active_references:number;staged_references:number;accepted_references:number;rejected_references:number;linked_searchable_references:number;unique_searchable_hackathons:number;staging_percent:number|null;acceptance_percent:number|null}}>;
+};
+type SourceInsight={source_id:string;name:string;eligible_for_controlled_collection:boolean;permission_status:string|null;active:boolean;new_references_in_window:number;ready_urls_now:number;exhausted_urls:number;runs_in_window:{run_count:number;succeeded:number;partial:number;failed:number;cancelled:number;running:number;fetched_pages:number;parsed_records:number;reported_failures:number};current_rejection_reasons:Record<string,number>;triage_score:number|null;suggested_action:string};
+type SourceInsights={as_of:string;recent_window_days:number;sources:SourceInsight[];recent_runs:Array<{id:string;source_id:string;status:string;started_at:string;finished_at:string|null;fetched_count:number;parsed_count:number;failed_count:number}>;methodology:Record<string,string>};
+type CanonicalYield={as_of:string;recent_window_days:number;totals:{processed_versions:number;created:number;linked:number;updated:number;rejected:number;unattributed:number};sources:Array<{source_id:string;name:string;created:number;linked:number;updated:number;rejected:number;unattributed:number}>;runs:Array<{crawl_run_id:string;source_id:string;created:number;linked:number;updated:number;rejected:number}>;methodology:Record<string,string>};
+type Tab='coverage'|'sources'|'reviews'|'quality'|'audit';
+
+function percentOrNA(value:number|null):string{return value===null?'N/A':`${value}%`;}
 
 function readableDate(value:string|null|undefined):string{
   if(!value)return 'Never';
@@ -39,8 +61,11 @@ export function AdminDashboard(){
   const [identity,setIdentity]=useState<Identity|null>(null);
   const [status,setStatus]=useState<'loading'|'ready'|'denied'|'error'>('loading');
   const [error,setError]=useState('');
-  const [tab,setTab]=useState<Tab>('sources');
+  const [tab,setTab]=useState<Tab>('coverage');
   const [sources,setSources]=useState<Source[]>([]);
+  const [coverage,setCoverage]=useState<Coverage|null>(null);
+  const [insights,setInsights]=useState<SourceInsights|null>(null);
+  const [canonicalYield,setCanonicalYield]=useState<CanonicalYield|null>(null);
   const [reviews,setReviews]=useState<Review[]>([]);
   const [quality,setQuality]=useState<Quality[]>([]);
   const [audit,setAudit]=useState<Audit[]>([]);
@@ -50,13 +75,16 @@ export function AdminDashboard(){
 
   const refresh=useCallback(async()=>{
     // Parallel reads are safe: every API request carries the same user session.
-    const [nextSources,nextReviews,nextQuality,nextAudit]=await Promise.all([
+    const [nextCoverage,nextInsights,nextYield,nextSources,nextReviews,nextQuality,nextAudit]=await Promise.all([
+      adminRequest<Coverage>('/coverage'),
+      adminRequest<SourceInsights>('/source-insights?recent_days=7&run_limit=25'),
+      adminRequest<CanonicalYield>('/canonical-yield?days=7'),
       adminRequest<Source[]>('/source-health'),
       adminRequest<Review[]>('/review-queue?limit=100'),
       adminRequest<Quality[]>('/quality?limit=100'),
       adminRequest<Audit[]>('/audit?limit=50'),
     ]);
-    setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);
+    setCoverage(nextCoverage);setInsights(nextInsights);setCanonicalYield(nextYield);setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);
   },[]);
 
   useEffect(()=>{
@@ -110,13 +138,112 @@ export function AdminDashboard(){
       <div><strong>{sources.filter(s=>s.health==='BROKEN'||s.health==='DEGRADED').length}</strong><span>Degraded</span></div>
     </div>
     <div className="admin-tabs" role="tablist" aria-label="Operations section">
-      {(['sources','reviews','quality','audit'] as const).map(t=><button key={t} type="button" role="tab" aria-selected={tab===t} className={tab===t?'selected':''} onClick={()=>{setTab(t);setError('');setNotice('');}}>{({sources:'Sources',reviews:'Review queue',quality:'Quality',audit:'Audit trail'} as const)[t]}</button>)}
+      {(['coverage','sources','reviews','quality','audit'] as const).map(t=><button key={t} type="button" role="tab" aria-selected={tab===t} className={tab===t?'selected':''} onClick={()=>{setTab(t);setError('');setNotice('');}}>{({coverage:'Catalog coverage',sources:'Sources',reviews:'Review queue',quality:'Quality',audit:'Audit trail'} as const)[t]}</button>)}
     </div>
-    {canOperate&&tab!=='quality'&&tab!=='audit'&&<label className="admin-reason">Reason for change (required, min. 8 characters)
+    {canOperate&&tab!=='quality'&&tab!=='audit'&&tab!=='coverage'&&<label className="admin-reason">Reason for change (required, min. 8 characters)
       <textarea rows={2} maxLength={500} value={reason} onChange={e=>setReason(e.target.value)} placeholder="Explain the operational decision"/>
     </label>}
     {notice&&<p role="status" className="admin-notice">{notice}</p>}
     {error&&<ErrorMessage error={error}/>}
+    {tab==='coverage'&&<div className="admin-list">
+      {!coverage?<p className="muted">No database coverage snapshot available.</p>:<>
+        <p className="muted">Database snapshot at {readableDate(coverage.as_of)}. Counts are not historical W2 totals.</p>
+        <div className="admin-stats">
+          <div><strong>{coverage.catalog.unique_active}</strong><span>Unique active hackathons</span></div>
+          <div><strong>{coverage.growth.new_active_canonicals}</strong><span>New catalog entries (last {coverage.growth.calendar_days} UTC days)</span></div>
+          <div><strong>{coverage.catalog.upcoming_by_date}</strong><span>Upcoming by date</span></div>
+          <div><strong>{coverage.catalog.confirmed_registration_window}</strong><span>Confirmed registration windows</span></div>
+          <div><strong>{coverage.source_counts.recent_success}</strong><span>Sources successful in last {coverage.recent_window_days} days</span></div>
+          <div><strong>{coverage.pipeline.backlog.backlog_ready_now}</strong><span>Queued URLs ready for fetching</span></div>
+          <div><strong>{coverage.pipeline.awaiting_normalization}</strong><span>Source records awaiting normalization</span></div>
+          <div><strong>{coverage.pipeline.normalization_errors}</strong><span>Normalization errors requiring attention</span></div>
+          <div><strong>{coverage.pipeline.backlog.backlog_exhausted}</strong><span>URLs with exhausted retries</span></div>
+        </div>
+        <section aria-label="Source ingestion funnel">
+          <h3>Ingestion funnel · source-cohort snapshot</h3>
+          <p className="muted">URLs are source-scoped tasks; references are different units. Percentages never divide events by URLs. Historic references without staged payloads remain in the staging denominator. Rejected records are not successful normalizations.</p>
+          <div className="admin-stats">
+            <div><strong>{coverage.conversion_funnel.discovered_url_tasks}</strong><span>Discovered URL tasks</span></div>
+            <div><strong>{coverage.conversion_funnel.fetched_discovered_url_tasks}</strong><span>Discovered URL tasks DONE ({percentOrNA(coverage.conversion_funnel.fetch_percent)})</span></div>
+            <div><strong>{coverage.conversion_funnel.active_references}</strong><span>Active source event references</span></div>
+            <div><strong>{coverage.conversion_funnel.staged_references}</strong><span>Durable payloads ({percentOrNA(coverage.conversion_funnel.staging_percent)} of refs)</span></div>
+            <div><strong>{coverage.conversion_funnel.accepted_references}</strong><span>Successfully normalized ({percentOrNA(coverage.conversion_funnel.acceptance_percent)} of staged)</span></div>
+            <div><strong>{coverage.conversion_funnel.rejected_references}</strong><span>Processed but rejected</span></div>
+            <div><strong>{coverage.conversion_funnel.accepted_unlinked_references}</strong><span>Normalized but without active canonical link</span></div>
+            <div><strong>{coverage.conversion_funnel.pending_references}</strong><span>Waiting for normalization</span></div>
+            <div><strong>{coverage.conversion_funnel.linked_searchable_references}</strong><span>Accepted refs linked to active canonicals</span></div>
+            <div><strong>{coverage.conversion_funnel.unique_searchable_hackathons}</strong><span>Distinct active hackathons from accepted refs</span></div>
+          </div>
+          <p className="muted">Distinct hackathons are counted across sources and cannot be calculated by adding each source&apos;s totals. This subset does not include legacy catalog entries without durable payloads.</p>
+        </section>
+        <p className="muted">Growth counts canonical rows created in the database, including historical backfills; it does not imply newly announced events. Per-source counts overlap.</p>
+        <details><summary>Daily catalog growth (UTC)</summary><ul>{coverage.growth.daily.map(day=><li key={day.date}>{day.date}: {day.new_active_canonicals} new active rows</li>)}</ul></details>
+        <p className="muted">{coverage.catalog.unknown_registration_close} events have no known registration deadline. Unknown is not equivalent to open. Per-source attribution overlaps.</p>
+        {canonicalYield&&<section aria-label="Verified canonical yield">
+          <h3>Confirmed canonicalization outcomes (last 7 days)</h3>
+          <p className="muted">{canonicalYield.methodology.created} {canonicalYield.methodology.window}</p>
+          <div className="admin-stats">
+            <div><strong>{canonicalYield.totals.created}</strong><span>New canonical events created</span></div>
+            <div><strong>{canonicalYield.totals.linked}</strong><span>Matched an existing event</span></div>
+            <div><strong>{canonicalYield.totals.updated}</strong><span>Existing event versions updated</span></div>
+            <div><strong>{canonicalYield.totals.rejected}</strong><span>Rejected event versions</span></div>
+            <div><strong>{canonicalYield.totals.unattributed}</strong><span>Missing original crawl ID</span></div>
+          </div>
+          <p className="muted">Older catalog imports are not backfilled into these numbers. Creation is not proof of a newly announced event. Only outcomes recorded after migration 0013 are included.</p>
+          <details><summary>Contribution by source</summary><ul>
+            {canonicalYield.sources.filter(s=>s.created+s.linked+s.updated+s.rejected>0).map(source=><li key={source.source_id}>{source.name}: {source.created} created, {source.linked} linked, {source.updated} updated, {source.rejected} rejected; {source.unattributed} unattributed</li>)}
+          </ul></details>
+        </section>}
+        {insights&&<section aria-label="Historical crawl health">
+          <h3>Historical crawl health and source triage</h3>
+          <p className="muted">{insights.methodology.triage_score} The scores are read-only recommendations, not permissions or automatic collection priority. New references are not unique newly discovered hackathons.</p>
+          <p className="muted">{insights.methodology.current_rejection_reasons}</p>
+          <div className="admin-list">
+            {insights.sources.map(item=><article className="event-card admin-row" key={item.source_id}>
+              <div>
+                <strong>{item.name}</strong>
+                <p className="muted">{item.suggested_action.replaceAll('_',' ')} · {item.permission_status??'UNKNOWN'}</p>
+                <p className="muted">Runs: {item.runs_in_window.run_count} ({item.runs_in_window.succeeded} successful, {item.runs_in_window.failed} failed, {item.runs_in_window.partial} partial) · {item.runs_in_window.parsed_records} parsed records reported</p>
+                <p className="muted">New source refs: {item.new_references_in_window} · Ready URLs: {item.ready_urls_now} · Exhausted URLs: {item.exhausted_urls}</p>
+                <p className="muted">Current staged payload issues: {Object.entries(item.current_rejection_reasons).map(([reason,count])=>`${reason.replaceAll('_',' ')}: ${count}`).join(' · ')||'None reported'}</p>
+              </div>
+              <div><strong>{item.triage_score===null?'N/A':item.triage_score}</strong><span className="muted">Triage score (advisory)</span></div>
+            </article>)}
+          </div>
+          <details><summary>Recent crawl runs (historical evidence)</summary>
+            <p className="muted">{insights.methodology.recent_runs}</p>
+            <ul>{insights.recent_runs.map(run=><li key={run.id}>{readableDate(run.started_at)} · {run.status} · {run.source_id} · fetched {run.fetched_count}, parsed {run.parsed_count}, failures {run.failed_count}</li>)}</ul>
+          </details>
+        </section>}
+        <section aria-label="Catalog field completeness">
+          <h3>Catalog field completeness</h3>
+          <p className="muted">Percentages apply to unique, active hackathons. Unknown values are not inferred; an empty catalog is N/A.</p>
+          <ul>
+            {([
+              ['known_format','Event format'],
+              ['with_registration_url','Registration URL'],
+              ['with_registration_deadline','Registration deadline'],
+              ['known_participation_cost','Participation cost'],
+              ['known_worldwide_eligibility','Worldwide eligibility'],
+              ['with_description','Description'],
+              ['verified_recently','Recently verified'],
+              ['with_organizer','Organizer'],
+              ['with_sponsor','Sponsors'],
+              ['with_tracks','Themes/tracks'],
+              ['with_technologies','Technologies'],
+              ['with_prizes','Prizes'],
+              ['with_eligibility_rules','Eligibility rules'],
+            ] as const).map(([key,label])=><li key={key}>{label}: <strong>{coverage.field_completeness.percentages[key]===null?'N/A':`${coverage.field_completeness.percentages[key]}%`}</strong> <span className="muted">({coverage.field_completeness.counts[key]} events)</span></li>)}
+          </ul>
+        </section>
+        {coverage.sources.map(item=><article className="event-card admin-row" key={item.source_id}>
+          <div><strong>{item.name}</strong><p className="muted">{item.permission_status??'UNKNOWN'} · {item.active?'Active':'Paused'} · {item.recent_success?'Recent successful run':'No recent successful run'}</p></div>
+          <div><strong>{item.attributed_unique_active}</strong><span className="muted"> attributed canonicals · {item.source_refs} refs · {item.new_source_refs_recent} new refs · {item.new_attributed_canonicals_recent} new catalog entries attributed · {item.backlog_ready_now} URLs ready · {item.backlog_exhausted} exhausted</span>
+            <p className="muted">Ingestion: {item.discovered_urls} discovered URL tasks · {item.fetched_discovered_urls} DONE · {item.funnel.staged_references} staged refs · {item.funnel.accepted_references} accepted · {item.funnel.rejected_references} rejected · {item.funnel.unique_searchable_hackathons} distinct linked hackathons</p>
+          </div>
+        </article>)}
+      </>}
+    </div>}
     {tab==='sources'&&<div className="admin-list">
       {sources.length===0&&<p className="muted">No sources found.</p>}
       {sources.map(source=><article className="event-card admin-row" key={source.id}>

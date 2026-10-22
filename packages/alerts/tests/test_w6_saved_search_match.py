@@ -1,4 +1,5 @@
 """The match producer is fully opt-in, bounded and uses the public search DSL."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -7,7 +8,6 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
 from hackathon_api.schemas import FILTER_SCHEMA_VERSION
 from hackathon_worker import matches
 
@@ -80,22 +80,32 @@ class Engine:
 
 def config(enabled=True):
     return SimpleNamespace(
-        alert_match_enabled=enabled, alert_match_batch_size=25,
-        alert_match_min_age_seconds=60, alert_max_attempts=4,
+        alert_match_enabled=enabled,
+        alert_match_batch_size=25,
+        alert_match_min_age_seconds=60,
+        alert_max_attempts=4,
         database_url="postgresql+psycopg://test.invalid/db",
     )
 
 
 def event(*, active=True):
-    return {"id": str(uuid4()), "slug": "test-hackathon", "name": "Example Hack",
-            "created_at": datetime(2026, 10, 15, tzinfo=UTC), "is_active": active}
+    return {
+        "id": str(uuid4()),
+        "slug": "test-hackathon",
+        "name": "Example Hack",
+        "created_at": datetime(2026, 10, 15, tzinfo=UTC),
+        "is_active": active,
+    }
 
 
 def search(*, filters=None, age_days=1, version=FILTER_SCHEMA_VERSION):
-    return {"id": str(uuid4()), "user_id": str(uuid4()),
-            "created_at": datetime(2026, 10, 15, tzinfo=UTC) - timedelta(days=age_days),
-            "filters": filters if filters is not None else {"free_only": True},
-            "filter_schema_version": version}
+    return {
+        "id": str(uuid4()),
+        "user_id": str(uuid4()),
+        "created_at": datetime(2026, 10, 15, tzinfo=UTC) - timedelta(days=age_days),
+        "filters": filters if filters is not None else {"free_only": True},
+        "filter_schema_version": version,
+    }
 
 
 def test_opt_out_performs_no_database_work(monkeypatch):
@@ -108,31 +118,42 @@ def test_first_run_bootstraps_from_db_clock_without_backfill(monkeypatch):
     conn = Connection(init=True)
     engine = Engine(conn)
     assert matches.process_new_matches(engine=engine) == {
-        "initialized": 1, "scanned": 0, "created": 0,
+        "initialized": 1,
+        "scanned": 0,
+        "created": 0,
     }
     assert engine.begins == 1
     assert all("FROM hackathons" not in sql for sql, _ in conn.statements)
 
 
-@pytest.mark.parametrize("batch,age,searches", [
-    (0, 60, 100), (101, 60, 100), (1, -1, 100), (1, 3601, 100),
-    (1, 60, 0), (1, 60, 50001),
-])
+@pytest.mark.parametrize(
+    "batch,age,searches",
+    [
+        (0, 60, 100),
+        (101, 60, 100),
+        (1, -1, 100),
+        (1, 3601, 100),
+        (1, 60, 0),
+        (1, 60, 50001),
+    ],
+)
 def test_bounded_parameters(monkeypatch, batch, age, searches):
     monkeypatch.setattr(matches, "get_settings", config)
     with pytest.raises(ValueError):
-        matches.process_new_matches(batch_size=batch, min_age_seconds=age,
-                                    max_searches=searches)
+        matches.process_new_matches(batch_size=batch, min_age_seconds=age, max_searches=searches)
 
 
-@pytest.mark.parametrize("raw,version,expected", [
-    ({"free_only": True}, FILTER_SCHEMA_VERSION, True),
-    ({"country_code": "br", "free_only": True}, FILTER_SCHEMA_VERSION, True),
-    ({"cursor": "attacker"}, FILTER_SCHEMA_VERSION, False),
-    ({"invented_filter": True}, FILTER_SCHEMA_VERSION, False),
-    ({"min_prize_usd": -5}, FILTER_SCHEMA_VERSION, False),
-    ({"free_only": True}, "unknown-schema-v77", False),
-])
+@pytest.mark.parametrize(
+    "raw,version,expected",
+    [
+        ({"free_only": True}, FILTER_SCHEMA_VERSION, True),
+        ({"country_code": "br", "free_only": True}, FILTER_SCHEMA_VERSION, True),
+        ({"cursor": "attacker"}, FILTER_SCHEMA_VERSION, False),
+        ({"invented_filter": True}, FILTER_SCHEMA_VERSION, False),
+        ({"min_prize_usd": -5}, FILTER_SCHEMA_VERSION, False),
+        ({"free_only": True}, "unknown-schema-v77", False),
+    ],
+)
 def test_saved_filters_fail_closed(raw, version, expected):
     assert (matches._filters(raw, version) is not None) is expected
 
@@ -147,7 +168,8 @@ def test_public_search_builder_is_reused_and_scoped_to_one_catalog_id(monkeypatc
 
     target_id = str(uuid4())
     found = matches._match_saved_search(
-        C(), hackathon_id=target_id,
+        C(),
+        hackathon_id=target_id,
         raw_filters={"free_only": True, "format": ["ONLINE"]},
         schema_version=FILTER_SCHEMA_VERSION,
     )
@@ -170,8 +192,11 @@ def test_transactional_creation_cursor_and_consent(monkeypatch):
     engine = Engine(conn)
     seen = []
 
-    monkeypatch.setattr(matches, "_match_saved_search", lambda _c, **kwargs:
-                        None if kwargs["raw_filters"].get("invalid") else True)
+    monkeypatch.setattr(
+        matches,
+        "_match_saved_search",
+        lambda _c, **kwargs: None if kwargs["raw_filters"].get("invalid") else True,
+    )
     monkeypatch.setattr(matches, "_explicit_email_consent", lambda *_: True)
 
     class Repo:
@@ -203,7 +228,10 @@ def test_inactive_event_advances_cursor_without_alert(monkeypatch):
     monkeypatch.setattr(matches, "get_settings", config)
     conn = Connection(events=[event(active=False)], searches=[search()])
     assert matches.process_new_matches(engine=Engine(conn)) == {
-        "scanned": 1, "matched": 0, "created": 0, "invalid_filters": 0,
+        "scanned": 1,
+        "matched": 0,
+        "created": 0,
+        "invalid_filters": 0,
     }
     assert "UPDATE alert_match_progress" in conn.statements[-1][0]
 
@@ -240,8 +268,7 @@ def test_durable_cursor_and_claim_are_postgresql_serialized(monkeypatch):
     monkeypatch.setattr(matches, "get_settings", config)
     conn = Connection(events=[])
     assert matches.process_new_matches(engine=Engine(conn))["scanned"] == 0
-    assert any("FOR UPDATE" in sql and "alert_match_progress" in sql
-               for sql, _ in conn.statements)
+    assert any("FOR UPDATE" in sql and "alert_match_progress" in sql for sql, _ in conn.statements)
     assert any("ORDER BY created_at,id LIMIT" in sql for sql, _ in conn.statements)
     assert any("clock_timestamp()-make_interval" in sql for sql, _ in conn.statements)
 
@@ -277,8 +304,11 @@ def test_explicit_email_requires_real_email_optin_not_default_fallback():
         def execute(self, stmt, params):
             sql = str(stmt)
             self.count += 1
-            assert params == ({"user_id": "user-id"} if self.count == 1 else
-                              {"user_id": "user-id", "alert_type": "new_match"})
+            assert params == (
+                {"user_id": "user-id"}
+                if self.count == 1
+                else {"user_id": "user-id", "alert_type": "new_match"}
+            )
             if self.count == 1:
                 assert "FROM users" in sql and "FOR SHARE" in sql
                 assert "NULLIF(email::text" in sql
@@ -327,14 +357,14 @@ def test_safe_integration_drill_fails_closed(monkeypatch):
 def test_match_migration_and_readiness_are_coherent():
     from pathlib import Path
 
+    import hackathon_api.main as api_main
     from alembic.config import Config
     from alembic.script import ScriptDirectory
-    import hackathon_api.main as api_main
 
     root = Path(__file__).resolve().parents[3]
     head = ScriptDirectory.from_config(Config(str(root / "db/alembic.ini"))).get_current_head()
-    assert head == "0009_w6_alert_match"
-    assert api_main.EXPECTED_DB_REVISION == head
+    assert head == "0013_canonical_yield"
+    assert head == api_main.EXPECTED_DB_REVISION
     ddl = (root / "db/sql/0009_w6_alert_match.sql").read_text()
     assert "PRIMARY KEY" in ddl and "hackathons_match_scan_idx" in ddl
     assert "alert_match_progress" in ddl
@@ -347,7 +377,9 @@ def test_missing_or_malformed_saved_search_reference_never_authorizes_email(raw)
             pytest.fail("bad search ID must be rejected before any DB query")
 
     assert not matches.allow_new_match_email(
-        C(), user_id=str(uuid4()), hackathon_id=str(uuid4()),
+        C(),
+        user_id=str(uuid4()),
+        hackathon_id=str(uuid4()),
         payload={"saved_search_id": raw},
     )
 
@@ -359,7 +391,9 @@ def test_missing_or_malformed_hackathon_reference_never_authorizes_email(raw):
             pytest.fail("bad hackathon ID must be rejected before any DB query")
 
     assert not matches.allow_new_match_email(
-        C(), user_id=str(uuid4()), hackathon_id=raw,
+        C(),
+        user_id=str(uuid4()),
+        hackathon_id=raw,
         payload={"saved_search_id": str(uuid4())},
     )
 
@@ -372,7 +406,9 @@ def test_revoked_email_consent_rejects_queued_match(monkeypatch):
             pytest.fail("revocation must prevent even a saved-search lookup")
 
     assert not matches.allow_new_match_email(
-        C(), user_id=str(uuid4()), hackathon_id=str(uuid4()),
+        C(),
+        user_id=str(uuid4()),
+        hackathon_id=str(uuid4()),
         payload={"saved_search_id": str(uuid4())},
     )
 
@@ -391,7 +427,9 @@ def test_disabled_saved_search_rejects_queued_match(monkeypatch):
             return Result(row=None)
 
     assert not matches.allow_new_match_email(
-        C(), user_id=uid, hackathon_id=str(uuid4()),
+        C(),
+        user_id=uid,
+        hackathon_id=str(uuid4()),
         payload={"saved_search_id": search_id},
     )
 
@@ -410,10 +448,12 @@ def test_active_saved_search_requires_current_catalog_match(monkeypatch, catalog
             issued_sql.append(sql)
             if "FROM saved_searches" in sql:
                 assert params == {"user_id": uid, "search_id": search_id}
-                return Result(row={
-                    "filters": {"free_only": True, "format": ["ONLINE"]},
-                    "filter_schema_version": FILTER_SCHEMA_VERSION,
-                })
+                return Result(
+                    row={
+                        "filters": {"free_only": True, "format": ["ONLINE"]},
+                        "filter_schema_version": FILTER_SCHEMA_VERSION,
+                    }
+                )
             assert "h.id=CAST(:target_id AS uuid)" in sql
             assert "h.is_active=true" in sql
             assert "h.is_free=true" in sql
@@ -421,10 +461,15 @@ def test_active_saved_search_requires_current_catalog_match(monkeypatch, catalog
             assert params["target_id"] == hackathon_id
             return Result(row=("active",) if catalog_is_matching else None)
 
-    assert matches.allow_new_match_email(
-        C(), user_id=uid, hackathon_id=hackathon_id,
-        payload={"saved_search_id": search_id},
-    ) is catalog_is_matching
+    assert (
+        matches.allow_new_match_email(
+            C(),
+            user_id=uid,
+            hackathon_id=hackathon_id,
+            payload={"saved_search_id": search_id},
+        )
+        is catalog_is_matching
+    )
     assert len(issued_sql) == 2
 
 
@@ -434,11 +479,17 @@ def test_bad_stored_search_filters_fail_closed_at_delivery(monkeypatch):
     class C:
         def execute(self, statement, params=None):
             assert "FROM saved_searches" in str(statement)
-            return Result(row={"filters": {"unknown": "unsafe"},
-                               "filter_schema_version": FILTER_SCHEMA_VERSION})
+            return Result(
+                row={
+                    "filters": {"unknown": "unsafe"},
+                    "filter_schema_version": FILTER_SCHEMA_VERSION,
+                }
+            )
 
     assert not matches.allow_new_match_email(
-        C(), user_id=str(uuid4()), hackathon_id=str(uuid4()),
+        C(),
+        user_id=str(uuid4()),
+        hackathon_id=str(uuid4()),
         payload={"saved_search_id": str(uuid4())},
     )
 
@@ -451,8 +502,11 @@ def test_target_lock_is_only_used_by_delivery(monkeypatch):
             issued.append(str(stmt))
             return Result(row=("matched",))
 
-    args = {"hackathon_id": str(uuid4()), "raw_filters": {"free_only": True},
-            "schema_version": FILTER_SCHEMA_VERSION}
+    args = {
+        "hackathon_id": str(uuid4()),
+        "raw_filters": {"free_only": True},
+        "schema_version": FILTER_SCHEMA_VERSION,
+    }
     assert matches._match_saved_search(C(), **args) is True
     assert "FOR SHARE OF h" not in issued[0]
     assert matches._match_saved_search(C(), lock_target=True, **args) is True
@@ -488,7 +542,10 @@ def test_api_consent_revocation_locks_user_before_writing_preference():
     connection = C()
     user_id = uuid4()
     PersonalizationRepository(connection).set_alert_preference(
-        user_id, "EMAIL", "new_match", False,
+        user_id,
+        "EMAIL",
+        "new_match",
+        False,
     )
     assert len(connection.executed) == 2
     assert "FROM users WHERE id=:user_id FOR UPDATE" in connection.executed[0][0]

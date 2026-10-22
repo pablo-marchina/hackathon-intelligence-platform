@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import date, datetime
 import re
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -297,8 +297,15 @@ class UserProfileUpdate(BaseModel):
 
 
 UserEventState = Literal[
-    "SAVED", "INTERESTED", "APPLYING", "APPLIED", "ACCEPTED",
-    "PARTICIPATING", "SUBMITTED", "COMPLETED", "NOT_INTERESTED",
+    "SAVED",
+    "INTERESTED",
+    "APPLYING",
+    "APPLIED",
+    "ACCEPTED",
+    "PARTICIPATING",
+    "SUBMITTED",
+    "COMPLETED",
+    "NOT_INTERESTED",
 ]
 
 
@@ -316,6 +323,7 @@ class UserLibraryPage(BaseModel):
     items: list[UserHackathonStateRecord]
     next_cursor: str | None = None
     api_version: str = API_VERSION
+
 
 # W5 — recommendation and alerts
 class PreferenceUpdate(BaseModel):
@@ -376,7 +384,7 @@ class SavedSearchCreate(BaseModel):
     filter_schema_version: str = FILTER_SCHEMA_VERSION
 
     @model_validator(mode="after")
-    def validate_saved_filters(self) -> "SavedSearchCreate":
+    def validate_saved_filters(self) -> SavedSearchCreate:
         """Only persist filters the alert matcher can actually evaluate.
 
         Search presentation fields have no meaning for a saved alert. A typo or
@@ -396,18 +404,39 @@ class SavedSearchCreate(BaseModel):
         # monitors that can never match a catalog event.
         allowed = {
             "status": {
-                "ANNOUNCED", "REGISTRATION_UPCOMING", "REGISTRATION_OPEN",
-                "REGISTRATION_CLOSED", "UPCOMING", "ONGOING", "SUBMISSIONS_OPEN",
-                "JUDGING", "RESULTS_PENDING", "COMPLETED", "CANCELLED",
-                "POSTPONED", "UNKNOWN",
+                "ANNOUNCED",
+                "REGISTRATION_UPCOMING",
+                "REGISTRATION_OPEN",
+                "REGISTRATION_CLOSED",
+                "UPCOMING",
+                "ONGOING",
+                "SUBMISSIONS_OPEN",
+                "JUDGING",
+                "RESULTS_PENDING",
+                "COMPLETED",
+                "CANCELLED",
+                "POSTPONED",
+                "UNKNOWN",
             },
             "format": {"ONLINE", "IN_PERSON", "HYBRID", "UNKNOWN"},
             "event_type": {
-                "hackathon", "buildathon", "datathon", "game_jam", "ideathon",
-                "innovation_challenge", "ai_challenge", "data_science_competition",
-                "coding_competition", "security_ctf", "hardware_challenge",
-                "startup_challenge", "open_innovation_challenge", "designathon",
-                "quant_competition", "robotics_competition", "other",
+                "hackathon",
+                "buildathon",
+                "datathon",
+                "game_jam",
+                "ideathon",
+                "innovation_challenge",
+                "ai_challenge",
+                "data_science_competition",
+                "coding_competition",
+                "security_ctf",
+                "hardware_challenge",
+                "startup_challenge",
+                "open_innovation_challenge",
+                "designathon",
+                "quant_competition",
+                "robotics_competition",
+                "other",
             },
         }
         for field, choices in allowed.items():
@@ -422,7 +451,8 @@ class SavedSearchCreate(BaseModel):
         # Normalize persisted JSON just like the public search API (e.g. BR
         # instead of br), with no pagination/sorting fields.
         self.filters = validated.model_dump(
-            mode="json", exclude_defaults=True,
+            mode="json",
+            exclude_defaults=True,
             exclude={"cursor", "limit", "sort"},
         )
         return self

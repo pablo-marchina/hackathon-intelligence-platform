@@ -31,10 +31,22 @@ def test_multilingual_query_generator_rotates_year_and_quarter() -> None:
 
 def test_search_result_ingestion_preserves_provenance_policy_and_dedup() -> None:
     results = [
-        SearchResult(url="https://known.example/event?utm_source=x", title="Known", snippet="hackathon", rank=1),
+        SearchResult(
+            url="https://known.example/event?utm_source=x",
+            title="Known",
+            snippet="hackathon",
+            rank=1,
+        ),
         SearchResult(url="https://new.example/hack", title="New", snippet="registration", rank=2),
-        SearchResult(url="https://new.example/hack#fragment", title="Duplicate", snippet="registration", rank=3),
-        SearchResult(url="https://blocked.example/hack", title="Blocked", snippet="hackathon", rank=4),
+        SearchResult(
+            url="https://new.example/hack#fragment",
+            title="Duplicate",
+            snippet="registration",
+            rank=3,
+        ),
+        SearchResult(
+            url="https://blocked.example/hack", title="Blocked", snippet="hackathon", rank=4
+        ),
     ]
     records = ingest_search_results(
         results,
@@ -44,7 +56,11 @@ def test_search_result_ingestion_preserves_provenance_policy_and_dedup() -> None
         existing_canonical_urls={"https://known.example/event"},
         discovered_at=datetime(2026, 9, 23, 12, tzinfo=UTC),
     )
-    assert [record.action for record in records] == ["KNOWN_CANONICAL", "NEW_CANDIDATE", "POLICY_BLOCKED"]
+    assert [record.action for record in records] == [
+        "KNOWN_CANONICAL",
+        "NEW_CANDIDATE",
+        "POLICY_BLOCKED",
+    ]
     assert records[1].rank == 2
     assert records[1].query.endswith("2026")
     assert records[1].evidence_authority == "DISCOVERY_ONLY"
@@ -54,25 +70,29 @@ def test_search_result_ingestion_preserves_provenance_policy_and_dedup() -> None
 
 
 def test_robots_sitemap_rss_and_domain_caps() -> None:
-    robots = "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\nSitemap: https://x.example/events.xml\n"
+    robots = (
+        "User-agent: *\nAllow: /\nSitemap: /sitemap.xml\nSitemap: https://x.example/events.xml\n"
+    )
     assert parse_robots_sitemaps(robots, base_url="https://x.example/robots.txt") == [
         "https://x.example/sitemap.xml",
         "https://x.example/events.xml",
     ]
     urls, children = parse_sitemap(
         '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-        '<url><loc>https://x.example/events/a</loc><lastmod>2026-09-01</lastmod></url>'
-        '<url><loc>https://x.example/events/b</loc></url></urlset>',
+        "<url><loc>https://x.example/events/a</loc><lastmod>2026-09-01</lastmod></url>"
+        "<url><loc>https://x.example/events/b</loc></url></urlset>",
         max_urls=1,
     )
     assert [item.url for item in urls] == ["https://x.example/events/a"]
     assert not children
     _, children = parse_sitemap(
-        '<sitemapindex><sitemap><loc>https://x.example/a.xml</loc></sitemap><sitemap><loc>https://x.example/b.xml</loc></sitemap></sitemapindex>',
+        "<sitemapindex><sitemap><loc>https://x.example/a.xml</loc></sitemap><sitemap><loc>https://x.example/b.xml</loc></sitemap></sitemapindex>",
         max_child_sitemaps=1,
     )
     assert children == ["https://x.example/a.xml"]
-    feed = parse_rss_atom('<rss><channel><item><title>Hack</title><link>https://x.example/hack</link></item></channel></rss>')
+    feed = parse_rss_atom(
+        "<rss><channel><item><title>Hack</title><link>https://x.example/hack</link></item></channel></rss>"
+    )
     assert feed[0].title == "Hack"
     assert bounded_domain_candidates(feed * 3, domain="x.example", cap=1) == [feed[0]]
     common = common_discovery_urls("https://x.example/events")
@@ -117,6 +137,6 @@ def test_classifier_contract_and_precision_golden_dataset() -> None:
     recall = tp / (tp + fn) if tp + fn else 1.0
     assert len(data) >= 80
     assert len({row["language"] for row in data}) >= 8
-    assert len({row["source_url"].split('/')[2] for row in data}) >= 20
+    assert len({row["source_url"].split("/")[2] for row in data}) >= 20
     assert precision >= 0.95
     assert recall >= 0.85

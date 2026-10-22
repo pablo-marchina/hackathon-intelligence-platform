@@ -4,11 +4,7 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Connection, text
-
 from hackathon_api.db import connection_dependency
-from hackathon_shared.settings import get_settings
 from hackathon_api.repositories.admin import AdminRepository
 from hackathon_api.security import (
     AdminPrincipal,
@@ -17,6 +13,9 @@ from hackathon_api.security import (
     admin_superuser,
     require_admin,
 )
+from hackathon_shared.settings import get_settings
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import Connection, text
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 ConnectionDep = Annotated[Connection, Depends(connection_dependency)]
@@ -68,6 +67,46 @@ def admin_identity(
         "actor_kind": principal.actor_kind,
         "csrf_token": csrf_token,
     }
+
+
+@router.get("/coverage")
+def coverage(
+    principal: ViewerDep,
+    connection: ConnectionDep,
+    recent_days: int = Query(default=7, ge=1, le=90),
+) -> dict[str, Any]:
+    """Database-backed coverage; never confuse source configuration with events found."""
+    from hackathon_api.repositories.coverage import CoverageRepository
+
+    return CoverageRepository(connection).snapshot(recent_days=recent_days)
+
+
+@router.get("/canonical-yield")
+def canonical_yield(
+    principal: ViewerDep,
+    connection: ConnectionDep,
+    days: int = Query(default=7, ge=1, le=90),
+) -> dict[str, Any]:
+    """Read-only per-crawl canonical outcomes, preserving unattributed legacy records."""
+    from hackathon_api.repositories.canonical_yield import CanonicalYieldRepository
+
+    return CanonicalYieldRepository(connection).snapshot(days=days)
+
+
+@router.get("/source-insights")
+def source_insights(
+    principal: ViewerDep,
+    connection: ConnectionDep,
+    recent_days: int = Query(default=7, ge=1, le=90),
+    run_limit: int = Query(default=40, ge=1, le=200),
+) -> dict[str, Any]:
+    """Historical crawl health and redacted source triage (read-only)."""
+    from hackathon_api.repositories.source_insights import SourceInsightsRepository
+
+    return SourceInsightsRepository(connection).snapshot(
+        recent_days=recent_days,
+        run_limit=run_limit,
+    )
 
 
 @router.get("/review-queue")
@@ -155,7 +194,9 @@ def rebuild_search_index(
     principal: SuperuserDep,
     connection: ConnectionDep,
 ) -> dict[str, int]:
-    count = int(connection.execute(text("SELECT rebuild_hackathon_search_documents()" )).scalar_one())
+    count = int(
+        connection.execute(text("SELECT rebuild_hackathon_search_documents()")).scalar_one()
+    )
     AdminRepository(connection).audit_reindex(
         count=count,
         principal=principal,

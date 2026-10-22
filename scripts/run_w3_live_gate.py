@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import re
 import ssl
-import sys
 from dataclasses import asdict, dataclass
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
@@ -27,8 +26,23 @@ TARGETS = [
 
 EVENT_TERMS = ("hackathon", "hackatón", "ハッカソン", "해커톤", "黑客松", "總統盃黑客松")
 RELATED_TERMS = (
-    "register", "registration", "apply", "rules", "terms", "faq", "results", "winners",
-    "projects", "challenges", "schedule", "inscri", "règlement", "登録", "規約", "报名", "規則",
+    "register",
+    "registration",
+    "apply",
+    "rules",
+    "terms",
+    "faq",
+    "results",
+    "winners",
+    "projects",
+    "challenges",
+    "schedule",
+    "inscri",
+    "règlement",
+    "登録",
+    "規約",
+    "报名",
+    "規則",
 )
 
 
@@ -70,7 +84,13 @@ class LinkParser(HTMLParser):
 
 
 def fetch(url: str) -> tuple[int, str, str]:
-    request = Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xml,text/xml,*/*;q=0.5"})
+    request = Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/xml,text/xml,*/*;q=0.5",
+        },
+    )
     context = ssl.create_default_context()
     with urlopen(request, timeout=TIMEOUT, context=context) as response:
         body = response.read(MAX_BYTES)
@@ -94,29 +114,29 @@ def robots_for(target: str) -> tuple[int | None, str, RobotFileParser, bool]:
 
 
 def robots_sitemaps(body: str, base_url: str) -> list[str]:
-    out=[]
+    out = []
     for line in body.splitlines():
         if ":" not in line:
             continue
-        key, value = line.split(":",1)
+        key, value = line.split(":", 1)
         if key.strip().casefold() == "sitemap":
-            url=urljoin(base_url,value.strip())
-            if url.startswith(("http://","https://")) and url not in out:
+            url = urljoin(base_url, value.strip())
+            if url.startswith(("http://", "https://")) and url not in out:
                 out.append(url)
     return out
 
 
 def sitemap_urls(xml: str) -> list[str]:
     try:
-        root=ET.fromstring(xml)
+        root = ET.fromstring(xml)
     except ET.ParseError:
         return []
-    tag=root.tag.rsplit("}",1)[-1]
-    out=[]
+    tag = root.tag.rsplit("}", 1)[-1]
+    out = []
     if tag == "urlset":
         for item in root:
             for child in item:
-                if child.tag.rsplit("}",1)[-1] == "loc" and child.text:
+                if child.tag.rsplit("}", 1)[-1] == "loc" and child.text:
                     out.append(child.text.strip())
                     break
             if len(out) >= MAX_SITEMAP_URLS:
@@ -124,7 +144,7 @@ def sitemap_urls(xml: str) -> list[str]:
     elif tag == "sitemapindex":
         for item in root:
             for child in item:
-                if child.tag.rsplit("}",1)[-1] == "loc" and child.text:
+                if child.tag.rsplit("}", 1)[-1] == "loc" and child.text:
                     out.append(child.text.strip())
                     break
             if len(out) >= 10:
@@ -133,20 +153,23 @@ def sitemap_urls(xml: str) -> list[str]:
 
 
 def is_hackathon_like(text: str) -> bool:
-    low=re.sub(r"\s+"," ",text.casefold())
+    low = re.sub(r"\s+", " ", text.casefold())
     return any(term.casefold() in low for term in EVENT_TERMS)
 
 
 def related_count(html: str, base_url: str) -> int:
-    parser=LinkParser(); parser.feed(html)
-    seen=set(); count=0
-    for href,text in parser.links:
-        absolute=urljoin(base_url,href)
-        if not absolute.startswith(("http://","https://")) or absolute in seen:
+    parser = LinkParser()
+    parser.feed(html)
+    seen = set()
+    count = 0
+    for href, text in parser.links:
+        absolute = urljoin(base_url, href)
+        if not absolute.startswith(("http://", "https://")) or absolute in seen:
             continue
-        hay=f"{text} {absolute}".casefold()
+        hay = f"{text} {absolute}".casefold()
         if any(term.casefold() in hay for term in RELATED_TERMS):
-            seen.add(absolute); count += 1
+            seen.add(absolute)
+            count += 1
             if count >= MAX_RELATED_LINKS:
                 break
     return count
@@ -154,49 +177,82 @@ def related_count(html: str, base_url: str) -> int:
 
 def run_target(target: str) -> DomainResult:
     robots_status, robots_body, rp, allowed = robots_for(target)
-    maps=robots_sitemaps(robots_body,target) if robots_status else []
-    p=urlsplit(target); origin=f"{p.scheme}://{p.netloc}"
+    maps = robots_sitemaps(robots_body, target) if robots_status else []
+    p = urlsplit(target)
+    origin = f"{p.scheme}://{p.netloc}"
     for candidate in (f"{origin}/sitemap.xml", f"{origin}/sitemap_index.xml"):
         if candidate not in maps:
             maps.append(candidate)
-    sitemap_candidate_count=0
+    sitemap_candidate_count = 0
     # Never fetch a sitemap that robots disallows for this UA.
     for sitemap in maps[:4]:
         if not rp.can_fetch(USER_AGENT, sitemap):
             continue
         try:
-            status, body, ctype=fetch(sitemap)
+            status, body, ctype = fetch(sitemap)
             if status < 400 and ("xml" in ctype.casefold() or body.lstrip().startswith("<")):
                 sitemap_candidate_count += len(sitemap_urls(body))
         except Exception:
             pass
         if sitemap_candidate_count >= MAX_SITEMAP_URLS:
-            sitemap_candidate_count=MAX_SITEMAP_URLS
+            sitemap_candidate_count = MAX_SITEMAP_URLS
             break
     if not allowed:
-        return DomainResult(target,robots_status,False,len(maps),sitemap_candidate_count,None,0,False,0,"robots_disallow_or_unavailable")
+        return DomainResult(
+            target,
+            robots_status,
+            False,
+            len(maps),
+            sitemap_candidate_count,
+            None,
+            0,
+            False,
+            0,
+            "robots_disallow_or_unavailable",
+        )
     try:
-        status, body, _=fetch(target)
-        return DomainResult(target,robots_status,True,len(maps),sitemap_candidate_count,status,len(body.encode('utf-8')),is_hackathon_like(body),related_count(body,target))
+        status, body, _ = fetch(target)
+        return DomainResult(
+            target,
+            robots_status,
+            True,
+            len(maps),
+            sitemap_candidate_count,
+            status,
+            len(body.encode("utf-8")),
+            is_hackathon_like(body),
+            related_count(body, target),
+        )
     except Exception as exc:
-        return DomainResult(target,robots_status,True,len(maps),sitemap_candidate_count,None,0,False,0,f"{type(exc).__name__}: {exc}")
+        return DomainResult(
+            target,
+            robots_status,
+            True,
+            len(maps),
+            sitemap_candidate_count,
+            None,
+            0,
+            False,
+            0,
+            f"{type(exc).__name__}: {exc}",
+        )
 
 
 def main() -> int:
-    results=[run_target(target) for target in TARGETS]
-    summary={
-        "targets":len(results),
-        "robots_checked":sum(r.robots_status is not None for r in results),
-        "robots_allowed":sum(r.robots_allowed for r in results),
-        "pages_fetched":sum(r.page_status is not None and r.page_status < 400 for r in results),
-        "hackathon_like_pages":sum(r.hackathon_like for r in results),
-        "related_links":sum(r.related_links for r in results),
-        "sitemap_candidates_capped":sum(r.sitemap_candidates for r in results),
-        "max_sitemap_urls_per_domain":MAX_SITEMAP_URLS,
-        "results":[asdict(r) for r in results],
+    results = [run_target(target) for target in TARGETS]
+    summary = {
+        "targets": len(results),
+        "robots_checked": sum(r.robots_status is not None for r in results),
+        "robots_allowed": sum(r.robots_allowed for r in results),
+        "pages_fetched": sum(r.page_status is not None and r.page_status < 400 for r in results),
+        "hackathon_like_pages": sum(r.hackathon_like for r in results),
+        "related_links": sum(r.related_links for r in results),
+        "sitemap_candidates_capped": sum(r.sitemap_candidates for r in results),
+        "max_sitemap_urls_per_domain": MAX_SITEMAP_URLS,
+        "results": [asdict(r) for r in results],
     }
-    print(json.dumps(summary,ensure_ascii=False,indent=2))
-    checks=[
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    checks = [
         summary["targets"] == 4,
         summary["robots_checked"] >= 3,
         summary["pages_fetched"] >= 2,

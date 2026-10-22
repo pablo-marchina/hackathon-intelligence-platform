@@ -77,15 +77,18 @@ class Settings(BaseSettings):
     max_request_body_bytes: int = Field(default=1_048_576, ge=1, le=20_000_000)
 
     @model_validator(mode="after")
-    def validate_smtp_security(self) -> "Settings":
+    def validate_smtp_security(self) -> Settings:
         if self.smtp_ssl and self.smtp_starttls:
             raise ValueError("SMTP_SSL and SMTP_STARTTLS are mutually exclusive")
         if self.smtp_username and not (self.smtp_ssl or self.smtp_starttls):
             raise ValueError("SMTP authentication requires SMTP_SSL or SMTP_STARTTLS")
         if self.smtp_password and not self.smtp_username:
             raise ValueError("SMTP_PASSWORD requires SMTP_USERNAME")
-        if (self.alert_dispatch_enabled and self.app_env in {"staging", "production"}
-                and not (self.smtp_ssl or self.smtp_starttls)):
+        if (
+            self.alert_dispatch_enabled
+            and self.app_env in {"staging", "production"}
+            and not (self.smtp_ssl or self.smtp_starttls)
+        ):
             raise ValueError("Production alert delivery requires verified SMTP TLS")
         return self
 

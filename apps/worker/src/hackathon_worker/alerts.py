@@ -1,14 +1,14 @@
 """Email outbox relay. Dispatch is opt-in; SMTP is never invoked by the poller."""
+
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
 
-from sqlalchemy import Engine, create_engine, text
-
 from hackathon_alerts.delivery import EmailSender, RetryPolicy, SmtpEmailSender, render_alert_email
 from hackathon_alerts.repository import AlertRepository
 from hackathon_shared.settings import get_settings
+from sqlalchemy import Engine, create_engine, text
 
 
 def dispatch_due_emails(
@@ -73,7 +73,9 @@ def deliver_pending_email(
         engine = create_engine(settings.database_url, pool_pre_ping=True)
     try:
         with engine.begin() as connection:
-            row = connection.execute(text("""
+            row = (
+                connection.execute(
+                    text("""
                 SELECT d.id,d.alert_event_id,d.attempt_count,d.max_attempts,
                        a.user_id,a.alert_type,a.payload,a.hackathon_id,
                        h.slug,h.name
@@ -88,7 +90,12 @@ def deliver_pending_email(
                   AND d.attempt_count < d.max_attempts
                   AND (d.next_attempt_at IS NULL OR d.next_attempt_at <= clock_timestamp())
                 FOR UPDATE OF d
-            """), {"id": delivery_id, "token": dispatch_token}).mappings().first()
+            """),
+                    {"id": delivery_id, "token": dispatch_token},
+                )
+                .mappings()
+                .first()
+            )
             if not row:
                 return {"delivery_id": delivery_id, "status": "SKIPPED"}
             repo = AlertRepository(connection)
@@ -96,7 +103,8 @@ def deliver_pending_email(
             # delivery SELECT can predate an email/preference update, so using
             # the email from that SELECT would risk mailing an old address.
             recipient = repo.authorized_email_recipient(
-                user_id=str(row["user_id"]), alert_type=row["alert_type"],
+                user_id=str(row["user_id"]),
+                alert_type=row["alert_type"],
                 lock_user=True,
             )
             email_allowed = recipient is not None
@@ -104,7 +112,8 @@ def deliver_pending_email(
                 from hackathon_worker.matches import allow_new_match_email
 
                 email_allowed = allow_new_match_email(
-                    connection, user_id=str(row["user_id"]),
+                    connection,
+                    user_id=str(row["user_id"]),
                     hackathon_id=str(row["hackathon_id"]) if row["hackathon_id"] else None,
                     payload=dict(row["payload"] or {}),
                 )
@@ -121,7 +130,8 @@ def deliver_pending_email(
                 event_name=row["name"] or "Hackathon update",
                 event_url=(
                     f"{settings.web_base_url.rstrip('/')}/hackathons/{row['slug']}"
-                    if row["slug"] else settings.web_base_url
+                    if row["slug"]
+                    else settings.web_base_url
                 ),
                 payload=dict(row["payload"] or {}),
             )
@@ -135,26 +145,40 @@ def deliver_pending_email(
                 ssl_enabled=settings.smtp_ssl,
             )
             try:
-                message_id = asyncio.run(transport.send(
-                    to=recipient, subject=subject, text=body,
-                    idempotency_key=f"alert-{row['alert_event_id']}",
-                ))
+                message_id = asyncio.run(
+                    transport.send(
+                        to=recipient,
+                        subject=subject,
+                        text=body,
+                        idempotency_key=f"alert-{row['alert_event_id']}",
+                    )
+                )
                 repo.record_delivery_result(
-                    delivery_id=delivery_id, success=True, provider_message_id=message_id,
+                    delivery_id=delivery_id,
+                    success=True,
+                    provider_message_id=message_id,
                     provider_response={"transport": "smtp"},
                     retry_policy=RetryPolicy(max_attempts=settings.alert_max_attempts),
                 )
-                return {"delivery_id": delivery_id, "status": "SENT", "provider_message_id": message_id}
+                return {
+                    "delivery_id": delivery_id,
+                    "status": "SENT",
+                    "provider_message_id": message_id,
+                }
             except Exception as exc:
                 # SMTP exceptions can contain addresses/credentials/server responses.
                 # Do not leak their text into queue results or persistent error fields.
                 next_status = repo.record_delivery_result(
-                    delivery_id=delivery_id, success=False,
+                    delivery_id=delivery_id,
+                    success=False,
                     error_message=type(exc).__name__,
                     provider_response={"transport": "smtp"},
                     retry_policy=RetryPolicy(max_attempts=settings.alert_max_attempts),
                 )
-                return {"delivery_id": delivery_id, "status": "RETRY" if next_status == "PENDING" else "FAILED"}
+                return {
+                    "delivery_id": delivery_id,
+                    "status": "RETRY" if next_status == "PENDING" else "FAILED",
+                }
     finally:
         if owns_engine:
             engine.dispose()

@@ -2,9 +2,19 @@ from datetime import UTC, datetime, timedelta
 
 from hackathon_intelligence.changes import is_meaningful_change
 from hackathon_intelligence.conflicts import detect_conflict
-from hackathon_intelligence.dedup import EventFingerprint, build_features, dedup_decision, duplicate_score, generate_candidate_pairs
+from hackathon_intelligence.dedup import (
+    EventFingerprint,
+    build_features,
+    dedup_decision,
+    duplicate_score,
+    generate_candidate_pairs,
+)
 from hackathon_intelligence.normalization import normalize_url_signature
-from hackathon_intelligence.reconciliation import CandidateObservation, ReconciliationPolicy, select_canonical
+from hackathon_intelligence.reconciliation import (
+    CandidateObservation,
+    ReconciliationPolicy,
+    select_canonical,
+)
 
 
 def test_reconciliation_prefers_authoritative_fresh_candidate() -> None:
@@ -45,7 +55,9 @@ def test_dedup_exact_url_auto_merges_when_dates_are_compatible() -> None:
 def test_reused_official_url_does_not_merge_different_editions() -> None:
     start = datetime(2024, 2, 3, tzinfo=UTC)
     left = EventFingerprint("Bell Hacks", "Org", start, "Bell", "https://bellhacks.tech")
-    right = EventFingerprint("Bell Hacks", "Org", start + timedelta(days=259), "Bell", "https://bellhacks.tech/")
+    right = EventFingerprint(
+        "Bell Hacks", "Org", start + timedelta(days=259), "Bell", "https://bellhacks.tech/"
+    )
     score = duplicate_score(build_features(left, right))
     assert score == 0.70
     assert dedup_decision(score) == "SEPARATE"
@@ -53,7 +65,9 @@ def test_reused_official_url_does_not_merge_different_editions() -> None:
 
 def test_reused_official_url_without_dates_requires_review() -> None:
     left = EventFingerprint("Recurring Hack", "Org", None, "City", "https://recurring.example")
-    right = EventFingerprint("Recurring Hack 2027", "Org", None, "City", "https://www.recurring.example/")
+    right = EventFingerprint(
+        "Recurring Hack 2027", "Org", None, "City", "https://www.recurring.example/"
+    )
     score = duplicate_score(build_features(left, right))
     assert score == 0.90
     assert dedup_decision(score) == "REVIEW"
@@ -106,7 +120,11 @@ def test_series_inference_groups_recurring_bell_hacks_but_not_same_window_duplic
     clusters = infer_series([bell_1, bell_2, bell_3, sierra_a, sierra_b])
     assert "bellhacks" in clusters
     assignments = clusters["bellhacks"]
-    assert {item.event_id for item in assignments} == {"bell-feb-2024", "bell-oct-2024", "bell-2025"}
+    assert {item.event_id for item in assignments} == {
+        "bell-feb-2024",
+        "bell-oct-2024",
+        "bell-2025",
+    }
     labels = {item.event_id: item.edition_label for item in assignments}
     assert labels["bell-feb-2024"].startswith("2024-02")
     assert labels["bell-oct-2024"].startswith("2024-10")
@@ -117,10 +135,46 @@ def test_series_inference_groups_recurring_bell_hacks_but_not_same_window_duplic
 def test_blocking_generator_avoids_all_pairs_and_records_reasons() -> None:
     base = datetime(2026, 7, 1, tzinfo=UTC)
     events = [
-        EventFingerprint("AI Hackathon", "Org A", base, "Boston", "https://hack.example", ("evt-1",), ("https://github.com/org/repo",), "build AI agents"),
-        EventFingerprint("AI Hackathon!", "Org A", base + timedelta(hours=2), "Boston", "https://www.hack.example/", ("evt-1",), ("https://github.com/org/repo",), "build ai agents"),
-        EventFingerprint("Robotics Jam", "Org B", base + timedelta(days=60), "Toronto", "https://robotics.example", ("evt-2",), (), "robotics"),
-        EventFingerprint("Climate Code", "Org C", base + timedelta(days=120), "Lisbon", "https://climate.example", ("evt-3",), (), "climate"),
+        EventFingerprint(
+            "AI Hackathon",
+            "Org A",
+            base,
+            "Boston",
+            "https://hack.example",
+            ("evt-1",),
+            ("https://github.com/org/repo",),
+            "build AI agents",
+        ),
+        EventFingerprint(
+            "AI Hackathon!",
+            "Org A",
+            base + timedelta(hours=2),
+            "Boston",
+            "https://www.hack.example/",
+            ("evt-1",),
+            ("https://github.com/org/repo",),
+            "build ai agents",
+        ),
+        EventFingerprint(
+            "Robotics Jam",
+            "Org B",
+            base + timedelta(days=60),
+            "Toronto",
+            "https://robotics.example",
+            ("evt-2",),
+            (),
+            "robotics",
+        ),
+        EventFingerprint(
+            "Climate Code",
+            "Org C",
+            base + timedelta(days=120),
+            "Lisbon",
+            "https://climate.example",
+            ("evt-3",),
+            (),
+            "climate",
+        ),
     ]
     pairs = generate_candidate_pairs(events)
     assert len(pairs) < 6  # 4 events would produce 6 all-pairs combinations.
@@ -134,8 +188,26 @@ def test_blocking_generator_avoids_all_pairs_and_records_reasons() -> None:
 
 def test_url_graph_and_textual_signals_contribute_to_fuzzy_score() -> None:
     start = datetime(2026, 7, 1, tzinfo=UTC)
-    left = EventFingerprint("Agent Builder Day", "Open Lab", start, "NYC", None, (), ("https://github.com/open-lab/agents",), "build autonomous agents")
-    right = EventFingerprint("Agent Builder Days", "Open Lab", start + timedelta(days=1), "NYC", None, (), ("https://github.com/open-lab/agents",), "build autonomous agent systems")
+    left = EventFingerprint(
+        "Agent Builder Day",
+        "Open Lab",
+        start,
+        "NYC",
+        None,
+        (),
+        ("https://github.com/open-lab/agents",),
+        "build autonomous agents",
+    )
+    right = EventFingerprint(
+        "Agent Builder Days",
+        "Open Lab",
+        start + timedelta(days=1),
+        "NYC",
+        None,
+        (),
+        ("https://github.com/open-lab/agents",),
+        "build autonomous agent systems",
+    )
     features = build_features(left, right)
     assert features.url_graph_similarity == 1.0
     assert features.textual_similarity > 0.8

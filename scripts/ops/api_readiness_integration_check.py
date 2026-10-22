@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Test the actual API readiness route against migrated, disposable CI PostgreSQL."""
+
 from __future__ import annotations
 
 import os
@@ -13,10 +14,13 @@ def allowed() -> None:
         raise RuntimeError("readiness integration requires explicit CI opt-in")
     db_url = os.getenv("DATABASE_URL", "")
     parsed = urlsplit(db_url)
-    if (parsed.scheme != "postgresql+psycopg"
-            or parsed.hostname not in {"localhost", "127.0.0.1", "::1"}
-            or parsed.path not in {"/hackathon", "/hip_test"}
-            or parsed.query or parsed.fragment):
+    if (
+        parsed.scheme != "postgresql+psycopg"
+        or parsed.hostname not in {"localhost", "127.0.0.1", "::1"}
+        or parsed.path not in {"/hackathon", "/hip_test"}
+        or parsed.query
+        or parsed.fragment
+    ):
         raise RuntimeError("readiness check requires a local disposable PostgreSQL database")
 
 

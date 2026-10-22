@@ -3,6 +3,7 @@
 A source may take longer than the initial lease to crawl. Extend it using a
 short, separate DB transaction and stop accepting pages when renewal fails.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,7 +24,11 @@ class LeaseLostError(RuntimeError):
 
 class LeaseHeartbeat:
     def __init__(
-        self, engine: Engine, *, source_id: str, lease_token: str,
+        self,
+        engine: Engine,
+        *,
+        source_id: str,
+        lease_token: str,
         interval_seconds: float = HEARTBEAT_SECONDS,
     ) -> None:
         if interval_seconds <= 0:
@@ -71,7 +76,8 @@ class LeaseHeartbeat:
                 break
 
     async def __aexit__(
-        self, exc_type: type[BaseException] | None,
+        self,
+        exc_type: type[BaseException] | None,
         exc: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:

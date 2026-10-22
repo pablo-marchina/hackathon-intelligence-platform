@@ -1,10 +1,13 @@
 from __future__ import annotations
-import hashlib, json
+
+import hashlib
+import json
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Any
 
 PREFERENCE_SCHEMA_VERSION = "w5-preferences-v1"
+
 
 @dataclass(frozen=True)
 class PreferenceProfile:
@@ -25,17 +28,19 @@ class PreferenceProfile:
     soft_preferences: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, value: dict[str, Any]) -> "PreferenceProfile":
+    def from_mapping(cls, value: dict[str, Any]) -> PreferenceProfile:
         def tup(*names: str) -> tuple[str, ...]:
             for name in names:
                 raw = value.get(name)
                 if raw is not None:
                     return tuple(str(x) for x in raw)
             return ()
+
         def to_date(raw: Any) -> date | None:
             if raw is None or isinstance(raw, date):
                 return raw
             return date.fromisoformat(str(raw))
+
         return cls(
             preferred_formats=tup("preferred_formats"),
             preferred_country_codes=tup("preferred_country_codes"),
@@ -56,7 +61,14 @@ class PreferenceProfile:
 
     def canonical_dict(self) -> dict[str, Any]:
         data = asdict(self)
-        for key in ("preferred_formats", "preferred_country_codes", "travel_country_codes", "tracks", "technologies", "event_statuses"):
+        for key in (
+            "preferred_formats",
+            "preferred_country_codes",
+            "travel_country_codes",
+            "tracks",
+            "technologies",
+            "event_statuses",
+        ):
             data[key] = sorted(set(data[key]))
         for key in ("available_from", "available_until"):
             if data[key] is not None:
@@ -65,5 +77,7 @@ class PreferenceProfile:
         return data
 
     def fingerprint(self) -> str:
-        payload = json.dumps(self.canonical_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        payload = json.dumps(
+            self.canonical_dict(), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
         return hashlib.sha256(payload.encode()).hexdigest()

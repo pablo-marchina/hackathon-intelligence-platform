@@ -1,4 +1,5 @@
 """W6 iteration 14: authenticated SMTP must use verified, non-downgradable TLS."""
+
 from __future__ import annotations
 
 import asyncio
@@ -6,10 +7,9 @@ import smtplib
 import ssl
 
 import pytest
-from pydantic import ValidationError
-
 from hackathon_alerts.delivery import SmtpEmailSender, render_alert_email
 from hackathon_shared.settings import Settings
+from pydantic import ValidationError
 
 
 class FakeSMTP:
@@ -18,7 +18,7 @@ class FakeSMTP:
     def __init__(self, host: str, port: int, **kwargs: object) -> None:
         self.calls.append(("connect", (host, port, kwargs)))
 
-    def __enter__(self) -> "FakeSMTP":
+    def __enter__(self) -> FakeSMTP:
         return self
 
     def __exit__(self, *_args: object) -> None:
@@ -38,9 +38,14 @@ class FakeSMTP:
 
 
 def send(sender: SmtpEmailSender, key: str = "alert-123") -> None:
-    asyncio.run(sender.send(
-        to="user@example.test", subject="Test", text="Body", idempotency_key=key,
-    ))
+    asyncio.run(
+        sender.send(
+            to="user@example.test",
+            subject="Test",
+            text="Body",
+            idempotency_key=key,
+        )
+    )
 
 
 @pytest.fixture
@@ -53,8 +58,12 @@ def fake_smtp(monkeypatch: pytest.MonkeyPatch) -> type[FakeSMTP]:
 
 def test_starttls_validates_certificate_before_authentication(fake_smtp: type[FakeSMTP]) -> None:
     sender = SmtpEmailSender(
-        host="mail.example.test", port=587, from_address="alerts@example.test",
-        username="account", password="secret", starttls=True,
+        host="mail.example.test",
+        port=587,
+        from_address="alerts@example.test",
+        username="account",
+        password="secret",
+        starttls=True,
     )
     send(sender)
     names = [key for key, _ in fake_smtp.calls]
@@ -70,8 +79,12 @@ def test_starttls_validates_certificate_before_authentication(fake_smtp: type[Fa
 
 def test_implicit_tls_uses_verifying_sslcontext(fake_smtp: type[FakeSMTP]) -> None:
     sender = SmtpEmailSender(
-        host="mail.example.test", port=465, from_address="alerts@example.test",
-        ssl_enabled=True, username="account", password="secret",
+        host="mail.example.test",
+        port=465,
+        from_address="alerts@example.test",
+        ssl_enabled=True,
+        username="account",
+        password="secret",
     )
     send(sender)
     names = [key for key, _ in fake_smtp.calls]
@@ -88,24 +101,31 @@ def test_local_anonymous_smtp_still_supported(fake_smtp: type[FakeSMTP]) -> None
     assert [name for name, _ in fake_smtp.calls] == ["connect", "send", "close"]
 
 
-@pytest.mark.parametrize("args", [
-    {"username": "alice", "password": "pw"},
-    {"password": "pw"},
-    {"starttls": True, "ssl_enabled": True},
-    {"timeout": 0},
-    {"timeout": 121},
-])
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"username": "alice", "password": "pw"},
+        {"password": "pw"},
+        {"starttls": True, "ssl_enabled": True},
+        {"timeout": 0},
+        {"timeout": 121},
+    ],
+)
 def test_insecure_configuration_rejected_before_network(args: dict[str, object]) -> None:
     with pytest.raises(ValueError):
-        SmtpEmailSender(host="mail.example.test", port=587,
-                        from_address="alerts@example.test", **args)
+        SmtpEmailSender(
+            host="mail.example.test", port=587, from_address="alerts@example.test", **args
+        )
 
 
-@pytest.mark.parametrize("config", [
-    {"smtp_username": "u", "smtp_password": "pw"},
-    {"smtp_password": "pw"},
-    {"smtp_starttls": True, "smtp_ssl": True},
-])
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"smtp_username": "u", "smtp_password": "pw"},
+        {"smtp_password": "pw"},
+        {"smtp_starttls": True, "smtp_ssl": True},
+    ],
+)
 def test_application_settings_reject_insecure_smtp(config: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **config)
@@ -113,7 +133,10 @@ def test_application_settings_reject_insecure_smtp(config: dict[str, object]) ->
 
 def test_application_settings_support_verified_implicit_tls() -> None:
     settings = Settings(
-        _env_file=None, smtp_ssl=True, smtp_username="alice", smtp_password="secret",
+        _env_file=None,
+        smtp_ssl=True,
+        smtp_username="alice",
+        smtp_password="secret",
     )
     assert settings.smtp_ssl and not settings.smtp_starttls
 
@@ -130,7 +153,8 @@ def test_disabled_alert_dispatch_allows_local_plaintext_relay() -> None:
 
 
 def test_starttls_failure_does_not_authenticate_or_send(
-    fake_smtp: type[FakeSMTP], monkeypatch: pytest.MonkeyPatch,
+    fake_smtp: type[FakeSMTP],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fail_starttls(self: FakeSMTP, *, context: ssl.SSLContext) -> None:
         self.calls.append(("starttls-failed", context))
@@ -138,8 +162,12 @@ def test_starttls_failure_does_not_authenticate_or_send(
 
     monkeypatch.setattr(FakeSMTP, "starttls", fail_starttls)
     sender = SmtpEmailSender(
-        host="mail.example.test", port=587, from_address="alerts@example.test",
-        starttls=True, username="alice", password="pw",
+        host="mail.example.test",
+        port=587,
+        from_address="alerts@example.test",
+        starttls=True,
+        username="alice",
+        password="pw",
     )
     with pytest.raises(smtplib.SMTPNotSupportedError):
         send(sender)
@@ -148,7 +176,8 @@ def test_starttls_failure_does_not_authenticate_or_send(
 
 @pytest.mark.parametrize("key", ["", "a\nb", "<bad>", "x" * 129, "with spaces"])
 def test_invalid_message_id_is_rejected_before_network(
-    fake_smtp: type[FakeSMTP], key: str,
+    fake_smtp: type[FakeSMTP],
+    key: str,
 ) -> None:
     sender = SmtpEmailSender(host="localhost", port=1025, from_address="a@example.test")
     with pytest.raises(ValueError, match="idempotency key"):
@@ -158,8 +187,10 @@ def test_invalid_message_id_is_rejected_before_network(
 
 def test_external_event_names_cannot_break_subject_header() -> None:
     subject, body = render_alert_email(
-        alert_type="new_match", event_name="Hackathon\r\nBcc: someone@example.test",
-        event_url="https://example.test/events/1", payload={},
+        alert_type="new_match",
+        event_name="Hackathon\r\nBcc: someone@example.test",
+        event_url="https://example.test/events/1",
+        payload={},
     )
     assert "\r" not in subject and "\n" not in subject
     assert "Hackathon Bcc: someone@example.test" in subject

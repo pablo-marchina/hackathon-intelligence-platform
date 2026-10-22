@@ -9,6 +9,7 @@ bound to the original hostname. Proxies and Unix-domain sockets are forbidden.
 This adapter deliberately uses httpx's httpcore pool integration. Keep the
 httpx/httpcore versions constrained and the transport contract tests in CI.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -37,7 +38,9 @@ async def resolve_public_addresses(host: str, port: int = 443) -> tuple[str, ...
     except ValueError:
         try:
             records = await asyncio.get_running_loop().getaddrinfo(
-                host, port, type=socket.SOCK_STREAM,
+                host,
+                port,
+                type=socket.SOCK_STREAM,
             )
         except (OSError, TimeoutError) as exc:
             raise PermissionError("destination DNS lookup failed; fail closed") from exc
@@ -93,7 +96,10 @@ class PublicIPNetworkBackend(httpcore.AsyncNetworkBackend):
         for address in addresses:
             try:
                 return await self._delegate.connect_tcp(
-                    address, port, timeout=timeout, local_address=None,
+                    address,
+                    port,
+                    timeout=timeout,
+                    local_address=None,
                     socket_options=socket_options,
                 )
             except (httpcore.ConnectError, httpcore.ConnectTimeout) as exc:

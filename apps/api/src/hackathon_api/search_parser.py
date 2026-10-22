@@ -15,27 +15,79 @@ class PatternRule:
 
 
 _RULES = [
-    PatternRule(re.compile(r"\b(online|remote|remoto|remota)\b", re.I), "format", "ONLINE", "format=ONLINE"),
-    PatternRule(re.compile(r"\b(in[ -]?person|presencial)\b", re.I), "format", "IN_PERSON", "format=IN_PERSON"),
-    PatternRule(re.compile(r"\b(hybrid|h[ií]brido|h[ií]brida)\b", re.I), "format", "HYBRID", "format=HYBRID"),
-    PatternRule(re.compile(r"\b(free|gratuito|gratuita|sem taxa)\b", re.I), "free_only", True, "free_only=true"),
-    PatternRule(re.compile(r"\b(registration open|open registration|inscri[cç][aã]o aberta|inscri[cç][oõ]es abertas)\b", re.I), "registration_state", "OPEN", "registration_state=OPEN"),
-    PatternRule(re.compile(r"\b(for students|student only|para estudantes|somente estudantes)\b", re.I), "student_required", True, "student_required=true"),
-    PatternRule(re.compile(r"\b(individual|solo|sozinho|individualmente)\b", re.I), "individual_allowed", True, "individual_allowed=true"),
+    PatternRule(
+        re.compile(r"\b(online|remote|remoto|remota)\b", re.I), "format", "ONLINE", "format=ONLINE"
+    ),
+    PatternRule(
+        re.compile(r"\b(in[ -]?person|presencial)\b", re.I),
+        "format",
+        "IN_PERSON",
+        "format=IN_PERSON",
+    ),
+    PatternRule(
+        re.compile(r"\b(hybrid|h[ií]brido|h[ií]brida)\b", re.I), "format", "HYBRID", "format=HYBRID"
+    ),
+    PatternRule(
+        re.compile(r"\b(free|gratuito|gratuita|sem taxa)\b", re.I),
+        "free_only",
+        True,
+        "free_only=true",
+    ),
+    PatternRule(
+        re.compile(
+            r"\b(registration open|open registration|inscri[cç][aã]o aberta|inscri[cç][oõ]es abertas)\b",
+            re.I,
+        ),
+        "registration_state",
+        "OPEN",
+        "registration_state=OPEN",
+    ),
+    PatternRule(
+        re.compile(r"\b(for students|student only|para estudantes|somente estudantes)\b", re.I),
+        "student_required",
+        True,
+        "student_required=true",
+    ),
+    PatternRule(
+        re.compile(r"\b(individual|solo|sozinho|individualmente)\b", re.I),
+        "individual_allowed",
+        True,
+        "individual_allowed=true",
+    ),
 ]
 
 _COUNTRIES = {
-    "brazil": "BR", "brasil": "BR", "united states": "US", "usa": "US", "us": "US",
-    "portugal": "PT", "canada": "CA", "india": "IN", "japan": "JP", "japão": "JP",
-    "france": "FR", "frança": "FR", "germany": "DE", "alemanha": "DE", "spain": "ES", "espanha": "ES",
+    "brazil": "BR",
+    "brasil": "BR",
+    "united states": "US",
+    "usa": "US",
+    "us": "US",
+    "portugal": "PT",
+    "canada": "CA",
+    "india": "IN",
+    "japan": "JP",
+    "japão": "JP",
+    "france": "FR",
+    "frança": "FR",
+    "germany": "DE",
+    "alemanha": "DE",
+    "spain": "ES",
+    "espanha": "ES",
 }
 
 _EVENT_TYPES = {
-    "hackathon": "hackathon", "buildathon": "buildathon", "datathon": "datathon",
-    "game jam": "game_jam", "ideathon": "ideathon", "ctf": "security_ctf",
+    "hackathon": "hackathon",
+    "buildathon": "buildathon",
+    "datathon": "datathon",
+    "game jam": "game_jam",
+    "ideathon": "ideathon",
+    "ctf": "security_ctf",
 }
 
-_PRIZE_RE = re.compile(r"(?:prize|pr[eê]mio)\s*(?:over|above|>=|de pelo menos|acima de)?\s*[$R$\s]*([0-9][0-9.,]*)(k|m)?", re.I)
+_PRIZE_RE = re.compile(
+    r"(?:prize|pr[eê]mio)\s*(?:over|above|>=|de pelo menos|acima de)?\s*[$R$\s]*([0-9][0-9.,]*)(k|m)?",
+    re.I,
+)
 _TEAM_RE = re.compile(r"(?:team|equipe)\s*(?:of|de|with|com)?\s*(\d{1,3})", re.I)
 _UNSUPPORTED = [
     re.compile(r"\b(guaranteed acceptance|garantia de aceita[cç][aã]o)\b", re.I),
@@ -90,7 +142,9 @@ def parse_natural_language_query(query: str) -> NaturalLanguageParseResponse:
             working = pattern.sub(" ", working)
             break
 
-    for label, event_type in sorted(_EVENT_TYPES.items(), key=lambda item: len(item[0]), reverse=True):
+    for label, event_type in sorted(
+        _EVENT_TYPES.items(), key=lambda item: len(item[0]), reverse=True
+    ):
         pattern = re.compile(rf"\b{re.escape(label)}s?\b", re.I)
         if pattern.search(working):
             data.setdefault("event_type", [])

@@ -1,4 +1,5 @@
 """Unit-level guards for W6 concurrency and isolated Celery/Redis CI probes."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -7,7 +8,6 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
-
 from hackathon_operations.source_maintenance import (
     LEASE_DURATION,
     claim_due_source,
@@ -163,7 +163,7 @@ def test_lease_clock_override_is_explicit_for_deterministic_tests() -> None:
 
 def test_dispatcher_does_not_supply_worker_clock_to_lease_completion() -> None:
     source = (ROOT / "packages/operations/src/hackathon_operations/dispatcher.py").read_text()
-    lease_completion = source[source.index("released = complete_lease("):]
+    lease_completion = source[source.index("released = complete_lease(") :]
     assert "now=datetime.now" not in lease_completion
     assert "success=ok" in lease_completion
 
@@ -173,7 +173,7 @@ def test_ci_runs_new_service_drills() -> None:
     assert "source_multiworker_integration_check.py" in workflow
     assert "celery-redis-integration:" in workflow
     assert "celery_redis_integration_check.py" in workflow
-    assert "SOURCE_SCHEDULER_ENABLED: \"false\"" in workflow
+    assert 'SOURCE_SCHEDULER_ENABLED: "false"' in workflow
 
 
 def test_multiworker_guard_rejects_driver_redirect_options(monkeypatch: pytest.MonkeyPatch) -> None:

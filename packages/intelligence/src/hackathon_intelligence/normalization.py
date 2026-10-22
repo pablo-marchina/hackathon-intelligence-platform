@@ -86,5 +86,7 @@ def normalize_money(
     rate = Decimal(str(usd_fx_rate)) if usd_fx_rate is not None else None
     if rate is not None and rate <= 0:
         raise ValueError("FX rate must be positive")
-    normalized = original * rate if rate is not None else (original if currency_code == "USD" else None)
+    normalized = (
+        original * rate if rate is not None else (original if currency_code == "USD" else None)
+    )
     return MoneyValue(original, currency_code, normalized, rate, fx_rate_date)

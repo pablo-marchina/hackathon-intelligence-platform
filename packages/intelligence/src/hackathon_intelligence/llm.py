@@ -10,7 +10,10 @@ from .models import ExtractedEvent, FieldEvidence
 
 class StructuredEventExtractor(Protocol):
     """Provider-agnostic interface for W2 LLM fallback extraction."""
-    async def extract(self, *, text: str, source_url: str, requested_fields: tuple[str, ...]) -> dict[str, Any]: ...
+
+    async def extract(
+        self, *, text: str, source_url: str, requested_fields: tuple[str, ...]
+    ) -> dict[str, Any]: ...
 
 
 class LLMAssertion(BaseModel):
@@ -27,9 +30,18 @@ class LLMEnvelope(BaseModel):
 
 
 ALLOWED_LLM_FIELDS = {
-    "name", "description", "start_at", "end_at", "registration_url",
-    "official_url", "location_name", "organizer_name", "event_type",
-    "format", "prize_text", "eligibility_text",
+    "name",
+    "description",
+    "start_at",
+    "end_at",
+    "registration_url",
+    "official_url",
+    "location_name",
+    "organizer_name",
+    "event_type",
+    "format",
+    "prize_text",
+    "eligibility_text",
 }
 
 

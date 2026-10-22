@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from functools import lru_cache
 from collections.abc import Iterator
-
-from sqlalchemy import Connection, Engine, create_engine
+from functools import lru_cache
 
 from hackathon_shared.settings import get_settings
+from sqlalchemy import Connection, Engine, create_engine
 
 
 @lru_cache(maxsize=1)

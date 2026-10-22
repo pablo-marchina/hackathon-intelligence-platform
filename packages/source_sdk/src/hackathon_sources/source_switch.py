@@ -4,6 +4,7 @@ PostgreSQL `sources.active` and permission policy are authoritative. Adapter
 seeds MUST NOT restore disabled or restricted sources. A new transaction on each
 lookup avoids stale snapshot reuse across pages when operators pause a crawl.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

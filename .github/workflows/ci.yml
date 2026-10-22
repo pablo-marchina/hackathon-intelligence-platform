@@ -17,10 +17,12 @@ jobs:
       - run: pip install -e '.[dev]'
       - run: ruff check apps packages scripts db/alembic/versions
       - run: ruff format --check apps packages scripts db/alembic/versions
-      - run: mypy apps/api/src apps/worker/src packages/shared/src
-      - run: pytest -q
+      - name: Enforce no new mypy errors against reviewed technical-debt baseline
+        run: python scripts/check_typing_debt.py
+      - run: python -m pytest -q
       - run: python scripts/check_eval_gates.py
       - run: python scripts/verify_repository.py
+      - run: python scripts/source_coverage_report.py --format json > /tmp/source-coverage.json
 
   database-migrations:
     runs-on: ubuntu-latest
@@ -42,6 +44,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://hackathon:hackathon@localhost:5432/hackathon
       HIP_ALLOW_ADMIN_DB_DRILL: "1"
       HIP_ALLOW_SOURCE_DB_DRILL: "1"
+      HIP_CI_EVIDENCE_DIR: /tmp/hip-evidence
       APP_ENV: test
     steps:
       - uses: actions/checkout@v4
@@ -53,6 +56,20 @@ jobs:
       - run: alembic -c db/alembic.ini upgrade head
       - run: alembic -c db/alembic.ini downgrade base
       - run: alembic -c db/alembic.ini upgrade head
+      - name: Verify live catalog snapshot against migrated PostgreSQL
+        env:
+          HIP_ALLOW_COVERAGE_DB_DRILL: "1"
+        run: |
+          python scripts/catalog_coverage_report.py --format json > /tmp/hip-live-coverage.json
+          python -m scripts.ops.catalog_coverage_integration_check
+      - name: Verify canonical creation vs link vs update vs rejection per crawl (PostgreSQL)
+        env:
+          HIP_ALLOW_CANONICAL_DB_DRILL: "1"
+        run: python -m scripts.ops.incremental_canonical_integration_check
+      - name: Source-scoped RSS/sitemap URL queue (PostgreSQL)
+        env:
+          HIP_ALLOW_BACKLOG_DB_DRILL: "1"
+        run: python -m scripts.ops.source_url_backlog_integration_check
       - run: python scripts/ops/api_readiness_integration_check.py
       - run: python scripts/ops/admin_integration_check.py
       - run: python scripts/ops/source_maintenance_integration_check.py
@@ -66,12 +83,28 @@ jobs:
           HIP_ALLOW_MATCH_DB_DRILL: "1"
           SOURCE_SCHEDULER_ENABLED: "false"
         run: python -m scripts.ops.saved_search_match_integration_check
+      - name: Controlled single-source ingestion with fake HTTP and real PostgreSQL
+        env:
+          HIP_ALLOW_CONTROLLED_INGESTION_DRILL: "1"
+        run: python -m scripts.ops.controlled_ingestion_integration_check
+      - name: Upload synthetic PostgreSQL E2E receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hip-synthetic-postgresql-e2e
+          path: /tmp/hip-evidence/*.json
+          if-no-files-found: warn
       - name: End-to-end alert outbox with database and fake SMTP
         env:
           ALERT_DISPATCH_ENABLED: "true"
           HIP_ALLOW_ALERT_DB_DRILL: "1"
           SOURCE_SCHEDULER_ENABLED: "false"
         run: python scripts/ops/alert_outbox_integration_check.py
+      - name: E2E RSS -> durable backlog -> canonical -> catalog search (fake HTTP)
+        env:
+          HIP_ALLOW_SYNDICATION_E2E: "1"
+          SOURCE_SCHEDULER_ENABLED: "false"
+        run: python -m scripts.ops.syndication_catalog_e2e_check
 
   celery-redis-integration:
     runs-on: ubuntu-latest
@@ -150,7 +183,7 @@ jobs:
         run: >-
           docker run -d --rm --name hip-dr-minio -p 9000:9000
           -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin
-          minio/minio:RELEASE.2025-07-23T15-54-02Z server /data
+          cgr.dev/chainguard/minio:latest server /data
       - name: PostgreSQL + MinIO backup/restore and byte-for-byte verification
         run: python scripts/ops/dr_integration_check.py
 
@@ -177,4 +210,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e . pip-audit
-      - run: pip-audit --strict
+      - name: Audit installed third-party dependencies (exclude local editable app)
+        run: |
+          python -m pip freeze --exclude-editable > /tmp/hip-audit-pinned.txt
+          pip-audit --strict --no-deps -r /tmp/hip-audit-pinned.txt

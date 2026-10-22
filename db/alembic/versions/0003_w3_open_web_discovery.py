@@ -3,10 +3,11 @@
 Revision ID: 0003_w3_open_web_discovery
 Revises: 0002_w2_entity_resolution_hardening
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from alembic import op
 
@@ -71,7 +72,9 @@ def _split_sql(script: str) -> list[str]:
 def upgrade() -> None:
     bind = op.get_bind()
     for statement in _split_sql(SQL_PATH.read_text(encoding="utf-8")):
-        bind.exec_driver_sql(statement)
+        # psycopg uses %-style placeholders even for DDL: escape literal
+        # PostgreSQL PL/pgSQL %ROWTYPE and RAISE format markers.
+        bind.exec_driver_sql(statement.replace("%", "%%"))
 
 
 def downgrade() -> None:

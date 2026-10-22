@@ -7,8 +7,6 @@ import json
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
-
 from hackathon_sources.factory import build_adapter, live_adapter_keys
 from hackathon_sources.fetcher import FetchEngine
 from hackathon_sources.persistent_runner import (
@@ -17,9 +15,14 @@ from hackathon_sources.persistent_runner import (
     run_source_persisted,
 )
 from hackathon_sources.registry import load_source_definitions
+from hackathon_sources.rest_gate import (
+    RestrictedGateClient,
+    SupabaseGateClient,
+    run_source_rest_gate,
+)
 from hackathon_sources.runner import run_source_once
-from hackathon_sources.rest_gate import RestrictedGateClient, SupabaseGateClient, run_source_rest_gate
 from hackathon_sources.source_switch import check_postgres_active
+from sqlalchemy import create_engine
 
 
 def _sqlalchemy_url(value: str) -> str:
@@ -83,7 +86,9 @@ async def main() -> int:
             )
         if os.getenv("APP_ENV", "development").lower() not in {"development", "test"}:
             parser.error("unmanaged source collection is forbidden in staging and production")
-    engine = create_engine(_sqlalchemy_url(database_url), pool_pre_ping=True) if database_url else None
+    engine = (
+        create_engine(_sqlalchemy_url(database_url), pool_pre_ping=True) if database_url else None
+    )
     activation_check = (
         (lambda source: check_postgres_active(engine, source))
         if engine is not None and unmanaged
@@ -105,11 +110,16 @@ async def main() -> int:
                         adapter = build_adapter(definition)
                         try:
                             result = await run_source_rest_gate(
-                                adapter, fetcher, sink, max_pages=args.max_pages,
+                                adapter,
+                                fetcher,
+                                sink,
+                                max_pages=args.max_pages,
                                 is_active=activation_check,
                             )
                         except SourcePausedError:
-                            print(json.dumps({"source": definition.key, "status": "SKIPPED_PAUSED"}))
+                            print(
+                                json.dumps({"source": definition.key, "status": "SKIPPED_PAUSED"})
+                            )
                             continue
                         payload = {
                             "source": result.source_key,
@@ -140,10 +150,18 @@ async def main() -> int:
                                     max_pages=args.max_pages,
                                 )
                             except SourcePausedError:
-                                print(json.dumps({"source": definition.key, "status": "SKIPPED_PAUSED"}))
+                                print(
+                                    json.dumps(
+                                        {"source": definition.key, "status": "SKIPPED_PAUSED"}
+                                    )
+                                )
                                 continue
                             except SourceNotAuthorizedError:
-                                print(json.dumps({"source": definition.key, "status": "SKIPPED_POLICY"}))
+                                print(
+                                    json.dumps(
+                                        {"source": definition.key, "status": "SKIPPED_POLICY"}
+                                    )
+                                )
                                 continue
                         payload = {
                             "source": result.source_key,
@@ -162,11 +180,15 @@ async def main() -> int:
                     else:
                         try:
                             result = await run_source_once(
-                                adapter, fetcher, max_pages=args.max_pages,
+                                adapter,
+                                fetcher,
+                                max_pages=args.max_pages,
                                 is_active=activation_check,
                             )
                         except SourcePausedError:
-                            print(json.dumps({"source": definition.key, "status": "SKIPPED_PAUSED"}))
+                            print(
+                                json.dumps({"source": definition.key, "status": "SKIPPED_PAUSED"})
+                            )
                             continue
                         payload = {
                             "source": result.source_key,

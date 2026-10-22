@@ -2,8 +2,8 @@ from hackathon_api.main import app
 
 
 def test_w5_openapi_surface() -> None:
-    paths=app.openapi()["paths"]
-    required={
+    paths = app.openapi()["paths"]
+    required = {
         "/v1/me/preferences",
         "/v1/me/recommendations",
         "/v1/me/saved-searches",

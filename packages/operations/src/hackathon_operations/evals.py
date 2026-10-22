@@ -8,7 +8,12 @@ from typing import Any
 
 from hackathon_discovery.classifier import classify_page
 from hackathon_intelligence.jsonld import extract_event_jsonld
-from hackathon_recommendation.eligibility import EventEligibility, Result, UserEligibilityProfile, evaluate
+from hackathon_recommendation.eligibility import (
+    EventEligibility,
+    Result,
+    UserEligibilityProfile,
+    evaluate,
+)
 from hackathon_recommendation.ranking import EventSignals, UserPreferences, recommend
 
 from .dedup_eval import evaluate_dedup_golden, result_as_dict
@@ -53,7 +58,7 @@ def discovery_precision(golden_path: Path) -> tuple[EvalMetric, dict[str, Any]]:
     details = {
         "examples": len(rows),
         "languages": len({row["language"] for row in rows}),
-        "domains": len({row["source_url"].split('/')[2] for row in rows}),
+        "domains": len({row["source_url"].split("/")[2] for row in rows}),
         "true_positives": tp,
         "false_positives": false_positives,
         "true_negatives": tn,
@@ -149,38 +154,111 @@ def dedup_auto_merge_precision(golden_path: Path) -> tuple[EvalMetric, dict[str,
     return metric, result_as_dict(result)
 
 
-
 def recommendation_ndcg_at_5() -> tuple[EvalMetric, dict[str, Any]]:
     import math
+
     candidates = [
-        (5, Result.ELIGIBLE, EventSignals(tracks=frozenset({"ai","fintech"}), technologies=frozenset({"python"}), format="ONLINE", is_free=True, quality_score=95)),
-        (4, Result.ELIGIBLE, EventSignals(tracks=frozenset({"ai"}), technologies=frozenset({"python"}), format="ONLINE", is_free=True, quality_score=90)),
-        (3, Result.UNKNOWN, EventSignals(tracks=frozenset({"fintech"}), technologies=frozenset(), format="ONLINE", is_free=True, quality_score=88)),
-        (1, Result.ELIGIBLE, EventSignals(tracks=frozenset({"gaming"}), technologies=frozenset(), format="IN_PERSON", is_free=False, quality_score=80)),
-        (0, Result.INELIGIBLE, EventSignals(tracks=frozenset({"ai"}), technologies=frozenset({"python"}), format="ONLINE", is_free=True, quality_score=99)),
+        (
+            5,
+            Result.ELIGIBLE,
+            EventSignals(
+                tracks=frozenset({"ai", "fintech"}),
+                technologies=frozenset({"python"}),
+                format="ONLINE",
+                is_free=True,
+                quality_score=95,
+            ),
+        ),
+        (
+            4,
+            Result.ELIGIBLE,
+            EventSignals(
+                tracks=frozenset({"ai"}),
+                technologies=frozenset({"python"}),
+                format="ONLINE",
+                is_free=True,
+                quality_score=90,
+            ),
+        ),
+        (
+            3,
+            Result.UNKNOWN,
+            EventSignals(
+                tracks=frozenset({"fintech"}),
+                technologies=frozenset(),
+                format="ONLINE",
+                is_free=True,
+                quality_score=88,
+            ),
+        ),
+        (
+            1,
+            Result.ELIGIBLE,
+            EventSignals(
+                tracks=frozenset({"gaming"}),
+                technologies=frozenset(),
+                format="IN_PERSON",
+                is_free=False,
+                quality_score=80,
+            ),
+        ),
+        (
+            0,
+            Result.INELIGIBLE,
+            EventSignals(
+                tracks=frozenset({"ai"}),
+                technologies=frozenset({"python"}),
+                format="ONLINE",
+                is_free=True,
+                quality_score=99,
+            ),
+        ),
     ]
-    prefs=UserPreferences(tracks=frozenset({"ai","fintech"}),technologies=frozenset({"python"}),formats=frozenset({"ONLINE"}),free_only=True)
-    scored=[]
-    ineligible_scored=0
-    for relevance,eligibility,event in candidates:
-        rec=recommend(eligibility,prefs,event)
+    prefs = UserPreferences(
+        tracks=frozenset({"ai", "fintech"}),
+        technologies=frozenset({"python"}),
+        formats=frozenset({"ONLINE"}),
+        free_only=True,
+    )
+    scored = []
+    ineligible_scored = 0
+    for relevance, eligibility, event in candidates:
+        rec = recommend(eligibility, prefs, event)
         if eligibility is Result.INELIGIBLE and rec.score is not None:
             ineligible_scored += 1
         if rec.score is not None:
-            scored.append((rec.score,relevance))
-    ranked=[rel for _,rel in sorted(scored,reverse=True)[:5]]
-    ideal=sorted([r for r,e,_ in candidates if e is not Result.INELIGIBLE],reverse=True)[:5]
+            scored.append((rec.score, relevance))
+    ranked = [rel for _, rel in sorted(scored, reverse=True)[:5]]
+    ideal = sorted([r for r, e, _ in candidates if e is not Result.INELIGIBLE], reverse=True)[:5]
+
     def dcg(values: list[int]) -> float:
-        return sum((2**rel-1)/math.log2(i+2) for i,rel in enumerate(values))
-    ideal_dcg=dcg(ideal)
-    ndcg=dcg(ranked)/ideal_dcg if ideal_dcg else 1.0
-    passed=ndcg >= 0.90 and ineligible_scored == 0
-    return EvalMetric("recommendation_ndcg_at_5",passed,ndcg,0.90,f"ranked={ranked}; ideal={ideal}; ineligible_scored={ineligible_scored}"), {"ndcg_at_5": ndcg, "ranked_relevance": ranked, "ideal_relevance": ideal, "ineligible_scored": ineligible_scored}
+        return sum((2**rel - 1) / math.log2(i + 2) for i, rel in enumerate(values))
+
+    ideal_dcg = dcg(ideal)
+    ndcg = dcg(ranked) / ideal_dcg if ideal_dcg else 1.0
+    passed = ndcg >= 0.90 and ineligible_scored == 0
+    return EvalMetric(
+        "recommendation_ndcg_at_5",
+        passed,
+        ndcg,
+        0.90,
+        f"ranked={ranked}; ideal={ideal}; ineligible_scored={ineligible_scored}",
+    ), {
+        "ndcg_at_5": ndcg,
+        "ranked_relevance": ranked,
+        "ideal_relevance": ideal,
+        "ineligible_scored": ineligible_scored,
+    }
+
 
 def run_all(root: Path) -> dict[str, Any]:
-    discovery_metric, discovery_details = discovery_precision(root / "evals/discovery/golden_v0_2.json")
+    discovery_metric, discovery_details = discovery_precision(
+        root / "evals/discovery/golden_v0_2.json"
+    )
     metrics = [discovery_metric]
-    extraction_metric, extraction_details = extraction_core_fields(root / "evals/extraction/golden_v0_1.json")
+    extraction_metric, extraction_details = extraction_core_fields(
+        root / "evals/extraction/golden_v0_1.json"
+    )
     metrics.append(extraction_metric)
     dedup_metric, dedup_details = dedup_auto_merge_precision(root / "evals/dedup/golden_v0_1.json")
     metrics.append(dedup_metric)

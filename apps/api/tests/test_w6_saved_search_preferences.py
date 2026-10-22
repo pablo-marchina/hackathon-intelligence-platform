@@ -3,11 +3,10 @@
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from hackathon_api.main import app
 from hackathon_api.repositories.personalization import PersonalizationRepository
 from hackathon_api.schemas import FILTER_SCHEMA_VERSION, SavedSearchCreate
+from pydantic import ValidationError
 
 
 @pytest.mark.parametrize(
@@ -40,11 +39,14 @@ def test_unsupported_saved_search_filter_version_is_rejected():
 
 def test_valid_filters_are_canonicalized_for_matching():
     payload = SavedSearchCreate(
-        name="Monitor", filters={"country_code": ["br"], "eligible_country": "br", "free_only": True}
+        name="Monitor",
+        filters={"country_code": ["br"], "eligible_country": "br", "free_only": True},
     )
     assert payload.filter_schema_version == FILTER_SCHEMA_VERSION
     assert payload.filters == {
-        "country_code": ["BR"], "eligible_country": "BR", "free_only": True,
+        "country_code": ["BR"],
+        "eligible_country": "BR",
+        "free_only": True,
     }
 
 
@@ -108,7 +110,9 @@ def test_email_remains_off_without_explicit_consent():
         "00000000-0000-0000-0000-000000000001"
     )
     assert preferences == {
-        "alert_type": "new_match", "in_app_enabled": True, "email_enabled": False
+        "alert_type": "new_match",
+        "in_app_enabled": True,
+        "email_enabled": False,
     }
     assert "deleted_at IS NULL" in db.queries[0]
     assert "NULLIF(email::text, '') IS NOT NULL" in db.queries[0]
@@ -138,6 +142,7 @@ def test_frontend_cannot_silently_enable_email_without_pref_api():
 
 def test_authenticated_preferences_are_json_serialized_without_database(monkeypatch):
     from types import SimpleNamespace
+
     from fastapi.testclient import TestClient
     from hackathon_api.db import connection_dependency
     from hackathon_api.security import current_session
@@ -151,7 +156,9 @@ def test_authenticated_preferences_are_json_serialized_without_database(monkeypa
         result = TestClient(app).get("/v1/me/alert-preferences")
         assert result.status_code == 200
         assert result.json() == {
-            "alert_type": "new_match", "in_app_enabled": False, "email_enabled": True
+            "alert_type": "new_match",
+            "in_app_enabled": False,
+            "email_enabled": True,
         }
     finally:
         app.dependency_overrides.pop(current_session, None)
@@ -160,6 +167,7 @@ def test_authenticated_preferences_are_json_serialized_without_database(monkeypa
 
 def test_invalid_search_is_http_422_without_persisting():
     from types import SimpleNamespace
+
     from fastapi.testclient import TestClient
     from hackathon_api.db import connection_dependency
     from hackathon_api.security import require_csrf
@@ -173,9 +181,10 @@ def test_invalid_search_is_http_422_without_persisting():
     )
     app.dependency_overrides[connection_dependency] = lambda: UnexpectedDatabase()
     try:
-        response = TestClient(app).post("/v1/me/saved-searches", json={
-            "name": "broken monitor", "filters": {"statuz": ["UPCOMING"]}
-        })
+        response = TestClient(app).post(
+            "/v1/me/saved-searches",
+            json={"name": "broken monitor", "filters": {"statuz": ["UPCOMING"]}},
+        )
         assert response.status_code == 422
     finally:
         app.dependency_overrides.pop(require_csrf, None)

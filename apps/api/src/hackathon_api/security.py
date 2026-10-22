@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from typing import Annotated, Literal
 
 from fastapi import Depends, Header, HTTPException, Request
+from hackathon_shared.settings import get_settings
 from sqlalchemy import Connection, text
 
 from hackathon_api.auth import hash_secret
 from hackathon_api.db import connection_dependency
 from hackathon_api.repositories.auth import AuthRepository
 from hackathon_api.schemas import AuthUser
-from hackathon_shared.settings import get_settings
 
 
 @dataclass(frozen=True)

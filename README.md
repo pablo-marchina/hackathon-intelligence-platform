@@ -1,8 +1,66 @@
 # Hackathon Intelligence Platform
 
+> **Iteração 32 (22/10/2026):** checkpoint mais recente. Pipeline com PostgreSQL real, migrações, fila persistente, normalização, deduplicação e busca validados no CI; frontend, Celery/Redis, recuperação e segurança testados. Em staging descartável, duas APIs públicas permitidas produziram 51 registros canônicos (50 Hack Club, 1 Agenda Tech Brasil); estes registros **não são de produção**. Testes Python locais: 531 aprovados. A dívida de tipagem do mypy está documentada em `docs/quality/mypy-existing-errors.json`, com controle de regressões no CI e acompanhamento na issue #2. **Código atualizado não implica aprovação para produção nem autorização de outras fontes.** Veja `docs/execution/ITERATION_32_2026-10-22.md`.
+
+
+> **Iteração 31 (22/10/2026):** relatórios de aceitação PostgreSQL sintéticos e verificáveis por origem; 526 testes locais aprovados. Um smoke SQL passou em branch Neon isolada, mas migrações e pipeline completos ainda precisam de CI. Sem coleta externa nova, sem aprovação de produção. Ver `docs/execution/ITERATION_31_2026-10-22.md`.
+
+> **Checkpoint local mais recente (22/10/2026): Iteração 30** — contenção de índices de sitemaps aninhados com profundidade durável máxima de 8, preservação do caminho mais curto e correção do encerramento de `crawl_runs` quando a configuração inicial de seeds falha. **517 testes Python locais passaram**, avaliações W6 aprovadas e esquema SQL estático verificado (78 tabelas/5 extensões). PostgreSQL real, CI remoto, coleta externa e build Next.js ainda **não executados**. Consulte `docs/execution/ITERATION_30_2026-10-22.md`. **Não aprovado para produção.**
+
+> **Checkpoint local mais recente (22/10/2026): Iteração 29**, com execução controlada de coleta + normalização + métricas por crawl; **508 testes locais aprovados**. A integração com PostgreSQL real, CI remoto e novas coletas ainda não foi validada. Veja `docs/execution/ITERATION_29_2026-10-22.md`. **Não aprovado para produção.**
+
+> **Checkpoint Iteração 28 (21/10/2026):** sitemaps, RSS e Atom maiores que 2 MiB são analisados incrementalmente, com limite de 12 MiB de XML, 8 MiB de entrada, profundidade e complexidade protegidas por `defusedxml`. A continuação por cursor e autorização por fonte permanecem. **486 testes Python passaram localmente**; PostgreSQL real, crawls externos e build Next.js seguem pendentes. Confira `docs/execution/ITERATION_28_2026-10-21.md`. Não aprovado para produção.
+
+> **Checkpoint Iteração 27 (21/10/2026):** ampliação da coleta autorizada por RSS/Atom com paginação `rel="next"`, sitemaps XML compactados (`.xml.gz`), limite de descompressão e limite durável de 100 saltos de paginação. O teste de catálogo no CI agora cobre duas páginas de RSS; sem PostgreSQL real local, esse gate continua **pendente de execução**. A coleta externa e o build Next.js **não** foram executados. Consulte `docs/execution/ITERATION_27_2026-10-21.md`. A plataforma **não está aprovada para produção**.
+
+> **Checkpoint Iteração 26 (21/10/2026):** resultado canônico auditável por versão de evento, com vínculo ao `crawl_run_id` original. Diferencia **CREATED/LINKED/UPDATED/REJECTED**, sem confundir referências de fontes com hackathons únicos. Nova migração `0013`, `GET /admin/canonical-yield?days=7` (autenticado), relatório CLI e painel `/admin`. Correção de associação de respostas no frontend. Não habilita fontes ou coletas automáticas. **A validação PostgreSQL real e build Next.js permanecem pendentes.** Veja `docs/execution/ITERATION_26_2026-10-21.md`.
+
+> **Checkpoint Iteração 25 (21/10/2026):** diagnóstico read-only por fonte, histórico real de `crawl_runs`, causas de rejeição agrupadas sem erros brutos e triagem consultiva para expansão da cobertura. `GET /admin/source-insights`, painel `/admin` e `python scripts/source_insights_report.py --format markdown` (PostgreSQL migrado). **444 testes locais aprovados**; novos eventos reais, integração PostgreSQL e build Next.js não validados. Consulte `docs/execution/ITERATION_25_2026-10-21.md`. **Ainda não aprovado para produção.**
+
+> **Checkpoint Iteração 24 (21/10/2026):** painel de conversão da ingestão por fonte, separando tarefas de URLs, referências de eventos, payloads duráveis, normalizações aceitas/rejeitadas e hackathons ativos vinculados. Totais globais deduplicam hackathons entre fontes; percentuais usam apenas denominadores compatíveis. **436 testes locais aprovados**; PostgreSQL real, build Next.js e novas coletas externas ainda não verificados. Consulte `docs/execution/ITERATION_24_2026-10-21.md`. **Não aprovado para produção.**
+
+
+> **Checkpoint Iteração 23 (21/10/2026):** série diária UTC de hackathons canônicos inseridos no banco, contagens de novas referências e canonicals atribuídos por fonte, disponíveis em `/admin/coverage?recent_days=7`, no painel e no CLI. Os resultados abrangem também importações históricas: não representam necessariamente eventos recém-anunciados ou novas descobertas externas. **431 testes locais aprovados**; integração real PostgreSQL e frontend build pendentes. Veja `docs/execution/ITERATION_23_2026-10-21.md`. **Não liberado para produção.**
+
+> **Checkpoint Iteração 21 (21/10/2026):** paginação durável de RSS/sitemaps sem perder URLs além do limite por XML; cursor/hash transacionais, ordem da fila que favorece URLs de detalhes, refresco de seeds com intervalo e novo exercício E2E em PostgreSQL descartável no CI. **422 testes locais aprovados**; teste E2E com PostgreSQL e coleta externa ainda não executados nesta máquina. Migração `0012_syndication_continuation` requerida antes de `/ready` e do runner persistente. `docs/execution/ITERATION_21_2026-10-21.md`. **Não liberado para produção**.
+
+
+> **Checkpoint Iteração 20 (19/10/2026):** fila PostgreSQL de URLs por fonte para RSS/Atom/sitemaps, retomada entre execuções, claims protegidos e limites XML ampliados. **413 testes Python locais aprovados**; PostgreSQL real, frontend e coleta externa pendentes. A migração `0011_source_url_backlog` é necessária antes de executar o runner persistente ou `/ready`. Consulte `docs/execution/ITERATION_20_2026-10-19.md`. **Não está pronta para produção**.
+
+
 Production-oriented monorepo for discovering, ingesting, reconciling, searching, and recommending hackathons globally.
 
-> **Checkpoint mais recente (19/10/2026):** W6 Iteração 15; **351 testes Python locais aprovados**. A W6 **não está aprovada para produção**; PostgreSQL/Redis/Celery e build completo do Next.js continuam pendentes neste checkpoint. Veja `docs/execution/W6_ITERATION_15_2026-10-19.md` e [GITHUB_PUBLICACAO.md](GITHUB_PUBLICACAO.md). Os baselines mais antigos abaixo são históricos.
+> **Checkpoint local (19/10/2026): Iteração 19.** O SDK inclui descoberta de páginas via RSS/Atom/sitemap para **fontes explicitamente autorizadas**, usando JSON-LD em páginas no mesmo host. Não houve autorização de novas fontes ou execução de coletas externas; a cobertura histórica de 250 eventos permanece sem atualização. A Iteração 19 não foi publicada no GitHub nem aprovada para produção. Veja [`docs/execution/ITERATION_19_2026-10-19.md`](docs/execution/ITERATION_19_2026-10-19.md).
+
+## Fontes RSS/Atom e sitemaps (Iteração 19)
+
+Fontes com `ingestion_mode=RSS` ou `SITEMAP`, `permission_status=ALLOWED` e `detail_extraction_enabled=true` podem descobrir páginas por feeds XML autorizados e coletar `schema.org/Event` nessas páginas sem seguir links para terceiros. O modo RSS **exige robots.txt para páginas de detalhes**. Consulte o runbook da Iteração 19 para configurar fontes em modo `REVIEW_REQUIRED` por padrão, definir hosts permitidos e testar em staging. Listagens XML grandes são paginadas com cursor persistente; cadeias externas de RSS/Atom também têm fila persistente e limite de 100 saltos. XMLs individuais possuem um caminho simples de 2 MiB e parsing incremental até 12 MiB de XML descomprimido (sob limites de entrada, profundidade e elementos).
+
+> **Checkpoint local mais recente (19/10/2026):** Iteração 18, baseada na Iteração 17; **391 testes Python locais aprovados**. O código ainda não foi sincronizado com o GitHub, e a plataforma não está aprovada para produção. PostgreSQL/Redis/Celery e o build Next.js continuam pendentes. Veja `docs/execution/ITERATION_18_2026-10-19.md` e [GITHUB_PUBLICACAO.md](GITHUB_PUBLICACAO.md). Os baselines mais antigos abaixo são históricos.
+
+
+> **Cobertura global — nova prioridade (19/10/2026):** maximizar hackathons únicos, fontes legítimas, metadados verificáveis e filtros. A Iteração 16 incorpora extração genérica de eventos `schema.org` em HTML **autorizado**, filtros avançados na busca e auditoria offline do catálogo de fontes. Neste checkpoint: **23 fontes configuradas; somente 4 elegíveis a fetch por configuração; 19 em revisão**. Isso **não** implica novas coletas reais nem aprovação para produção. Veja [`docs/product/COVERAGE_FIRST_PLAN.md`](docs/product/COVERAGE_FIRST_PLAN.md).
+
+Para auditar o backlog de fontes sem fazer chamadas de rede:
+
+```bash
+python scripts/source_coverage_report.py --format markdown
+```
+
+## Ingestão incremental de fontes autorizadas (Iteração 18)
+
+O coletor persistente agora grava `source_event_payloads` de forma transacional com cada `source_event_ref`. Após aplicar a migração `0010_incremental_canonical_pipeline`, execute explicitamente `python -m scripts.run_incremental_canonical --apply --limit 100` para normalizar snapshots **já coletados**, sem iniciar crawls. Sem `--apply`, o comando permanece desativado. Consulte `docs/execution/ITERATION_18_2026-10-19.md` para gates, riscos e limitações. O endpoint `/ready` exige a nova revisão. Não use em produção sem staging.
+
+## Medir cobertura real (Iteração 17)
+
+- `python scripts/source_coverage_report.py --format json`: inventário **configurado**, não eventos coletados.
+- `python scripts/catalog_coverage_report.py --format json`: contagem **real** de canônicos no PostgreSQL migrado, sem substituir por W2 histórico se a conexão falhar.
+- `GET /admin/coverage`: métricas da base atual protegidas por autenticação administrativa, também exibidas no painel `/admin`.
+- `docs/execution/ITERATION_17_2026-10-19.md`: implementações, testes locais e gates ainda pendentes.
+
+**Importante:** 250 hackathons é o resultado histórico da fase W2, não o catálogo atual validado em produção. A coleta periódica permanece desligada por padrão.
+
+> **Iteração 22 (21/10/2026):** relatório operacional de cobertura ampliado com backlog de descoberta, estágio de normalização e completude dos campos usados nos filtros. Os testes locais não equivalem a uma coleta real. Veja `docs/execution/ITERATION_22_2026-10-21.md`.
 
 ## Repository layout
 

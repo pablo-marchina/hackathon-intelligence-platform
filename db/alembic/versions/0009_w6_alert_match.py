@@ -3,9 +3,11 @@
 Revision ID: 0009_w6_alert_match
 Revises: 0008_w6_alert_dispatch
 """
+
 from __future__ import annotations
 
 from pathlib import Path
+
 from alembic import op
 
 revision = "0009_w6_alert_match"
@@ -17,8 +19,9 @@ SQL_PATH = Path(__file__).resolve().parents[2] / "sql" / "0009_w6_alert_match.sq
 
 def upgrade() -> None:
     sql = SQL_PATH.read_text(encoding="utf-8")
-    without_comments = "\n".join(line for line in sql.splitlines()
-                                 if not line.lstrip().startswith("--"))
+    without_comments = "\n".join(
+        line for line in sql.splitlines() if not line.lstrip().startswith("--")
+    )
     for statement in without_comments.split(";"):
         if statement.strip():
             op.execute(statement)

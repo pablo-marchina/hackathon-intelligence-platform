@@ -45,7 +45,9 @@ def _safe_datetime(value: Any) -> datetime | None:
     return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
 
 
-def extract_event_jsonld(html: str, *, observed_at: datetime, method_version: str = "jsonld-v1") -> list[ExtractedEvent]:
+def extract_event_jsonld(
+    html: str, *, observed_at: datetime, method_version: str = "jsonld-v1"
+) -> list[ExtractedEvent]:
     soup = BeautifulSoup(html, "html.parser")
     events: list[ExtractedEvent] = []
     for tag in soup.select('script[type="application/ld+json"]'):
@@ -74,7 +76,9 @@ def extract_event_jsonld(html: str, *, observed_at: datetime, method_version: st
                 organizer_name = organizer
 
             name = item.get("name") if isinstance(item.get("name"), str) else None
-            description = item.get("description") if isinstance(item.get("description"), str) else None
+            description = (
+                item.get("description") if isinstance(item.get("description"), str) else None
+            )
             start_at = _safe_datetime(item.get("startDate"))
             end_at = _safe_datetime(item.get("endDate"))
             url = item.get("url") if isinstance(item.get("url"), str) else None

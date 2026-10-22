@@ -17,6 +17,20 @@ MAX_SOURCE_BYTES = 8 * 1024 * 1024  # decoded payload ceiling (includes compress
 REDIRECT_CODES = {301, 302, 303, 307, 308}
 
 
+def robots_required(source: SourceDefinition, url: str) -> bool:
+    """RSS feed endpoints are documented contracts; crawled detail pages are not.
+
+    Redirect targets are checked separately against the configured seed URLs.
+    API sources preserve their existing documented-contract behavior.
+    """
+    if source.ingestion_mode is IngestionMode.API:
+        return False
+    if source.ingestion_mode is IngestionMode.RSS:
+        seeds = {str(seed).rstrip("/") for seed in source.seed_urls}
+        return url.rstrip("/") not in seeds
+    return True
+
+
 class RateLimiter:
     def __init__(self) -> None:
         self._locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
@@ -36,10 +50,15 @@ class RateLimiter:
 
 
 class FetchEngine:
-    def __init__(self, user_agent: str = "HackathonIntelligenceBot/0.1 (+contact-required)") -> None:
+    def __init__(
+        self, user_agent: str = "HackathonIntelligenceBot/0.1 (+contact-required)"
+    ) -> None:
         self.user_agent = user_agent
         self.client = httpx.AsyncClient(
-            headers={"User-Agent": user_agent, "Accept": "text/html,application/json;q=0.9,*/*;q=0.5"},
+            headers={
+                "User-Agent": user_agent,
+                "Accept": "text/html,application/json;q=0.9,*/*;q=0.5",
+            },
             timeout=httpx.Timeout(20.0, connect=10.0),
             follow_redirects=False,
             trust_env=False,
@@ -74,11 +93,12 @@ class FetchEngine:
         if domain not in allowed_hosts:
             raise PermissionError(f"host {domain!r} is not allowed for source {source.key!r}")
 
-        # Documented API/RSS endpoints are governed by their API contract rather than
-        # web-crawler robots directives. HTML/browser sources must still pass robots.
-        if source.ingestion_mode not in {IngestionMode.API, IngestionMode.RSS}:
-            if not await self.robots.allowed(url, allowed_hosts=allowed_hosts):
-                raise PermissionError("robots.txt disallows fetch for configured user-agent")
+        # Feed endpoints may follow their documented contract. HTML *detail* pages
+        # discovered through RSS are crawled pages and MUST honor robots.txt.
+        # (API behavior remains unchanged for explicitly documented API sources.)
+        use_robots = robots_required(source, url)
+        if use_robots and not await self.robots.allowed(url, allowed_hosts=allowed_hosts):
+            raise PermissionError("robots.txt disallows fetch for configured user-agent")
 
         semaphore = self._semaphores.setdefault(domain, asyncio.Semaphore(source.concurrency_limit))
         await self.rate_limiter.wait(domain, source.rate_limit_per_minute)
@@ -92,13 +112,19 @@ class FetchEngine:
         async with semaphore:
             for _redirect in range(6):
                 await validate_destination(current_url, allowed_hosts)
-                if source.ingestion_mode not in {IngestionMode.API, IngestionMode.RSS}:
-                    if not await self.robots.allowed(current_url, allowed_hosts=allowed_hosts):
-                        raise PermissionError("robots.txt disallows redirect destination")
+                # A feed endpoint redirect is a *new* destination, not an
+                # implicitly authorized HTML detail page. Recheck robots.
+                if (
+                    use_robots or robots_required(source, current_url)
+                ) and not await self.robots.allowed(current_url, allowed_hosts=allowed_hosts):
+                    raise PermissionError("robots.txt disallows redirect destination")
                 # Stream bodies under an explicit decoded-size ceiling; get() buffers
                 # the full response and can exhaust worker memory on malicious input.
                 async with self.client.stream(
-                    "GET", current_url, headers=headers, follow_redirects=False,
+                    "GET",
+                    current_url,
+                    headers=headers,
+                    follow_redirects=False,
                 ) as response:
                     if response.status_code in REDIRECT_CODES:
                         location = response.headers.get("location")

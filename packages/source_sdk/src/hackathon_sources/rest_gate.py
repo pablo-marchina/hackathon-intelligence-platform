@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import time
 from dataclasses import dataclass, field
@@ -55,7 +56,7 @@ class SupabaseGateClient:
             },
         )
 
-    async def __aenter__(self) -> "SupabaseGateClient":
+    async def __aenter__(self) -> SupabaseGateClient:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -96,7 +97,7 @@ class RestrictedGateClient:
             },
         )
 
-    async def __aenter__(self) -> "RestrictedGateClient":
+    async def __aenter__(self) -> RestrictedGateClient:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -247,7 +248,7 @@ async def run_source_rest_gate(
                     queue.append(candidate)
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - monotonic_started) * 1000)
-            try:
+            with contextlib.suppress(Exception):
                 await sink.insert(
                     "fetch_attempts",
                     {
@@ -264,8 +265,6 @@ async def run_source_rest_gate(
                         "headers": {},
                     },
                 )
-            except Exception:
-                pass
             output.errors.append(f"{url}: {type(exc).__name__}: {exc}")
 
     await sink.patch(

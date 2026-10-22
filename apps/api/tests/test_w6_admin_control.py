@@ -1,13 +1,13 @@
 """Local security and repository tests (no PostgreSQL service required)."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
 from uuid import UUID
 
+import hackathon_api.security as security
 import pytest
 from fastapi.testclient import TestClient
-
-import hackathon_api.security as security
 from hackathon_api.auth import hash_secret
 from hackathon_api.db import connection_dependency
 from hackathon_api.main import app
@@ -101,8 +101,13 @@ def test_pause_resume_is_idempotent_and_audited(api):
     client, conn = api
     url = f"/admin/sources/{SOURCE_ID}/active"
     headers = {"x-admin-key": "a" * 40}
-    assert client.patch(url, json={"active": False, "reason": "short"}, headers=headers).status_code == 422
-    pause = client.patch(url, json={"active": False, "reason": "source disabled by operator"}, headers=headers)
+    assert (
+        client.patch(url, json={"active": False, "reason": "short"}, headers=headers).status_code
+        == 422
+    )
+    pause = client.patch(
+        url, json={"active": False, "reason": "source disabled by operator"}, headers=headers
+    )
     assert pause.status_code == 200
     assert pause.json() == {"id": SOURCE_ID, "active": False, "changed": True}
     assert len(conn.audit) == 1
@@ -110,27 +115,49 @@ def test_pause_resume_is_idempotent_and_audited(api):
     assert conn.audit[0]["actor_user_id"] is None
     assert conn.audit[0]["action"] == "SOURCE_PAUSE"
     assert "a" * 40 not in repr(conn.audit)
-    assert client.patch(url, json={"active": True, "reason": "           "}, headers=headers).status_code == 422
-    again = client.patch(url, json={"active": False, "reason": "repeated pause requested"}, headers=headers)
+    assert (
+        client.patch(
+            url, json={"active": True, "reason": "           "}, headers=headers
+        ).status_code
+        == 422
+    )
+    again = client.patch(
+        url, json={"active": False, "reason": "repeated pause requested"}, headers=headers
+    )
     assert again.json()["changed"] is False
     assert len(conn.audit) == 1
-    resume = client.patch(url, json={"active": True, "reason": "source verified and resumed"}, headers=headers)
+    resume = client.patch(
+        url, json={"active": True, "reason": "source verified and resumed"}, headers=headers
+    )
     assert resume.json()["active"] is True
     assert [a["action"] for a in conn.audit] == ["SOURCE_PAUSE", "SOURCE_RESUME"]
-    assert client.patch(f"/admin/sources/{USER_ID}/active", json={"active": False, "reason": "missing source record"}, headers=headers).status_code == 404
+    assert (
+        client.patch(
+            f"/admin/sources/{USER_ID}/active",
+            json={"active": False, "reason": "missing source record"},
+            headers=headers,
+        ).status_code
+        == 404
+    )
 
 
 def test_review_lifecycle_rejects_invalid_transitions(api):
     client, conn = api
     headers = {"x-admin-key": "a" * 40}
     url = f"/admin/review-queue/{REVIEW_ID}"
-    change = client.patch(url, json={"state": "IN_REVIEW", "reason": "manual triage started"}, headers=headers)
+    change = client.patch(
+        url, json={"state": "IN_REVIEW", "reason": "manual triage started"}, headers=headers
+    )
     assert change.status_code == 200
     assert change.json()["state"] == "IN_REVIEW"
-    resolved = client.patch(url, json={"state": "RESOLVED", "reason": "evidence confirmed by operator"}, headers=headers)
+    resolved = client.patch(
+        url, json={"state": "RESOLVED", "reason": "evidence confirmed by operator"}, headers=headers
+    )
     assert resolved.status_code == 200
     assert resolved.json()["state"] == "RESOLVED"
-    forbidden = client.patch(url, json={"state": "DISMISSED", "reason": "reopening a closed review"}, headers=headers)
+    forbidden = client.patch(
+        url, json={"state": "DISMISSED", "reason": "reopening a closed review"}, headers=headers
+    )
     assert forbidden.status_code == 409
     assert len(conn.audit) == 2
     assert all(a["action"] == "REVIEW_TRANSITION" for a in conn.audit)
@@ -142,7 +169,11 @@ def test_review_assignee_requires_operator_role(api):
     headers = {"x-admin-key": "a" * 40}
     response = client.patch(
         f"/admin/review-queue/{REVIEW_ID}",
-        json={"state": "IN_REVIEW", "reason": "assigned for triage", "assigned_to_user_id": USER_ID},
+        json={
+            "state": "IN_REVIEW",
+            "reason": "assigned for triage",
+            "assigned_to_user_id": USER_ID,
+        },
         headers=headers,
     )
     assert response.status_code == 409
@@ -154,7 +185,9 @@ def test_reindex_requires_reason_and_creates_audit(api):
     client, conn = api
     headers = {"x-admin-key": "a" * 40}
     assert client.post("/admin/search/reindex", headers=headers).status_code == 422
-    response = client.post("/admin/search/reindex", json={"reason": "requested index refresh"}, headers=headers)
+    response = client.post(
+        "/admin/search/reindex", json={"reason": "requested index refresh"}, headers=headers
+    )
     assert response.status_code == 200 and response.json() == {"indexed": 17}
     assert conn.audit[0]["action"] == "SEARCH_REINDEX"
 
@@ -162,13 +195,21 @@ def test_reindex_requires_reason_and_creates_audit(api):
 def test_session_rbac_and_csrf(api, monkeypatch):
     client, conn = api
     user = SimpleNamespace(id=UUID(USER_ID))
-    monkeypatch.setattr(security, "current_session", lambda request, connection: security.SessionContext(user, "opaque", hash_secret("csrf-secret")))
+    monkeypatch.setattr(
+        security,
+        "current_session",
+        lambda request, connection: security.SessionContext(
+            user, "opaque", hash_secret("csrf-secret")
+        ),
+    )
     client.cookies.set("hip_session", "session-value")
     url = f"/admin/sources/{SOURCE_ID}/active"
     action = {"active": False, "reason": "source manual moderation"}
     assert client.get("/admin/source-health").status_code == 200
     client.cookies.set("hip_csrf", "csrf-secret")
-    assert client.patch(url, json=action, headers={"x-csrf-token": "csrf-secret"}).status_code == 403
+    assert (
+        client.patch(url, json=action, headers={"x-csrf-token": "csrf-secret"}).status_code == 403
+    )
     conn.role = "OPERATOR"
     assert client.patch(url, json=action).status_code == 403  # missing CSRF header
     assert client.patch(url, json=action, headers={"x-csrf-token": "bad"}).status_code == 403
@@ -176,9 +217,23 @@ def test_session_rbac_and_csrf(api, monkeypatch):
     assert changed.status_code == 200
     assert conn.audit[0]["actor_kind"] == "USER_SESSION"
     assert conn.audit[0]["actor_user_id"] == USER_ID
-    assert client.post("/admin/search/reindex", json={"reason": "review of index drift"}, headers={"x-csrf-token": "csrf-secret"}).status_code == 403
+    assert (
+        client.post(
+            "/admin/search/reindex",
+            json={"reason": "review of index drift"},
+            headers={"x-csrf-token": "csrf-secret"},
+        ).status_code
+        == 403
+    )
     conn.role = "ADMIN"
-    assert client.post("/admin/search/reindex", json={"reason": "review of index drift"}, headers={"x-csrf-token": "csrf-secret"}).status_code == 200
+    assert (
+        client.post(
+            "/admin/search/reindex",
+            json={"reason": "review of index drift"},
+            headers={"x-csrf-token": "csrf-secret"},
+        ).status_code
+        == 200
+    )
     conn.role = None
     assert client.get("/admin/source-health").status_code == 403
 
@@ -187,7 +242,13 @@ def test_admin_uses_parameterized_queries_and_audit_provenance():
     conn = FakeConnection()
     repo = AdminRepository(conn)
     principal = AdminPrincipal(USER_ID, "USER_SESSION", "OPERATOR")
-    result = repo.change_source_active(source_id=SOURCE_ID, active=False, reason="investigating source", principal=principal, request_id="req_123")
+    result = repo.change_source_active(
+        source_id=SOURCE_ID,
+        active=False,
+        reason="investigating source",
+        principal=principal,
+        request_id="req_123",
+    )
     assert result and result["changed"]
     assert conn.audit[0]["request_id"] == "req_123"
     assert conn.audit[0]["before"] == '{"active": true}'
@@ -197,4 +258,8 @@ def test_admin_uses_parameterized_queries_and_audit_provenance():
 
 def test_openapi_includes_w6_mutation_contract():
     paths = app.openapi()["paths"]
-    assert {"/admin/audit", "/admin/sources/{source_id}/active", "/admin/review-queue/{review_id}"} <= set(paths)
+    assert {
+        "/admin/audit",
+        "/admin/sources/{source_id}/active",
+        "/admin/review-queue/{review_id}",
+    } <= set(paths)

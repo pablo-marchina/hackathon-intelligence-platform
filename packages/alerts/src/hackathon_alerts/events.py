@@ -21,7 +21,9 @@ def dedup_key(*parts: str) -> str:
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
-def new_match_alert(*, user_id: str, hackathon_id: str, saved_search_id: str, payload: dict[str, Any]) -> AlertCandidate:
+def new_match_alert(
+    *, user_id: str, hackathon_id: str, saved_search_id: str, payload: dict[str, Any]
+) -> AlertCandidate:
     return AlertCandidate(
         alert_type="new_match",
         hackathon_id=hackathon_id,

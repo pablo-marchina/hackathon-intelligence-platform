@@ -1,14 +1,14 @@
 """Readiness reflects database availability AND migration state."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-from sqlalchemy.exc import OperationalError, ProgrammingError
-
 import hackathon_api.main as main
+from fastapi.testclient import TestClient
 from hackathon_api.main import app
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 
 class Connection:
@@ -46,7 +46,7 @@ def test_migrated_database_is_ready(monkeypatch):
 
 def test_missing_or_outdated_schema_not_ready(monkeypatch):
     for value in (None, "0007_w6_source_operations"):
-        monkeypatch.setattr(main, "get_engine", lambda: Engine(Connection(value)))
+        monkeypatch.setattr(main, "get_engine", lambda value=value: Engine(Connection(value)))
         response = TestClient(app).get("/ready")
         assert response.status_code == 503
         assert response.json() == {"detail": "service not ready"}

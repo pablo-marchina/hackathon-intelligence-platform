@@ -6,14 +6,94 @@ from urllib.parse import urljoin, urlsplit
 from bs4 import BeautifulSoup
 
 ROLE_TERMS = {
-    "rules": ("rules", "regulation", "regulamento", "reglamento", "règlement", "terms", "eligibility", "参加規約", "규정", "规则"),
-    "registration": ("register", "registration", "apply", "inscri", "报名", "登録", "신청", "bewerb", "candidatura"),
-    "results": ("results", "winners", "resultado", "résultat", "gewinner", "risultati", "受賞", "수상", "获奖"),
-    "projects": ("projects", "submissions", "showcase", "gallery", "projet", "proyectos", "作品", "프로젝트", "项目"),
-    "faq": ("faq", "frequently asked", "questions", "dúvidas", "preguntas", "質問", "자주 묻", "常见问题"),
-    "schedule": ("schedule", "agenda", "timeline", "program", "cronograma", "programme", "zeitplan", "スケジュール", "일정", "日程"),
-    "organizer": ("organizer", "organiser", "host", "about us", "organization", "organização", "主催", "주최", "主办"),
-    "challenges": ("challenge", "challenges", "desafio", "défi", "challenge statements", "課題", "도전", "挑战"),
+    "rules": (
+        "rules",
+        "regulation",
+        "regulamento",
+        "reglamento",
+        "règlement",
+        "terms",
+        "eligibility",
+        "参加規約",
+        "규정",
+        "规则",
+    ),
+    "registration": (
+        "register",
+        "registration",
+        "apply",
+        "inscri",
+        "报名",
+        "登録",
+        "신청",
+        "bewerb",
+        "candidatura",
+    ),
+    "results": (
+        "results",
+        "winners",
+        "resultado",
+        "résultat",
+        "gewinner",
+        "risultati",
+        "受賞",
+        "수상",
+        "获奖",
+    ),
+    "projects": (
+        "projects",
+        "submissions",
+        "showcase",
+        "gallery",
+        "projet",
+        "proyectos",
+        "作品",
+        "프로젝트",
+        "项目",
+    ),
+    "faq": (
+        "faq",
+        "frequently asked",
+        "questions",
+        "dúvidas",
+        "preguntas",
+        "質問",
+        "자주 묻",
+        "常见问题",
+    ),
+    "schedule": (
+        "schedule",
+        "agenda",
+        "timeline",
+        "program",
+        "cronograma",
+        "programme",
+        "zeitplan",
+        "スケジュール",
+        "일정",
+        "日程",
+    ),
+    "organizer": (
+        "organizer",
+        "organiser",
+        "host",
+        "about us",
+        "organization",
+        "organização",
+        "主催",
+        "주최",
+        "主办",
+    ),
+    "challenges": (
+        "challenge",
+        "challenges",
+        "desafio",
+        "défi",
+        "challenge statements",
+        "課題",
+        "도전",
+        "挑战",
+    ),
 }
 
 ROLE_PRIORITY = {
@@ -90,7 +170,10 @@ def discover_related_links(
     seen: set[str] = set()
     result: list[RelatedLink] = []
     for anchor in soup.find_all("a", href=True):
-        absolute = urljoin(base_url, anchor["href"])
+        href = anchor.get("href")
+        if not isinstance(href, str):
+            continue
+        absolute = urljoin(base_url, href)
         if absolute in seen or not absolute.startswith(("http://", "https://")):
             continue
         text = " ".join(anchor.get_text(" ", strip=True).split())
