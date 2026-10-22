@@ -51,7 +51,11 @@ def test_nested_boolean_expression_compiles_with_bound_values() -> None:
     assert "ONLINE" not in spec.sql
     assert "BR" not in spec.sql
     assert list(spec.params[k] for k in sorted(spec.params) if k.startswith("advanced_")) == [
-        "REGISTRATION_OPEN", "ONLINE", "HYBRID", False, "BR"
+        "REGISTRATION_OPEN",
+        "ONLINE",
+        "HYBRID",
+        False,
+        "BR",
     ]
 
 
@@ -127,7 +131,11 @@ def test_contains_does_not_treat_sql_wildcards_as_pattern() -> None:
         {"field": "start_at", "op": "eq", "value": "2026-01-01"},
         {"field": "country_code", "op": "eq", "value": "BRA"},
         {"field": "track", "op": "contains", "value": "hack"},
-        {"field": "start_at", "op": "between", "value": ["2027-01-01T00:00:00Z", "2026-01-01T00:00:00Z"]},
+        {
+            "field": "start_at",
+            "op": "between",
+            "value": ["2027-01-01T00:00:00Z", "2026-01-01T00:00:00Z"],
+        },
         {"field": "minimum_age", "op": "between", "value": [18]},
         {"field": "name", "op": "is_known", "value": True},
         {"field": "name", "op": "in", "value": []},
