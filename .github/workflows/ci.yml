@@ -209,4 +209,4 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e . pip-audit
-      - run: pip-audit --strict
+      - run: pip-audit --strict --skip-editable
