@@ -188,9 +188,7 @@ def _typed_value(field: FilterField, value: Any) -> Any:
     return value
 
 
-def _field_for(
-    name: Any, dynamic_fields: dict[str, FilterField] | None
-) -> FilterField:
+def _field_for(name: Any, dynamic_fields: dict[str, FilterField] | None) -> FilterField:
     if isinstance(name, str) and name in FIELDS:
         return FIELDS[name]
     if isinstance(name, str) and re.fullmatch(r"attrs\.[a-z][a-z0-9_]{0,62}", name):
@@ -289,19 +287,14 @@ def compile_expression(
             path = bound(field.attribute_key)
             raw = "so.normalized_value_json"
             if field.kind == "text":
-                typed = (
-                    f"CASE WHEN jsonb_typeof({raw})='string' "
-                    f"THEN {raw} #>> '{{}}' END"
-                )
+                typed = f"CASE WHEN jsonb_typeof({raw})='string' THEN {raw} #>> '{{}}' END"
             elif field.kind == "number":
                 typed = (
-                    f"CASE WHEN jsonb_typeof({raw})='number' "
-                    f"THEN ({raw} #>> '{{}}')::numeric END"
+                    f"CASE WHEN jsonb_typeof({raw})='number' THEN ({raw} #>> '{{}}')::numeric END"
                 )
             else:
                 typed = (
-                    f"CASE WHEN jsonb_typeof({raw})='boolean' "
-                    f"THEN ({raw} #>> '{{}}')::boolean END"
+                    f"CASE WHEN jsonb_typeof({raw})='boolean' THEN ({raw} #>> '{{}}')::boolean END"
                 )
             column = (
                 f"(SELECT {typed} FROM canonical_field_selections cfs "
