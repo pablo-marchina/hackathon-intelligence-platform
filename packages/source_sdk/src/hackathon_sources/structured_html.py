@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urldefrag, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
+from pydantic import HttpUrl
 
 from .models import DiscoveredUrl, FetchResult, SourceEventRecord
 from .seed_adapter import SeedUrlAdapter
@@ -309,10 +310,10 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
             seen.add(candidate)
             results.append(
                 DiscoveredUrl(
-                    url=candidate,
+                    url=HttpUrl(candidate),
                     source_key=self.definition.key,
                     discovery_method="html_pagination" if is_pagination else "html_event_link",
-                    parent_url=result.final_url,
+                    parent_url=HttpUrl(result.final_url),
                     depth=1,
                     priority=self.definition.priority,
                 )
