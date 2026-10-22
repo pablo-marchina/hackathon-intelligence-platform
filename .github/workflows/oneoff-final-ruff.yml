@@ -24,9 +24,9 @@ jobs:
           from pathlib import Path
           p = Path('scripts/run_w2_live.py')
           s = p.read_text()
-          marker = 'add_repo_packages(Path(__file__).resolve().parents[1])\\nimport contextlib\\n'
+          marker = 'add_repo_packages(Path(__file__).resolve().parents[1])\nimport contextlib\n'
           if marker in s:
-              p.write_text(s.replace(marker, 'add_repo_packages(Path(__file__).resolve().parents[1])\\n'))
+              p.write_text(s.replace(marker, 'add_repo_packages(Path(__file__).resolve().parents[1])\n'))
           PY
       - run: ruff format apps packages scripts db/alembic/versions
       - run: ruff check apps packages scripts db/alembic/versions
