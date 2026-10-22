@@ -1,0 +1,637 @@
+{
+  "source": "GitHub Actions run 39834083060, python-quality, mypy 2026-10-22",
+  "note": "Existing mypy debt, not a clean typecheck. Fail on ANY new error signatures or increased counts.",
+  "total_errors": 189,
+  "entries": [
+    {
+      "path": "apps/api/src/hackathon_api/repositories/auth.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation",
+      "count": 6
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/catalog.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation",
+      "count": 6
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/catalog.py",
+      "code": "var-annotated",
+      "message": "Need type annotation for \"past\" (hint: \"past: list[<type>] = ...\")",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/catalog.py",
+      "code": "var-annotated",
+      "message": "Need type annotation for \"up\" (hint: \"up: list[<type>] = ...\")",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"float\" has incompatible type \"Any | int | None\"; expected \"str | Buffer | SupportsFloat | SupportsIndex\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"float\", target has type \"int\")",
+      "count": 2
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"list[str]\", target has type \"int\")",
+      "count": 4
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"str | None\", target has type \"int\")",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"str\", target has type \"int\")",
+      "count": 4
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"dict[str, Any]\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"_cursor_predicate\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation",
+      "count": 4
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/hackathons.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | None\" has no attribute \"isoformat\"",
+      "count": 2
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"_decode_library_cursor\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"_encode_library_cursor\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"profile\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/users.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/users.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation for one or more parameters",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/repositories/users.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation",
+      "count": 6
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/auth.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"_secure\" in typed context",
+      "count": 4
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/auth.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"create_session\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/auth.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"revoke\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/auth.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"upsert_identity\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/auth.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 5
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/catalog.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"list_series\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/catalog.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"organization\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/catalog.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"organizations\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/catalog.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"series\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/catalog.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"sources\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/catalog.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"taxonomy\" in typed context",
+      "count": 2
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/catalog.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 6
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/hackathons.py",
+      "code": "arg-type",
+      "message": "Argument \"registration_state\" to \"HackathonFilters\" has incompatible type \"list[str]\"; expected \"list[Literal['OPEN', 'UPCOMING', 'CLOSED', 'UNKNOWN']]\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/hackathons.py",
+      "code": "arg-type",
+      "message": "Argument \"sort\" to \"HackathonFilters\" has incompatible type \"str\"; expected \"Literal['relevance', 'deadline', 'start', 'quality']\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/hackathons.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"HackathonPage\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/hackathons.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"active_slug_for_retired\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/hackathons.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"by_slug\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/hackathons.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"search\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/hackathons.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/personalization.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 11
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/search.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/users.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"dict[str, Any]\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"delete_event_state\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"export_user\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"library\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"profile\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/users.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"set_event_state\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/routes/users.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a return type annotation",
+      "count": 5
+    },
+    {
+      "path": "apps/api/src/hackathon_api/schemas.py",
+      "code": "attr-defined",
+      "message": "\"object\" has no attribute \"__iter__\"; maybe \"__dir__\" or \"__str__\"? (not iterable)",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"bool | None\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"bool\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"datetime | None\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"float | None\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"int | None\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"int\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"list[Literal['OPEN', 'UPCOMING', 'CLOSED', 'UNKNOWN']]\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"list[str]\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"Literal['relevance', 'deadline', 'start', 'quality']\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"HackathonFilters\" has incompatible type \"**dict[str, object]\"; expected \"str | None\"",
+      "count": 1
+    },
+    {
+      "path": "apps/api/src/hackathon_api/search_parser.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"Match[str] | None\", variable has type \"Match[str]\")",
+      "count": 2
+    },
+    {
+      "path": "apps/api/src/hackathon_api/security.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"session_user\" in typed context",
+      "count": 1
+    },
+    {
+      "path": "apps/worker/src/hackathon_worker/app.py",
+      "code": "import-untyped",
+      "message": "Skipping analyzing \"celery\": module is installed, but missing library stubs or py.typed marker",
+      "count": 1
+    },
+    {
+      "path": "apps/worker/src/hackathon_worker/app.py",
+      "code": "untyped-decorator",
+      "message": "Untyped decorator makes function \"deliver_alert_email\" untyped",
+      "count": 1
+    },
+    {
+      "path": "apps/worker/src/hackathon_worker/app.py",
+      "code": "untyped-decorator",
+      "message": "Untyped decorator makes function \"dispatch_pending_email\" untyped",
+      "count": 1
+    },
+    {
+      "path": "apps/worker/src/hackathon_worker/app.py",
+      "code": "untyped-decorator",
+      "message": "Untyped decorator makes function \"generate_saved_search_matches\" untyped",
+      "count": 1
+    },
+    {
+      "path": "apps/worker/src/hackathon_worker/app.py",
+      "code": "untyped-decorator",
+      "message": "Untyped decorator makes function \"ping\" untyped",
+      "count": 1
+    },
+    {
+      "path": "apps/worker/src/hackathon_worker/app.py",
+      "code": "untyped-decorator",
+      "message": "Untyped decorator makes function \"run_source_scheduler_task\" untyped",
+      "count": 1
+    },
+    {
+      "path": "packages/alerts/src/hackathon_alerts/delivery.py",
+      "code": "no-any-return",
+      "message": "Returning Any from function declared to return \"int | None\"",
+      "count": 1
+    },
+    {
+      "path": "packages/discovery/src/hackathon_discovery/search.py",
+      "code": "arg-type",
+      "message": "Argument \"url\" to \"DiscoveredUrl\" has incompatible type \"str\"; expected \"HttpUrl\"",
+      "count": 1
+    },
+    {
+      "path": "packages/operations/src/hackathon_operations/dispatcher.py",
+      "code": "assignment",
+      "message": "Incompatible types in assignment (expression has type \"SourceDefinition | None\", variable has type \"SourceDefinition\")",
+      "count": 1
+    },
+    {
+      "path": "packages/operations/src/hackathon_operations/source_maintenance.py",
+      "code": "arg-type",
+      "message": "Argument \"run\" to \"_emit_regressions\" has incompatible type \"dict[Any, Any] | None\"; expected \"dict[str, Any]\"",
+      "count": 1
+    },
+    {
+      "path": "packages/operations/src/hackathon_operations/source_maintenance.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"_recent_run_sample\" has incompatible type \"dict[Any, Any] | None\"; expected \"dict[str, Any]\"",
+      "count": 1
+    },
+    {
+      "path": "packages/operations/src/hackathon_operations/source_maintenance.py",
+      "code": "index",
+      "message": "Value of type \"dict[Any, Any] | None\" is not indexable",
+      "count": 7
+    },
+    {
+      "path": "packages/recommendation/src/hackathon_recommendation/ranking.py",
+      "code": "no-untyped-call",
+      "message": "Call to untyped function \"norm\" in typed context",
+      "count": 2
+    },
+    {
+      "path": "packages/recommendation/src/hackathon_recommendation/ranking.py",
+      "code": "no-untyped-def",
+      "message": "Function is missing a type annotation",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/adapter.py",
+      "code": "unreachable",
+      "message": "Statement is unreachable",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/backlog.py",
+      "code": "type-arg",
+      "message": "Missing type arguments for generic type \"dict\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/live_adapters.py",
+      "code": "arg-type",
+      "message": "Argument \"official_url\" to \"SourceEventRecord\" has incompatible type \"str | None\"; expected \"HttpUrl | None\"",
+      "count": 3
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/live_adapters.py",
+      "code": "arg-type",
+      "message": "Argument \"official_url\" to \"SourceEventRecord\" has incompatible type \"str\"; expected \"HttpUrl | None\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/live_adapters.py",
+      "code": "arg-type",
+      "message": "Argument \"parent_url\" to \"DiscoveredUrl\" has incompatible type \"str\"; expected \"HttpUrl | None\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/live_adapters.py",
+      "code": "arg-type",
+      "message": "Argument \"source_url\" to \"SourceEventRecord\" has incompatible type \"str\"; expected \"HttpUrl\"",
+      "count": 4
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/live_adapters.py",
+      "code": "arg-type",
+      "message": "Argument \"url\" to \"DiscoveredUrl\" has incompatible type \"str\"; expected \"HttpUrl\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/live_adapters.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | dict[Any, Any] | None\" has no attribute \"get\"",
+      "count": 4
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/persistent_runner.py",
+      "code": "arg-type",
+      "message": "Argument \"structured_data\" to \"persist_document\" of \"RawDocumentRepository\" has incompatible type \"dict[str, Any] | list[Any] | None\"; expected \"dict[str, Any] | None\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/persistent_runner.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"SourceUrlBacklog | None\" has no attribute \"fail\"",
+      "count": 5
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/persistent_runner.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"SourceUrlBacklog | None\" has no attribute \"succeed\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/structured_html.py",
+      "code": "arg-type",
+      "message": "Argument \"official_url\" to \"SourceEventRecord\" has incompatible type \"str\"; expected \"HttpUrl | None\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/structured_html.py",
+      "code": "arg-type",
+      "message": "Argument \"source_url\" to \"SourceEventRecord\" has incompatible type \"str\"; expected \"HttpUrl\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "arg-type",
+      "message": "Argument \"parent_url\" to \"DiscoveredUrl\" has incompatible type \"str\"; expected \"HttpUrl | None\"",
+      "count": 4
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "arg-type",
+      "message": "Argument \"url\" to \"DiscoveredUrl\" has incompatible type \"str\"; expected \"HttpUrl\"",
+      "count": 4
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "arg-type",
+      "message": "Argument 1 to \"append\" of \"list\" has incompatible type \"Any | tuple[str, str] | None\"; expected \"Element[str]\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "import-untyped",
+      "message": "Library stubs not installed for \"defusedxml.common\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "import-untyped",
+      "message": "Library stubs not installed for \"defusedxml.ElementTree\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "misc",
+      "message": "Need more than 1 value to unpack (2 expected)",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | tuple[str, str] | None\" has no attribute \"__iter__\" (not iterable)",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | tuple[str, str] | None\" has no attribute \"attrib\"",
+      "count": 2
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | tuple[str, str] | None\" has no attribute \"clear\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | tuple[str, str] | None\" has no attribute \"tag\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"None\" of \"Any | tuple[str, str] | None\" has no attribute \"text\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"str\" of \"Any | str\" has no attribute \"attrib\"",
+      "count": 2
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"str\" of \"Any | str\" has no attribute \"tag\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"str\" of \"Any | str\" has no attribute \"text\"",
+      "count": 3
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"tuple[str, ...]\" of \"Any | tuple[str, str] | None\" has no attribute \"attrib\"",
+      "count": 2
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"tuple[str, ...]\" of \"Any | tuple[str, str] | None\" has no attribute \"clear\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"tuple[str, ...]\" of \"Any | tuple[str, str] | None\" has no attribute \"tag\"",
+      "count": 1
+    },
+    {
+      "path": "packages/source_sdk/src/hackathon_sources/syndication.py",
+      "code": "union-attr",
+      "message": "Item \"tuple[str, ...]\" of \"Any | tuple[str, str] | None\" has no attribute \"text\"",
+      "count": 1
+    }
+  ]
+}
