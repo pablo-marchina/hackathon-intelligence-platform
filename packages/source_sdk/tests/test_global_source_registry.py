@@ -49,3 +49,13 @@ def test_restricted_devpost_remains_restricted() -> None:
     definition = next(d for d in load_source_definitions(SEEDS) if d.key == "devpost")
     assert definition.permission_status is PermissionStatus.RESTRICTED
     assert not definition.detail_extraction_enabled
+
+
+def test_all_catalog_seed_hosts_are_explicitly_allowlisted() -> None:
+    for src in load_source_definitions(SEEDS):
+        allowed = {src.domain, *src.allowed_hosts}
+        for seed in src.seed_urls:
+            assert (urlsplit(str(seed)).hostname or "").lower() in allowed, (
+                src.key,
+                str(seed),
+            )
