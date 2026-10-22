@@ -304,10 +304,7 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
                 continue
             # An event listing query is not an event detail; discover it only via
             # a visible pagination control to prevent unbounded filter crawling.
-            if (
-                url.path.rstrip("/") == current.path.rstrip("/")
-                and not is_pagination
-            ):
+            if url.path.rstrip("/") == current.path.rstrip("/") and not is_pagination:
                 continue
             seen.add(candidate)
             results.append(
