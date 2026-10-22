@@ -203,9 +203,7 @@ class HackathonFilters(BaseModel):
 
     @field_validator("expression")
     @classmethod
-    def validate_advanced_expression(
-        cls, value: dict[str, Any] | None
-    ) -> dict[str, Any] | None:
+    def validate_advanced_expression(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
         from hackathon_api.advanced_filters import validate_expression
 
         return validate_expression(value)
