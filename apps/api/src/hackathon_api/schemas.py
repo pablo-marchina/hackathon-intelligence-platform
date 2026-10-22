@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -199,6 +199,16 @@ class HackathonFilters(BaseModel):
     limit: int = Field(default=30, ge=1, le=100)
     cursor: str | None = None
     sort: SortMode = "relevance"
+    expression: dict[str, Any] | None = None
+
+    @field_validator("expression")
+    @classmethod
+    def validate_advanced_expression(
+        cls, value: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        from hackathon_api.advanced_filters import validate_expression
+
+        return validate_expression(value)
 
     @field_validator("country_code", mode="before")
     @classmethod
