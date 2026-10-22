@@ -21,6 +21,7 @@ if __package__:
 else:
     from _local_packages import add_repo_packages
 add_repo_packages(Path(__file__).resolve().parents[1])
+
 from hackathon_intelligence.structured_projection import (  # noqa: E402
     PROJECTION_VERSION,
     project_structured_metadata,
@@ -805,7 +806,7 @@ async def main():
         print(
             json.dumps({"stage": "failed", "run_id": run_id, "error": f"{type(e).__name__}: {e}"})
         )
-        try:
+        with contextlib.suppress(Exception):
             await gate.update(
                 "w2_pipeline_runs",
                 [
@@ -817,8 +818,6 @@ async def main():
                     }
                 ],
             )
-        except Exception:
-            pass
         return 1
     finally:
         await gate.close()

@@ -8,6 +8,7 @@ fetch scope, even if the feed advertises them.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from gzip import GzipFile
 from io import BytesIO
@@ -236,7 +237,7 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         if end == len(items):
             next_url = _next_feed_page(root, kind, result.final_url, hosts)
             if next_url:
-                try:
+                with contextlib.suppress(ValidationError):
                     result_links.append(
                         DiscoveredUrl(
                             url=next_url,
@@ -248,8 +249,6 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                             metadata={"is_feed_page": True},
                         )
                     )
-                except ValidationError:
-                    pass
         return ListingPage(result_links, end, end < len(items))
 
     def _parse_large_listing(self, result: FetchResult, *, offset: int) -> ListingPage:
@@ -277,7 +276,6 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         stack: list[str] = []
         stack_nodes: list[ET.Element] = []
         kind: str | None = None
-        root: ET.Element | None = None
         next_url: str | None = None
         links: list[DiscoveredUrl] = []
         seen: set[str] = set()
@@ -380,7 +378,7 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                                         url = _allowed_url(raw, result.final_url, hosts)
                                 if url and url not in seen:
                                     seen.add(url)
-                                    try:
+                                    with contextlib.suppress(ValidationError):
                                         links.append(
                                             DiscoveredUrl(
                                                 url=url,
@@ -398,8 +396,6 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                                                 metadata={"feed_title": title} if title else {},
                                             )
                                         )
-                                    except ValidationError:
-                                        pass
                             entries += 1
                             # Discard processed siblings to keep memory bounded.
                             elem.clear()
@@ -418,7 +414,7 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         end = min(entries, offset + maximum)
         has_more = end < entries
         if not has_more and next_url:
-            try:
+            with contextlib.suppress(ValidationError):
                 links.append(
                     DiscoveredUrl(
                         url=next_url,
@@ -430,6 +426,4 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                         metadata={"is_feed_page": True},
                     )
                 )
-            except ValidationError:
-                pass
         return ListingPage(links, end, has_more)

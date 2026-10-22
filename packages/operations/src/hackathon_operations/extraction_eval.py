@@ -38,10 +38,7 @@ def evaluate_extraction_golden(path: Path) -> ExtractionBenchmarkResult:
             event = extract_structured_event(row["payload"], observed_at=now)
         elif row["shape"] == "jsonld":
             found = extract_event_jsonld(row["html"], observed_at=now)
-            if not found:
-                event = None
-            else:
-                event = found[0]
+            event = None if not found else found[0]
         else:
             raise ValueError(f"unknown extraction shape: {row['shape']}")
         expected = row["expected"]

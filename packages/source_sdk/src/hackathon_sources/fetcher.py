@@ -97,9 +97,8 @@ class FetchEngine:
         # discovered through RSS are crawled pages and MUST honor robots.txt.
         # (API behavior remains unchanged for explicitly documented API sources.)
         use_robots = robots_required(source, url)
-        if use_robots:
-            if not await self.robots.allowed(url, allowed_hosts=allowed_hosts):
-                raise PermissionError("robots.txt disallows fetch for configured user-agent")
+        if use_robots and not await self.robots.allowed(url, allowed_hosts=allowed_hosts):
+            raise PermissionError("robots.txt disallows fetch for configured user-agent")
 
         semaphore = self._semaphores.setdefault(domain, asyncio.Semaphore(source.concurrency_limit))
         await self.rate_limiter.wait(domain, source.rate_limit_per_minute)
@@ -115,9 +114,9 @@ class FetchEngine:
                 await validate_destination(current_url, allowed_hosts)
                 # A feed endpoint redirect is a *new* destination, not an
                 # implicitly authorized HTML detail page. Recheck robots.
-                if (use_robots or robots_required(source, current_url)) and not await self.robots.allowed(
-                    current_url, allowed_hosts=allowed_hosts
-                ):
+                if (
+                    use_robots or robots_required(source, current_url)
+                ) and not await self.robots.allowed(current_url, allowed_hosts=allowed_hosts):
                     raise PermissionError("robots.txt disallows redirect destination")
                 # Stream bodies under an explicit decoded-size ceiling; get() buffers
                 # the full response and can exhaust worker memory on malicious input.
