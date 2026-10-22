@@ -46,7 +46,7 @@ def test_migrated_database_is_ready(monkeypatch):
 
 def test_missing_or_outdated_schema_not_ready(monkeypatch):
     for value in (None, "0007_w6_source_operations"):
-        monkeypatch.setattr(main, "get_engine", lambda: Engine(Connection(value)))
+        monkeypatch.setattr(main, "get_engine", lambda value=value: Engine(Connection(value)))
         response = TestClient(app).get("/ready")
         assert response.status_code == 503
         assert response.json() == {"detail": "service not ready"}
