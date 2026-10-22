@@ -1,4 +1,5 @@
 """Authorized static HTML listings discover bounded same-site event links."""
+
 import asyncio
 from datetime import UTC, datetime
 
@@ -25,8 +26,11 @@ def source():
 
 def page(markup, url="https://events.example.org/hackathons?page=1"):
     return FetchResult(
-        requested_url=url, final_url=url, status_code=200,
-        content_type="text/html; charset=utf-8", body=markup.encode(),
+        requested_url=url,
+        final_url=url,
+        status_code=200,
+        content_type="text/html; charset=utf-8",
+        body=markup.encode(),
         fetched_at=datetime.now(UTC),
     )
 
@@ -53,9 +57,13 @@ def test_same_host_detail_links_and_visible_pagination():
         "https://events.example.org/hackathons?page=2",
     ]
     assert [x.discovery_method for x in links] == [
-        "html_event_link", "html_event_link", "html_pagination"
+        "html_event_link",
+        "html_event_link",
+        "html_pagination",
     ]
-    assert all(str(link.parent_url) == "https://events.example.org/hackathons?page=1" for link in links)
+    assert all(
+        str(link.parent_url) == "https://events.example.org/hackathons?page=1" for link in links
+    )
 
 
 def test_rejects_non_html():
