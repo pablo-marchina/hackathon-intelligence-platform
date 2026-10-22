@@ -29,6 +29,7 @@ class BacklogClaim:
     kind: str
     listing_offset: int = 0
     listing_hash: str | None = None
+    pagination_depth: int = 0
 
 
 class SourceUrlBacklog:
@@ -110,13 +111,17 @@ class SourceUrlBacklog:
                    attempts=b.attempts + 1
               FROM next_item
              WHERE b.id = next_item.id
-            RETURNING b.id, b.url, b.kind, b.listing_offset, b.listing_hash
+            RETURNING b.id, b.url, b.kind, b.listing_offset, b.listing_hash, b.metadata
         """), {"source_id": source_id, "token": token,
                "seconds": CLAIM_SECONDS, "max_attempts": MAX_ATTEMPTS}).mappings().first()
         if row is None:
             return None
+        metadata = row["metadata"] if isinstance(row["metadata"], dict) else {}
+        depth = metadata.get("pagination_depth", 0)
+        if type(depth) is not int or depth < 0:
+            depth = 0
         return BacklogClaim(int(row["id"]), str(row["url"]), token, str(row["kind"]),
-                            int(row["listing_offset"]), row["listing_hash"])
+                            int(row["listing_offset"]), row["listing_hash"], depth)
 
     def succeed(
         self, claim: BacklogClaim, *, next_offset: int = 0,

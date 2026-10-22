@@ -52,8 +52,16 @@ def verify() -> None:
     domain = f'{tag}.invalid'  # impossible to reach; FakeFetcher never performs HTTP
     root = f'https://{domain}/feed.xml'
     events = [f'https://{domain}/events/{i}' for i in range(3)]
-    rss = '<rss><channel>' + ''.join(f'<item><link>{url}</link></item>' for url in events) + '</channel></rss>'
-    responses = {root: _response(root, rss, 'application/rss+xml')}
+    next_page = f'{root}?page=2'
+    # The first feed explicitly points to a second feed document. The event
+    # on page two must reach the canonical search index despite a one-page
+    # budget per crawl. No real network requests are permitted.
+    rss = ('<rss xmlns:atom="http://www.w3.org/2005/Atom"><channel>'
+           + ''.join(f'<item><link>{url}</link></item>' for url in events[:2])
+           + '<atom:link rel="next" href="?page=2"/></channel></rss>')
+    rss_next = '<rss><channel><item><link>' + events[2] + '</link></item></channel></rss>'
+    responses = {root: _response(root, rss, 'application/rss+xml'),
+                 next_page: _response(next_page, rss_next, 'application/rss+xml')}
     for i, url in enumerate(events):
         html = '<script type="application/ld+json">' + json.dumps({
             '@context': 'https://schema.org', '@type': 'Event',
@@ -77,11 +85,11 @@ def verify() -> None:
             fetcher = FakeFetcher(responses)
             # Each run is deliberately too short to consume the whole feed.
             outcomes = [asyncio.run(run_source_persisted(adapter, fetcher, conn, max_pages=1))
-                        for _ in range(4)]
+                        for _ in range(5)]
             assert all(x.status == 'SUCCEEDED' for x in outcomes), outcomes
-            assert [x.persisted_event_refs for x in outcomes] == [0, 1, 1, 1]
-            assert fetcher.requests == [root] + events, fetcher.requests
-            assert sum(x.discovered_links for x in outcomes) == 3
+            assert [x.persisted_event_refs for x in outcomes] == [0, 1, 1, 0, 1]
+            assert fetcher.requests == [root] + events[:2] + [next_page, events[2]], fetcher.requests
+            assert sum(x.discovered_links for x in outcomes) == 4
             source_id = conn.execute(text('''
                 SELECT id::text FROM sources WHERE domain=:domain AND source_family=:family
             '''), {'domain': domain, 'family': f'ci-syndication-{tag}'}).scalar_one()
@@ -91,6 +99,11 @@ def verify() -> None:
                 WHERE r.source_id=CAST(:sid AS uuid)
             '''), {'sid': source_id}).scalar_one()
             assert staged == 3, staged
+            rss_next_depth = conn.execute(text('''
+                SELECT metadata->>'pagination_depth' FROM source_url_backlog
+                WHERE source_id=CAST(:sid AS uuid) AND url=:url
+            '''), {'sid': source_id, 'url': next_page}).scalar_one()
+            assert rss_next_depth == '1', rss_next_depth
             processor = CanonicalProcessor(conn)
             results = [processor.process_one() for _ in range(3)]
             conn.commit()
@@ -116,9 +129,9 @@ def verify() -> None:
             # A subsequent collector run must not refresh DONE seeds prematurely.
             followup = asyncio.run(run_source_persisted(adapter, fetcher, conn, max_pages=2))
             assert followup.fetched_pages == 0
-            assert len(fetcher.requests) == 4
+            assert len(fetcher.requests) == 5
             assert processor.process_one() is None
-            print('E2E PASS: RSS -> backlog -> 3 source records -> 3 canonicals -> searchable results')
+            print('E2E PASS: two RSS documents -> durable backlog -> 3 canonicals -> searchable results')
     finally:
         # This test is intended for an isolated throwaway DB in CI; discard it
         # after the job. No cleanup attempt may connect to production servers.

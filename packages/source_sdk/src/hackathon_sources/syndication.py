@@ -8,10 +8,15 @@ fetch scope, even if the feed advertises them.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from gzip import GzipFile
+from io import BytesIO
+from zlib import error as ZlibError
 from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree as ET
 
 from pydantic import ValidationError
+from defusedxml.ElementTree import DefusedXMLParser, fromstring as safe_xml_fromstring
+from defusedxml.common import DefusedXmlException
 
 from .models import DiscoveredUrl, FetchResult, IngestionMode
 from .structured_html import StructuredHtmlEventAdapter
@@ -19,6 +24,55 @@ from .structured_html import StructuredHtmlEventAdapter
 MAX_FEED_BYTES = 2 * 1024 * 1024
 MAX_FEED_LINKS = 2500
 MAX_CHILD_SITEMAPS = 250
+MAX_FEED_PAGE_HOPS = 100  # prevent unbounded next-page chains per seed
+# Large XML listings use a streaming parser instead of building a full tree.
+# The existing 2 MiB fast path stays unchanged for backwards compatibility.
+MAX_STREAM_XML_BYTES = 12 * 1024 * 1024
+MAX_STREAM_INPUT_BYTES = 8 * 1024 * 1024
+XML_STREAM_CHUNK = 32 * 1024
+MAX_STREAM_DEPTH = 32
+MAX_STREAM_ELEMENTS = 300_000
+
+
+def _bounded_xml_body(body: bytes) -> bytes | None:
+    """Accept plain or gzip sitemap XML, rejecting decompression bombs.
+
+    FetchEngine may already decompress Content-Encoding; only the gzip magic
+    determines whether another decompression pass is necessary.
+    """
+    if len(body) > MAX_FEED_BYTES:
+        return None
+    if body.startswith(b"\x1f\x8b"):
+        try:
+            with GzipFile(fileobj=BytesIO(body)) as zipped:
+                body = zipped.read(MAX_FEED_BYTES + 1)
+        except (OSError, EOFError, ZlibError):
+            return None
+        if len(body) > MAX_FEED_BYTES:
+            return None
+    return body
+
+
+def _next_feed_page(root: ET.Element, kind: str, base: str, hosts: set[str]) -> str | None:
+    """Only explicit feed-level rel=next links, never links from an event item.
+
+    The normal backlog deduplicates URLs and rechecks authorization on fetch.
+    """
+    if kind not in {"feed", "rss", "rdf"}:
+        return None
+    channels = [root] if kind == "feed" else [
+        item for item in root if _element_name(item.tag) == "channel"
+    ]
+    for channel in channels:
+        for item in channel:
+            if (_element_name(item.tag) != "link" or
+                    item.attrib.get("rel", "").casefold().strip() != "next"):
+                continue
+            href = item.attrib.get("href") or item.text
+            next_url = _allowed_url(href, base, hosts)
+            if next_url and next_url != base:
+                return next_url
+    return None
 
 
 @dataclass(frozen=True)
@@ -73,19 +127,32 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         if self.definition.ingestion_mode not in (IngestionMode.RSS, IngestionMode.SITEMAP):
             return empty
         content_type = (result.content_type or '').lower()
+        gzip_encoded = result.body.startswith(b'\x1f\x8b')
         is_xml = any(t in content_type for t in ('xml', 'rss', 'atom'))
-        if not is_xml and not result.body.lstrip().startswith(b'<?xml'):
+        # HTTP clients may transparently decode Content-Encoding: gzip while
+        # retaining application/octet-stream as the origin Content-Type. Trust
+        # an XML-looking URL extension only for choosing the parser, never as
+        # permission to follow its links or as proof the bytes are valid XML.
+        xml_path = urlsplit(result.final_url).path.lower().endswith(
+            ('.xml', '.xml.gz', '.rss', '.atom')
+        )
+        if 'html' in content_type or 'json' in content_type:
             return empty
-        if len(result.body) > MAX_FEED_BYTES:
+        if not (is_xml or gzip_encoded or xml_path or result.body.lstrip().startswith(b'<?xml')):
             return empty
+        body = _bounded_xml_body(result.body)
+        if body is None:
+            # Large documents are streamed with strict decompressed/input caps.
+            # Offsets keep their meaning across the two parsing paths.
+            return self._parse_large_listing(result, offset=offset)
         # stdlib ElementTree does not resolve external entities, but reject all
         # DTDs/entities explicitly. We do not need them for feeds and sitemaps.
-        body_casefold = result.body.upper()
+        body_casefold = body.upper()
         if b'<!DOCTYPE' in body_casefold or b'<!ENTITY' in body_casefold:
             return empty
         try:
-            root = ET.fromstring(result.body)
-        except ET.ParseError:
+            root = safe_xml_fromstring(body, forbid_dtd=True)
+        except (ET.ParseError, DefusedXmlException):
             return empty
 
         kind = _element_name(root.tag).lower()
@@ -142,4 +209,153 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                 ))
             except ValidationError:
                 continue
+        # An RSS/Atom publisher may paginate into *other XML documents*, unlike
+        # the in-document listing_offset cursor used by large feeds. Enqueue a
+        # next-page URL only after every entry in the current document has been
+        # checkpointed. No third-party host gets fetch permission from the feed.
+        if end == len(items):
+            next_url = _next_feed_page(root, kind, result.final_url, hosts)
+            if next_url:
+                try:
+                    result_links.append(DiscoveredUrl(
+                        url=next_url, source_key=self.definition.key,
+                        discovery_method='rss_pagination',
+                        parent_url=result.final_url, depth=1,
+                        priority=self.definition.priority,
+                        metadata={'is_feed_page': True},
+                    ))
+                except ValidationError:
+                    pass
         return ListingPage(result_links, end, end < len(items))
+
+    def _parse_large_listing(self, result: FetchResult, *, offset: int) -> ListingPage:
+        """Stream bounded XML without materializing all entries or expanded gzip.
+
+        A failed, truncated or unsafe document yields no discoveries. The runner
+        checkpoints discovered URLs and listing_offset only after a full parse.
+        """
+        empty = ListingPage([], 0, False)
+        data = result.body
+        if len(data) > MAX_STREAM_INPUT_BYTES:
+            return empty
+        compressed = data.startswith(b"\x1f\x8b")
+        stream = GzipFile(fileobj=BytesIO(data)) if compressed else BytesIO(data)
+        hosts = {self.definition.domain.lower(), *(h.lower() for h in self.definition.allowed_hosts)}
+        # Expat-level DTD/entity rejection also covers UTF-16/UTF-8 encodings;
+        # checking only raw ASCII sequences is not sufficient.
+        parser = ET.XMLPullParser(
+            events=("start", "end"), _parser=DefusedXMLParser(forbid_dtd=True),
+        )
+        stack: list[str] = []
+        stack_nodes: list[ET.Element] = []
+        kind: str | None = None
+        root: ET.Element | None = None
+        next_url: str | None = None
+        links: list[DiscoveredUrl] = []
+        seen: set[str] = set()
+        entries = 0
+        total_bytes = 0
+        elements_seen = 0
+        # Carry a short suffix so <!DOCTYPE / <!ENTITY split across read
+        # boundaries cannot bypass the prohibition on DTDs/entities.
+        tail = b""
+        try:
+            with stream:
+                while True:
+                    chunk = stream.read(XML_STREAM_CHUNK)
+                    if not chunk:
+                        break
+                    total_bytes += len(chunk)
+                    if total_bytes > MAX_STREAM_XML_BYTES:
+                        return empty
+                    scanned = (tail + chunk).upper()
+                    if b"<!DOCTYPE" in scanned or b"<!ENTITY" in scanned:
+                        return empty
+                    tail = scanned[-16:]
+                    parser.feed(chunk)
+                    for action, elem in parser.read_events():
+                        name = _element_name(elem.tag).lower()
+                        if action == "start":
+                            elements_seen += 1
+                            if elements_seen > MAX_STREAM_ELEMENTS or len(stack) >= MAX_STREAM_DEPTH:
+                                return empty
+                            stack.append(name)
+                            stack_nodes.append(elem)
+                            if len(stack) == 1:
+                                root = elem
+                                kind = name
+                                if kind not in {"rss", "rdf", "feed", "urlset", "sitemapindex"}:
+                                    return empty
+                                if ((kind in {"rss", "rdf", "feed"} and
+                                     self.definition.ingestion_mode != IngestionMode.RSS) or
+                                    (kind in {"urlset", "sitemapindex"} and
+                                     self.definition.ingestion_mode != IngestionMode.SITEMAP)):
+                                    return empty
+                            continue
+                        parent = stack[-2] if len(stack) > 1 else None
+                        # rel=next belongs to the feed/channel, never an entry.
+                        if (name == "link" and elem.attrib.get("rel", "").casefold().strip() == "next"
+                                and ((kind == "feed" and parent == "feed") or
+                                     (kind in {"rss", "rdf"} and parent == "channel"))):
+                            candidate = _allowed_url(elem.attrib.get("href") or elem.text,
+                                                     result.final_url, hosts)
+                            if candidate and candidate != result.final_url and not next_url:
+                                next_url = candidate
+                        entry_kind = ("sitemap" if kind == "sitemapindex" else
+                                      "url" if kind == "urlset" else
+                                      "entry" if kind == "feed" else "item")
+                        if name == entry_kind and parent in {"channel", "feed", "urlset", "sitemapindex", "rdf"}:
+                            maximum = MAX_CHILD_SITEMAPS if kind == "sitemapindex" else MAX_FEED_LINKS
+                            if offset <= entries < offset + maximum:
+                                url: str | None = None
+                                title: str | None = None
+                                for child in elem:
+                                    field = _element_name(child.tag)
+                                    if field == "title":
+                                        title = (child.text or "").strip()[:200] or None
+                                    elif field in {"loc", "link"}:
+                                        if field == "link" and child.attrib.get("rel", "alternate") != "alternate":
+                                            continue
+                                        raw = (child.attrib.get("href") or child.text) if field == "link" else child.text
+                                        url = _allowed_url(raw, result.final_url, hosts)
+                                if url and url not in seen:
+                                    seen.add(url)
+                                    try:
+                                        links.append(DiscoveredUrl(
+                                            url=url, source_key=self.definition.key,
+                                            discovery_method=("sitemap_index" if kind == "sitemapindex" else
+                                                              "sitemap" if kind == "urlset" else "rss_atom"),
+                                            parent_url=result.final_url, depth=1,
+                                            priority=self.definition.priority,
+                                            metadata={"feed_title": title} if title else {},
+                                        ))
+                                    except ValidationError:
+                                        pass
+                            entries += 1
+                            # Discard processed siblings to keep memory bounded.
+                            elem.clear()
+                            # Clear the direct parent as well. Otherwise empty
+                            # item nodes accumulate in a large RSS channel.
+                            if len(stack_nodes) > 1:
+                                stack_nodes[-2].clear()
+                        stack.pop()
+                        stack_nodes.pop()
+                parser.close()  # reject trailing malformed/truncated XML
+        except (ET.ParseError, DefusedXmlException, OSError, EOFError, ZlibError, ValueError):
+            return empty
+        if kind is None or stack:
+            return empty
+        maximum = MAX_CHILD_SITEMAPS if kind == "sitemapindex" else MAX_FEED_LINKS
+        end = min(entries, offset + maximum)
+        has_more = end < entries
+        if not has_more and next_url:
+            try:
+                links.append(DiscoveredUrl(
+                    url=next_url, source_key=self.definition.key,
+                    discovery_method="rss_pagination", parent_url=result.final_url,
+                    depth=1, priority=self.definition.priority,
+                    metadata={"is_feed_page": True},
+                ))
+            except ValidationError:
+                pass
+        return ListingPage(links, end, has_more)

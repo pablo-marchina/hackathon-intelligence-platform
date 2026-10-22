@@ -89,7 +89,16 @@ def verify() -> None:
             assert resumed is not None and resumed.token != crashed.token
             assert not SourceUrlBacklog(conn).succeed(crashed)
             assert SourceUrlBacklog(conn).succeed(resumed)
-        print("Source URL backlog SQL: source isolation, concurrency, retries, leases, recovery PASS")
+        # RSS page depth must survive a worker restart and a SQL roundtrip;
+        # it is used to bound cross-document pagination chains.
+        with engine.begin() as conn:
+            backlog = SourceUrlBacklog(conn)
+            backlog.add(sources[0], f"https://{tag}.example/feed.xml?page=14",
+                        kind="DISCOVERED", metadata={"pagination_depth": 14})
+            paginated = backlog.claim(sources[0])
+            assert paginated is not None and paginated.pagination_depth == 14
+            assert backlog.succeed(paginated)
+        print("Source URL backlog SQL: isolation, fencing, retries, recovery, RSS depth PASS")
     finally:
         try:
             with engine.begin() as conn:

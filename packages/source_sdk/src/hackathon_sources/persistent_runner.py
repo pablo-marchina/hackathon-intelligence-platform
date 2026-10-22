@@ -20,6 +20,7 @@ from .repositories import (
 )
 from .registry import SourceRegistryRepository
 from .backlog import SourceUrlBacklog, BacklogClaim
+from .syndication import MAX_FEED_PAGE_HOPS
 
 
 class SourcePausedError(RuntimeError):
@@ -342,10 +343,20 @@ async def run_source_persisted(
                 }
                 if host in allowed_hosts and same_source(candidate):
                     if backlog_repo is not None:
+                        metadata = {
+                            "discovery_method": item.discovery_method,
+                            "parent_url": str(item.parent_url) if item.parent_url else None,
+                        }
+                        if item.discovery_method == "rss_pagination":
+                            # Durable hop budget: malicious or broken feeds must
+                            # not generate an infinite chain across worker runs.
+                            depth = (claim.pagination_depth if claim else 0) + 1
+                            if depth > MAX_FEED_PAGE_HOPS:
+                                continue
+                            metadata["pagination_depth"] = depth
                         backlog_repo.add(
                             source_id, candidate, kind="DISCOVERED", priority=item.priority,
-                            metadata={"discovery_method": item.discovery_method,
-                                      "parent_url": str(item.parent_url) if item.parent_url else None},
+                            metadata=metadata,
                         )
                     elif candidate not in seen and candidate not in queue:
                         queue.append(candidate)

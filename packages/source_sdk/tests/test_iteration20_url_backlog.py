@@ -78,7 +78,7 @@ class MemoryBacklog:
         key = (source_id, url)
         if key not in self.entries:
             type(self).seq += 1
-            self.entries[key] = [type(self).seq, kind, 'PENDING', None, 0, None]
+            self.entries[key] = [type(self).seq, kind, 'PENDING', None, 0, None, dict(metadata or {})]
     def claim(self, source_id):
         items = [(key, row) for key, row in self.entries.items()
                  if key[0] == source_id and row[2] == 'PENDING']
@@ -88,7 +88,7 @@ class MemoryBacklog:
         token = f'token-{row[0]}'
         row[2], row[3] = 'CLAIMED', token
         self.history.append(key)
-        return BacklogClaim(row[0], key[1], token, row[1], row[4], row[5])
+        return BacklogClaim(row[0], key[1], token, row[1], row[4], row[5], row[6].get('pagination_depth', 0))
     def succeed(self, claim, *, next_offset=0, listing_hash=None, has_more=False):
         row = next((r for r in self.entries.values() if r[0] == claim.id), None)
         if not row or row[2] != 'CLAIMED' or row[3] != claim.token:
@@ -282,3 +282,55 @@ def test_large_feed_continuation_is_durable_between_runner_calls():
     assert row[2] == 'DONE' and row[4] == 0 and row[5] is None
     assert len(MemoryBacklog.entries) == MAX_FEED_LINKS + 5
     assert fetcher.visited == [root, root]
+
+
+def test_iteration27_paginated_rss_survives_worker_restarts():
+    root = 'https://campus.example/feed.xml'
+    page2 = 'https://campus.example/feed.xml?page=2'
+    event1 = 'https://campus.example/events/first'
+    event2 = 'https://campus.example/events/second'
+    atom = 'xmlns:atom="http://www.w3.org/2005/Atom"'
+    first_xml = f'<rss {atom}><channel><atom:link rel="next" href="?page=2"/><item><link>{event1}</link></item></channel></rss>'
+    second_xml = f'<rss><channel><item><link>{event2}</link></item></channel></rss>'
+    def html(url, name):
+        return '<script type="application/ld+json">' + json.dumps({
+            '@type': 'Event', 'name': name, 'startDate': '2027-04-01T10:00:00Z', 'url': url
+        }) + '</script>'
+    fetcher = Fetcher({
+        root: response(root, first_xml, 'application/xml'),
+        page2: response(page2, second_xml, 'application/xml'),
+        event1: response(event1, html(event1, 'First Hackathon'), 'text/html'),
+        event2: response(event2, html(event2, 'Second Hackathon'), 'text/html'),
+    })
+    conn = Connection()
+    a = asyncio.run(runner.run_source_persisted(SyndicatedEventAdapter(source()), fetcher, conn, max_pages=1))
+    assert a.fetched_pages == 1 and a.discovered_links == 2
+    sid = '00000000-0000-4000-8000-000000000001'
+    assert MemoryBacklog.entries[(sid, page2)][6]['pagination_depth'] == 1
+    b = asyncio.run(runner.run_source_persisted(SyndicatedEventAdapter(source()), fetcher, conn, max_pages=3))
+    assert b.fetched_pages == 3 and b.persisted_event_refs == 2
+    assert fetcher.visited == [root, event1, page2, event2]
+    assert b.backlog_counts == {'DONE': 4}
+    c = asyncio.run(runner.run_source_persisted(SyndicatedEventAdapter(source()), fetcher, conn, max_pages=4))
+    assert c.fetched_pages == 0
+
+
+def test_iteration27_pagination_hop_budget_survives_restart():
+    from hackathon_sources.syndication import MAX_FEED_PAGE_HOPS
+    root = 'https://campus.example/feed.xml'
+    page2 = 'https://campus.example/feed.xml?page=2'
+    page3 = 'https://campus.example/feed.xml?page=3'
+    def atom_next(url):
+        return response(url, f'<feed xmlns="http://www.w3.org/2005/Atom"><link rel="next" href="{page3}"/></feed>', 'application/atom+xml')
+    pages = {root: response(root, f'<feed xmlns="http://www.w3.org/2005/Atom"><link rel="next" href="{page2}"/></feed>', 'application/atom+xml'),
+             page2: atom_next(page2)}
+    fetcher = Fetcher(pages)
+    conn = Connection()
+    asyncio.run(runner.run_source_persisted(SyndicatedEventAdapter(source()), fetcher, conn, max_pages=1))
+    sid = '00000000-0000-4000-8000-000000000001'
+    # Simulate the hundredth page of a long-running chain after many prior runs.
+    MemoryBacklog.entries[(sid, page2)][6]['pagination_depth'] = MAX_FEED_PAGE_HOPS
+    result = asyncio.run(runner.run_source_persisted(SyndicatedEventAdapter(source()), fetcher, conn, max_pages=3))
+    assert result.fetched_pages == 1
+    assert (sid, page3) not in MemoryBacklog.entries
+    assert fetcher.visited == [root, page2]
