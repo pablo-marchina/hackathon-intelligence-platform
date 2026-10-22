@@ -199,14 +199,6 @@ class HackathonFilters(BaseModel):
     limit: int = Field(default=30, ge=1, le=100)
     cursor: str | None = None
     sort: SortMode = "relevance"
-    expression: dict[str, Any] | None = None
-
-    @field_validator("expression")
-    @classmethod
-    def validate_advanced_expression(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
-        from hackathon_api.advanced_filters import validate_expression
-
-        return validate_expression(value)
 
     @field_validator("country_code", mode="before")
     @classmethod
@@ -221,6 +213,19 @@ class HackathonFilters(BaseModel):
     @classmethod
     def normalize_eligible_country(cls, value: str | None) -> str | None:
         return value.upper() if value else value
+
+
+class AdvancedHackathonFilters(HackathonFilters):
+    """POST-only extension; keeps the legacy GET and natural-language schemas stable."""
+
+    expression: dict[str, Any] | None = None
+
+    @field_validator("expression")
+    @classmethod
+    def validate_advanced_expression(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        from hackathon_api.advanced_filters import validate_expression
+
+        return validate_expression(value)
 
 
 class HackathonPage(BaseModel):
