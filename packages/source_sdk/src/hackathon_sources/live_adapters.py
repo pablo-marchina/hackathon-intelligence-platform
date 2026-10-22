@@ -8,6 +8,8 @@ from collections.abc import AsyncIterator, Iterable
 from datetime import date
 from typing import Any
 
+from pydantic import HttpUrl
+
 from .adapter import SourceAdapter
 from .models import DiscoveredUrl, FetchResult, SourceEventRecord
 
@@ -279,7 +281,7 @@ class AgendaTechBrasilAdapter(ApiSeedAdapter):
                     source_event_id=f"agenda-tech-{year}-{identifier}",
                     name=name.strip(),
                     source_url=result.final_url,
-                    official_url=website,
+                    official_url=HttpUrl(website) if website else None,
                     starts_at_raw=starts,
                     ends_at_raw=ends,
                     format_raw=event.get("tipo"),
