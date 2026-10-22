@@ -1,11 +1,11 @@
 """W6: prevent all diagnostic runners from silently bypassing source pause."""
+
 from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
 
 import pytest
-
 from hackathon_sources.adapter import SourceAdapter
 from hackathon_sources.models import (
     DiscoveredUrl,
@@ -112,7 +112,9 @@ def test_rest_gate_pause_before_first_insert():
 def test_rest_gate_pause_between_pages_finishes_cancelled():
     adapter, fetcher, sink = Adapter(), Fetcher(), Sink()
     checks = iter([True, True, False])
-    result = asyncio.run(run_source_rest_gate(adapter, fetcher, sink, is_active=lambda _: next(checks)))
+    result = asyncio.run(
+        run_source_rest_gate(adapter, fetcher, sink, is_active=lambda _: next(checks))
+    )
     assert result.status == "CANCELLED"
     assert result.fetched_pages == 1
     assert len(fetcher.urls) == 1

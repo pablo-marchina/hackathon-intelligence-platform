@@ -41,15 +41,21 @@ def normalized_signature(value: Any, field_path: str | None = None) -> str:
 
 
 def detect_conflict(field_path: str, values: Iterable[Any]) -> tuple[bool, str]:
-    signatures = {normalized_signature(value, field_path=field_path) for value in values if value is not None}
+    signatures = {
+        normalized_signature(value, field_path=field_path) for value in values if value is not None
+    }
     conflict = len(signatures) > 1
     severity = IMPORTANT_FIELDS.get(field_path, "LOW") if conflict else "LOW"
     return conflict, severity
 
 
-def build_conflict_record(field_path: str, observations: Iterable[tuple[int, Any]]) -> ConflictRecord | None:
+def build_conflict_record(
+    field_path: str, observations: Iterable[tuple[int, Any]]
+) -> ConflictRecord | None:
     rows = [(int(obs_id), value) for obs_id, value in observations if value is not None]
     conflict, severity = detect_conflict(field_path, [value for _, value in rows])
     if not conflict:
         return None
-    return ConflictRecord(field_path, severity, tuple(obs_id for obs_id, _ in rows), tuple(value for _, value in rows))
+    return ConflictRecord(
+        field_path, severity, tuple(obs_id for obs_id, _ in rows), tuple(value for _, value in rows)
+    )

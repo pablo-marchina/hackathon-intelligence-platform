@@ -13,16 +13,22 @@ class FakeFetcher:
     async def fetch(self, source, url, *, etag=None, last_modified=None):
         page = 2 if "page=2" in url else 1
         payload = {
-            "data": [{
-                "id": f"event-{page}",
-                "name": f"Hack {page}",
-                "website": f"https://event{page}.example",
-                "starts_at": "2026-11-01T10:00:00Z",
-                "ends_at": "2026-11-01T20:00:00Z",
-                "modality": "online",
-                "location": {},
-            }],
-            "links": {"next": "https://dash.hackathons.hackclub.com/api/v1/hackathons?page=2" if page == 1 else None},
+            "data": [
+                {
+                    "id": f"event-{page}",
+                    "name": f"Hack {page}",
+                    "website": f"https://event{page}.example",
+                    "starts_at": "2026-11-01T10:00:00Z",
+                    "ends_at": "2026-11-01T20:00:00Z",
+                    "modality": "online",
+                    "location": {},
+                }
+            ],
+            "links": {
+                "next": "https://dash.hackathons.hackclub.com/api/v1/hackathons?page=2"
+                if page == 1
+                else None
+            },
         }
         return FetchResult(
             requested_url=url,

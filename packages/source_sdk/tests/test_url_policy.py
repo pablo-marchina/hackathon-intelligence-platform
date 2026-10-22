@@ -19,7 +19,10 @@ def source(**overrides):
 
 
 def test_canonicalize_url_removes_tracking_and_fragment() -> None:
-    assert canonicalize_url("HTTPS://Example.com/events/?utm_source=x&b=2&a=1#top") == "https://example.com/events?a=1&b=2"
+    assert (
+        canonicalize_url("HTTPS://Example.com/events/?utm_source=x&b=2&a=1#top")
+        == "https://example.com/events?a=1&b=2"
+    )
 
 
 def test_discovery_only_source_cannot_be_fetched() -> None:

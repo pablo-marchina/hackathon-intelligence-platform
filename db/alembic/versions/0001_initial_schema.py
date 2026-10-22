@@ -3,10 +3,11 @@
 Revision ID: 0001_initial_schema
 Revises: None
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from alembic import op
 
@@ -143,12 +144,29 @@ def downgrade() -> None:
         "DROP FUNCTION IF EXISTS set_updated_at() CASCADE",
     ]
     enum_types = [
-        "auth_provider", "frontier_state", "fetch_status", "crawl_run_status",
-        "extraction_method", "phase_type", "resource_type", "requirement_type",
-        "person_role", "organization_role", "alert_delivery_status", "alert_channel",
-        "user_event_state", "eligibility_result", "dedup_decision", "conflict_severity",
-        "review_state", "source_health", "source_ingestion_mode", "location_type",
-        "event_format", "event_status", "event_type",
+        "auth_provider",
+        "frontier_state",
+        "fetch_status",
+        "crawl_run_status",
+        "extraction_method",
+        "phase_type",
+        "resource_type",
+        "requirement_type",
+        "person_role",
+        "organization_role",
+        "alert_delivery_status",
+        "alert_channel",
+        "user_event_state",
+        "eligibility_result",
+        "dedup_decision",
+        "conflict_severity",
+        "review_state",
+        "source_health",
+        "source_ingestion_mode",
+        "location_type",
+        "event_format",
+        "event_status",
+        "event_type",
     ]
     for statement in statements:
         bind.exec_driver_sql(statement)

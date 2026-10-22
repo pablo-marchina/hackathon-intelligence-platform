@@ -40,16 +40,27 @@ class ReconciliationPolicy:
 
 
 FIELD_FAMILIES = {
-    "registration_close_at": "rules_sensitive", "submission_close_at": "rules_sensitive",
-    "prize_pool.normalized_usd_amount": "rules_sensitive", "eligibility": "rules_sensitive",
-    "eligibility_text": "rules_sensitive", "start_at": "schedule", "end_at": "schedule",
-    "location": "schedule", "primary_location_id": "schedule",
+    "registration_close_at": "rules_sensitive",
+    "submission_close_at": "rules_sensitive",
+    "prize_pool.normalized_usd_amount": "rules_sensitive",
+    "eligibility": "rules_sensitive",
+    "eligibility_text": "rules_sensitive",
+    "start_at": "schedule",
+    "end_at": "schedule",
+    "location": "schedule",
+    "primary_location_id": "schedule",
 }
 
 ROLE_AUTHORITY = {
-    "official_rules": 1.00, "official_event": 0.97, "organizer": 0.92,
-    "hosting_platform": 0.78, "trusted_aggregator": 0.62, "aggregator": 0.45,
-    "community": 0.35, "search_discovery": 0.20, "unknown": 0.10,
+    "official_rules": 1.00,
+    "official_event": 0.97,
+    "organizer": 0.92,
+    "hosting_platform": 0.78,
+    "trusted_aggregator": 0.62,
+    "aggregator": 0.45,
+    "community": 0.35,
+    "search_discovery": 0.20,
+    "unknown": 0.10,
 }
 
 
@@ -58,7 +69,11 @@ def authority_for(field_path: str, source_role: str) -> float:
     family = FIELD_FAMILIES.get(field_path, "generic")
     if family == "rules_sensitive" and source_role == "official_rules":
         return 1.0
-    if family == "rules_sensitive" and source_role in {"aggregator", "community", "search_discovery"}:
+    if family == "rules_sensitive" and source_role in {
+        "aggregator",
+        "community",
+        "search_discovery",
+    }:
         return max(0.05, base - 0.15)
     if family == "schedule" and source_role in {"official_event", "organizer"}:
         return min(1.0, base + 0.03)
@@ -68,15 +83,36 @@ def authority_for(field_path: str, source_role: str) -> float:
 def policy_for_field(field_path: str) -> ReconciliationPolicy:
     family = FIELD_FAMILIES.get(field_path, "generic")
     if family == "rules_sensitive":
-        return ReconciliationPolicy(authority_weight=0.55, freshness_weight=0.15, confidence_weight=0.15, explicitness_weight=0.10, agreement_weight=0.05, version="reconcile-v2-rules")
+        return ReconciliationPolicy(
+            authority_weight=0.55,
+            freshness_weight=0.15,
+            confidence_weight=0.15,
+            explicitness_weight=0.10,
+            agreement_weight=0.05,
+            version="reconcile-v2-rules",
+        )
     if family == "schedule":
-        return ReconciliationPolicy(authority_weight=0.45, freshness_weight=0.25, confidence_weight=0.15, explicitness_weight=0.10, agreement_weight=0.05, version="reconcile-v2-schedule")
+        return ReconciliationPolicy(
+            authority_weight=0.45,
+            freshness_weight=0.25,
+            confidence_weight=0.15,
+            explicitness_weight=0.10,
+            agreement_weight=0.05,
+            version="reconcile-v2-schedule",
+        )
     return ReconciliationPolicy(version="reconcile-v2-generic")
 
 
-def select_canonical(candidates: list[CandidateObservation], policy: ReconciliationPolicy, *, now: datetime | None = None) -> tuple[CandidateObservation, float]:
+def select_canonical(
+    candidates: list[CandidateObservation],
+    policy: ReconciliationPolicy,
+    *,
+    now: datetime | None = None,
+) -> tuple[CandidateObservation, float]:
     if not candidates:
         raise ValueError("at least one candidate is required")
     ranked = [(candidate, policy.score(candidate, now=now)) for candidate in candidates]
-    ranked.sort(key=lambda item: (item[1], item[0].observed_at, -item[0].observation_id), reverse=True)
+    ranked.sort(
+        key=lambda item: (item[1], item[0].observed_at, -item[0].observation_id), reverse=True
+    )
     return ranked[0]

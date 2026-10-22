@@ -1,4 +1,5 @@
 """Versioned, fail-closed evaluation gates for continuous integration."""
+
 from __future__ import annotations
 
 import json
@@ -30,12 +31,18 @@ def evaluate_gates(result: dict[str, Any], config: dict[str, Any]) -> dict[str, 
         floor = max(float(gate["floor"]), float(gate["baseline"]) - float(gate["maximum_drop"]))
         measured = float(metric["value"])
         if not metric.get("passed") or not math.isfinite(measured) or measured < floor:
-            failures.append(f"{name}: {metric['value']} below required {floor} or internal gate failed")
+            failures.append(
+                f"{name}: {metric['value']} below required {floor} or internal gate failed"
+            )
     for section, minimums in config.get("support_gates", {}).items():
         measurements = result.get(section, {})
         for name, minimum in minimums.items():
             measured = measurements.get(name)
-            if measured is None or not math.isfinite(float(measured)) or float(measured) < float(minimum):
+            if (
+                measured is None
+                or not math.isfinite(float(measured))
+                or float(measured) < float(minimum)
+            ):
                 failures.append(f"{section}.{name}: {measured} below required {minimum}")
     for section, exacts in config.get("exact_gates", {}).items():
         measurements = result.get(section, {})

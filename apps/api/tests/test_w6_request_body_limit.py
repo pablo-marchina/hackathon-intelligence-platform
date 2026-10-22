@@ -1,17 +1,18 @@
 """Limits at the ASGI boundary, not only a client-provided length header."""
+
 from __future__ import annotations
 
 import asyncio
 import json
 
 from fastapi.testclient import TestClient
-
 from hackathon_api.body_limit import RequestBodyLimitMiddleware
 from hackathon_api.main import app
 
 
-def call_asgi(parts: list[bytes], headers: list[tuple[bytes, bytes]] | None = None,
-              *, max_bytes: int = 6) -> tuple[list[dict], int]:
+def call_asgi(
+    parts: list[bytes], headers: list[tuple[bytes, bytes]] | None = None, *, max_bytes: int = 6
+) -> tuple[list[dict], int]:
     """Deliver explicitly framed ASGI chunks, avoiding HTTP client re-framing."""
     downstream_calls = 0
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Explicit, off-by-default incremental normalizer (no crawling)."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,6 +9,7 @@ import os
 from pathlib import Path
 
 from sqlalchemy import create_engine
+
 from scripts._local_packages import add_repo_packages
 
 add_repo_packages(Path(__file__).resolve().parents[1])
@@ -15,7 +17,9 @@ from hackathon_intelligence.incremental import CanonicalProcessor  # noqa: E402
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Canonicalize already-collected, authorized source-event records")
+    parser = argparse.ArgumentParser(
+        description="Canonicalize already-collected, authorized source-event records"
+    )
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument("--apply", action="store_true", help="Required to write to the catalog")
     args = parser.parse_args()

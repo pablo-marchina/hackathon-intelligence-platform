@@ -1,4 +1,5 @@
 """Hermetic checks of connection-time DNS pinning and TLS host preservation."""
+
 from __future__ import annotations
 
 import asyncio
@@ -8,7 +9,6 @@ from collections.abc import Callable, Iterable
 import httpcore
 import httpx
 import pytest
-
 from hackathon_sources.fetcher import FetchEngine
 from hackathon_sources.models import IngestionMode, PermissionStatus, SourceDefinition
 from hackathon_sources.network_guard import (
@@ -35,7 +35,9 @@ class FakeStream(httpcore.AsyncNetworkStream):
         pass
 
     async def start_tls(
-        self, ssl_context: object, server_hostname: str | None = None,
+        self,
+        ssl_context: object,
+        server_hostname: str | None = None,
         timeout: float | None = None,
     ) -> httpcore.AsyncNetworkStream:
         self.tls_hostname = server_hostname
@@ -52,8 +54,12 @@ class FakeDelegate(httpcore.AsyncNetworkBackend):
         self.fail_first = fail_first
 
     async def connect_tcp(
-        self, host: str, port: int, timeout: float | None = None,
-        local_address: str | None = None, socket_options: Iterable[httpcore.SOCKET_OPTION] | None = None,
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,
+        local_address: str | None = None,
+        socket_options: Iterable[httpcore.SOCKET_OPTION] | None = None,
     ) -> httpcore.AsyncNetworkStream:
         self.hosts.append(host)
         if self.fail_first and len(self.hosts) == 1:
@@ -61,7 +67,9 @@ class FakeDelegate(httpcore.AsyncNetworkBackend):
         return self.stream
 
     async def connect_unix_socket(
-        self, path: str, timeout: float | None = None,
+        self,
+        path: str,
+        timeout: float | None = None,
         socket_options: Iterable[httpcore.SOCKET_OPTION] | None = None,
     ) -> httpcore.AsyncNetworkStream:
         raise AssertionError("Unix sockets are never acceptable")
@@ -72,20 +80,32 @@ class FakeDelegate(httpcore.AsyncNetworkBackend):
 
 def dns(monkeypatch: pytest.MonkeyPatch, answer: Callable[[], list[str]]) -> None:
     """Fake only DNS, not the security checks or HTTP request pipeline."""
+
     async def lookup(self: asyncio.AbstractEventLoop, host: str, port: int, **kw: object):
         return [
-            (socket.AF_INET6 if ":" in ip else socket.AF_INET,
-             socket.SOCK_STREAM, 6, "", (ip, port))
+            (
+                socket.AF_INET6 if ":" in ip else socket.AF_INET,
+                socket.SOCK_STREAM,
+                6,
+                "",
+                (ip, port),
+            )
             for ip in answer()
         ]
+
     monkeypatch.setattr("asyncio.base_events.BaseEventLoop.getaddrinfo", lookup)
 
 
 def source() -> SourceDefinition:
     return SourceDefinition(
-        key="pinned", name="Pinned", domain="example.org", source_family="example",
-        source_type="platform", ingestion_mode=IngestionMode.API,
-        permission_status=PermissionStatus.ALLOWED, detail_extraction_enabled=True,
+        key="pinned",
+        name="Pinned",
+        domain="example.org",
+        source_family="example",
+        source_type="platform",
+        ingestion_mode=IngestionMode.API,
+        permission_status=PermissionStatus.ALLOWED,
+        detail_extraction_enabled=True,
     )
 
 
@@ -159,6 +179,7 @@ def test_failed_public_ip_connection_only_falls_back_to_another_public_ip(
 def test_dns_failure_is_not_treated_as_public(monkeypatch: pytest.MonkeyPatch) -> None:
     async def unreachable(self, host: str, port: int, **kw: object):
         raise socket.gaierror("failure")
+
     monkeypatch.setattr("asyncio.base_events.BaseEventLoop.getaddrinfo", unreachable)
     with pytest.raises(PermissionError, match="DNS lookup failed"):
         asyncio.run(resolve_public_addresses("example.org"))
@@ -188,7 +209,8 @@ def test_fetch_engine_shares_one_pinned_transport_with_robots() -> None:
             assert fetcher.robots.client is fetcher.client
             assert isinstance(fetcher.client._transport, PinnedAsyncHTTPTransport)
             assert isinstance(
-                fetcher.client._transport._pool._network_backend, PublicIPNetworkBackend,
+                fetcher.client._transport._pool._network_backend,
+                PublicIPNetworkBackend,
             )
             assert fetcher.client._trust_env is False
 

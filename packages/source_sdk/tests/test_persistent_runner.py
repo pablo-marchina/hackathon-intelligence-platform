@@ -58,7 +58,9 @@ class Fetcher:
             final_url=url,
             status_code=200,
             content_type="application/json",
-            body=json.dumps({"data": [{"id": "e1", "name": "Live Hack", "url": "https://hack.example/"}]}).encode(),
+            body=json.dumps(
+                {"data": [{"id": "e1", "name": "Live Hack", "url": "https://hack.example/"}]}
+            ).encode(),
             fetched_at=datetime.now(UTC),
         )
 
@@ -150,6 +152,7 @@ class Refs:
 @pytest.fixture(autouse=True)
 def stage_records_in_memory(monkeypatch):
     """The production handoff writes SQL; fake Connections cannot execute SQL."""
+
     class Payloads:
         staged: list[dict] = []
 
@@ -250,8 +253,16 @@ def test_operator_pause_is_checked_again_between_pages(monkeypatch) -> None:
 
     class TwoPageAdapter(Adapter):
         async def discover(self):
-            yield DiscoveredUrl(url="https://api.example.com/events", source_key=self.definition.key, discovery_method="api")
-            yield DiscoveredUrl(url="https://api.example.com/events?page=2", source_key=self.definition.key, discovery_method="api")
+            yield DiscoveredUrl(
+                url="https://api.example.com/events",
+                source_key=self.definition.key,
+                discovery_method="api",
+            )
+            yield DiscoveredUrl(
+                url="https://api.example.com/events?page=2",
+                source_key=self.definition.key,
+                discovery_method="api",
+            )
 
     class CountFetcher(Fetcher):
         calls = 0
@@ -268,7 +279,11 @@ def test_operator_pause_is_checked_again_between_pages(monkeypatch) -> None:
     monkeypatch.setattr(module, "RawDocumentRepository", Raw)
     monkeypatch.setattr(module, "SourceEventRefRepository", Refs)
     fetcher = CountFetcher()
-    result = asyncio.run(module.run_source_persisted(TwoPageAdapter(definition()), fetcher, Connection(), max_pages=2))
+    result = asyncio.run(
+        module.run_source_persisted(
+            TwoPageAdapter(definition()), fetcher, Connection(), max_pages=2
+        )
+    )
     assert fetcher.calls == 1
     assert result.status == "CANCELLED"
     assert result.fetched_pages == 1
@@ -282,21 +297,24 @@ def test_not_authorized_prevents_starting_crawl(monkeypatch) -> None:
 
     class NoCrawl(Crawl):
         def start_run(self, source_id):
-            raise AssertionError('unapproved source must not create a crawl')
+            raise AssertionError("unapproved source must not create a crawl")
 
-    monkeypatch.setattr(module, 'SourceRegistryRepository', RestrictedRegistry)
-    monkeypatch.setattr(module, 'CrawlRepository', NoCrawl)
-    with __import__('pytest').raises(module.SourceNotAuthorizedError):
+    monkeypatch.setattr(module, "SourceRegistryRepository", RestrictedRegistry)
+    monkeypatch.setattr(module, "CrawlRepository", NoCrawl)
+    with __import__("pytest").raises(module.SourceNotAuthorizedError):
         asyncio.run(module.run_source_persisted(Adapter(definition()), Fetcher(), Connection()))
 
 
 def test_registry_upsert_does_not_overwrite_operator_policy():
     from pathlib import Path
-    text = (Path(__file__).resolve().parents[1] / 'src/hackathon_sources/registry.py').read_text()
-    update = text.split('ON CONFLICT (domain, source_family) DO UPDATE SET', 1)[1].split('"""', 1)[0]
-    assert 'permission_status = EXCLUDED' not in update
-    assert 'ingestion_mode = EXCLUDED' not in update
-    assert 'discovery_enabled = EXCLUDED' not in update
+
+    text = (Path(__file__).resolve().parents[1] / "src/hackathon_sources/registry.py").read_text()
+    update = text.split("ON CONFLICT (domain, source_family) DO UPDATE SET", 1)[1].split('"""', 1)[
+        0
+    ]
+    assert "permission_status = EXCLUDED" not in update
+    assert "ingestion_mode = EXCLUDED" not in update
+    assert "discovery_enabled = EXCLUDED" not in update
 
 
 def test_expired_scheduler_lease_prevents_discovery(monkeypatch):
@@ -306,34 +324,44 @@ def test_expired_scheduler_lease_prevents_discovery(monkeypatch):
 
     class NoCrawl(Crawl):
         def start_run(self, source_id):
-            raise AssertionError('no crawl may start with expired lease')
+            raise AssertionError("no crawl may start with expired lease")
 
-    monkeypatch.setattr(module, 'SourceRegistryRepository', LeaseExpired)
-    monkeypatch.setattr(module, 'CrawlRepository', NoCrawl)
-    with __import__('pytest').raises(module.SourcePausedError, match='lease'):
-        asyncio.run(module.run_source_persisted(
-            Adapter(definition()), Fetcher(), Connection(), lease_token='expired',
-        ))
+    monkeypatch.setattr(module, "SourceRegistryRepository", LeaseExpired)
+    monkeypatch.setattr(module, "CrawlRepository", NoCrawl)
+    with __import__("pytest").raises(module.SourcePausedError, match="lease"):
+        asyncio.run(
+            module.run_source_persisted(
+                Adapter(definition()),
+                Fetcher(),
+                Connection(),
+                lease_token="expired",
+            )
+        )
 
 
 def test_discovery_failure_finishes_failed_crawl(monkeypatch):
     class BrokenDiscovery(Adapter):
         async def discover(self):
-            raise ValueError('source listing unavailable')
+            raise ValueError("source listing unavailable")
             yield  # pragma: no cover - preserves async-generator interface
 
-    monkeypatch.setattr(module, 'SourceRegistryRepository', Registry)
-    monkeypatch.setattr(module, 'CrawlRepository', Crawl)
+    monkeypatch.setattr(module, "SourceRegistryRepository", Registry)
+    monkeypatch.setattr(module, "CrawlRepository", Crawl)
     Crawl.finished = None
-    output = asyncio.run(module.run_source_persisted(
-        BrokenDiscovery(definition()), Fetcher(), Connection(),
-    ))
-    assert output.status == 'FAILED'
-    assert Crawl.finished is not None and Crawl.finished[0] == 'FAILED'
+    output = asyncio.run(
+        module.run_source_persisted(
+            BrokenDiscovery(definition()),
+            Fetcher(),
+            Connection(),
+        )
+    )
+    assert output.status == "FAILED"
+    assert Crawl.finished is not None and Crawl.finished[0] == "FAILED"
 
 
 def test_pause_during_http_response_prevents_document_persistence(monkeypatch) -> None:
     """A source disabled while HTTP is in flight cannot write a stale document."""
+
     class PausesDuringFetch(Registry):
         checks = 0
 
@@ -372,7 +400,10 @@ def test_lease_lost_before_fetch_does_not_start_a_run(monkeypatch) -> None:
     try:
         asyncio.run(
             module.run_source_persisted(
-                Adapter(definition()), Fetcher(), Connection(), should_continue=lambda: False,
+                Adapter(definition()),
+                Fetcher(),
+                Connection(),
+                should_continue=lambda: False,
             )
         )
     except module.SourcePausedError:
@@ -407,9 +438,7 @@ def test_pause_during_async_parser_rolls_back_stale_document(monkeypatch) -> Non
     monkeypatch.setattr(module, "RawDocumentRepository", Raw)
     monkeypatch.setattr(module, "SourceEventRefRepository", ForbidRefs)
     conn = Connection()
-    result = asyncio.run(
-        module.run_source_persisted(ParsingAdapter(definition()), Fetcher(), conn)
-    )
+    result = asyncio.run(module.run_source_persisted(ParsingAdapter(definition()), Fetcher(), conn))
     assert conn.rollbacks == 1
     assert result.status == "CANCELLED"
     assert result.persisted_documents == 0 and result.persisted_event_refs == 0
@@ -419,6 +448,7 @@ def test_pause_during_async_parser_rolls_back_stale_document(monkeypatch) -> Non
 
 def test_commit_fence_rejects_page_when_pause_races_final_commit(monkeypatch) -> None:
     """The source may switch AFTER parsing's ordinary reads but BEFORE its commit."""
+
     class RevokedAtCommit(Registry):
         calls = 0
 
@@ -430,22 +460,27 @@ def test_commit_fence_rejects_page_when_pause_races_final_commit(monkeypatch) ->
     Crawl.finished = None
     Frontier.marked = []
     Refs.count = 0
-    monkeypatch.setattr(module, 'SourceRegistryRepository', RevokedAtCommit)
-    monkeypatch.setattr(module, 'CrawlRepository', Crawl)
-    monkeypatch.setattr(module, 'FrontierRepository', Frontier)
-    monkeypatch.setattr(module, 'RawDocumentRepository', Raw)
-    monkeypatch.setattr(module, 'SourceEventRefRepository', Refs)
+    monkeypatch.setattr(module, "SourceRegistryRepository", RevokedAtCommit)
+    monkeypatch.setattr(module, "CrawlRepository", Crawl)
+    monkeypatch.setattr(module, "FrontierRepository", Frontier)
+    monkeypatch.setattr(module, "RawDocumentRepository", Raw)
+    monkeypatch.setattr(module, "SourceEventRefRepository", Refs)
     connection = Connection()
-    output = asyncio.run(module.run_source_persisted(
-        Adapter(definition()), Fetcher(), connection, lease_token='00000000-0000-4000-8000-000000000099',
-    ))
+    output = asyncio.run(
+        module.run_source_persisted(
+            Adapter(definition()),
+            Fetcher(),
+            connection,
+            lease_token="00000000-0000-4000-8000-000000000099",
+        )
+    )
     assert RevokedAtCommit.calls == 1
-    assert output.status == 'CANCELLED'
+    assert output.status == "CANCELLED"
     assert output.persisted_documents == 0 and output.persisted_event_refs == 0
     assert Refs.count == 0
     assert connection.rollbacks == 1
-    assert Crawl.finished is not None and Crawl.finished[0] == 'CANCELLED'
-    assert Frontier.marked[-1][1] == 'FAILED'
+    assert Crawl.finished is not None and Crawl.finished[0] == "CANCELLED"
+    assert Frontier.marked[-1][1] == "FAILED"
 
 
 def test_commit_fence_rejects_http_failure_attempt_after_pause(monkeypatch) -> None:
@@ -458,12 +493,12 @@ def test_commit_fence_rejects_http_failure_attempt_after_pause(monkeypatch) -> N
             success = await super().fetch(source, url)
             return success.model_copy(update={"status_code": 503})
 
-    monkeypatch.setattr(module, 'SourceRegistryRepository', RevokedAtCommit)
-    monkeypatch.setattr(module, 'CrawlRepository', Crawl)
-    monkeypatch.setattr(module, 'FrontierRepository', Frontier)
-    monkeypatch.setattr(module, 'RawDocumentRepository', Raw)
-    monkeypatch.setattr(module, 'SourceEventRefRepository', Refs)
+    monkeypatch.setattr(module, "SourceRegistryRepository", RevokedAtCommit)
+    monkeypatch.setattr(module, "CrawlRepository", Crawl)
+    monkeypatch.setattr(module, "FrontierRepository", Frontier)
+    monkeypatch.setattr(module, "RawDocumentRepository", Raw)
+    monkeypatch.setattr(module, "SourceEventRefRepository", Refs)
     conn = Connection()
     output = asyncio.run(module.run_source_persisted(Adapter(definition()), HttpFailure(), conn))
-    assert output.status == 'CANCELLED' and output.fetched_pages == 0
+    assert output.status == "CANCELLED" and output.fetched_pages == 0
     assert conn.rollbacks == 1

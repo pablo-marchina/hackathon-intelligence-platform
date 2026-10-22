@@ -55,7 +55,7 @@ class SupabaseGateClient:
             },
         )
 
-    async def __aenter__(self) -> "SupabaseGateClient":
+    async def __aenter__(self) -> SupabaseGateClient:
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -96,7 +96,7 @@ class RestrictedGateClient:
             },
         )
 
-    async def __aenter__(self) -> "RestrictedGateClient":
+    async def __aenter__(self) -> RestrictedGateClient:
         return self
 
     async def __aexit__(self, *_: object) -> None:

@@ -1,4 +1,5 @@
 """W6 DR: backup and restore are verified without requiring live infrastructure."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -19,12 +20,22 @@ def example_archive(tmp_path: Path, *, object_key="nested/a.json") -> Path:
     dump.write_bytes(b"sample-postgres-dump")
     (tmp_path / "objects").mkdir()
     obj = tmp_path / "objects" / "a.obj"
-    obj.write_bytes(b"{\"example\": true}")
+    obj.write_bytes(b'{"example": true}')
     manifest = {
         "format": "hip-dr-v1",
-        "db": {"file": "database.dump", "sha256": dr.sha256_file(dump), "size": dump.stat().st_size},
-        "objects": [{"key": object_key, "file": "objects/a.obj", "sha256": dr.sha256_file(obj),
-                     "size": obj.stat().st_size}],
+        "db": {
+            "file": "database.dump",
+            "sha256": dr.sha256_file(dump),
+            "size": dump.stat().st_size,
+        },
+        "objects": [
+            {
+                "key": object_key,
+                "file": "objects/a.obj",
+                "sha256": dr.sha256_file(obj),
+                "size": obj.stat().st_size,
+            }
+        ],
     }
     (tmp_path / "manifest.json").write_text(json.dumps(manifest))
     return tmp_path
@@ -48,10 +59,16 @@ def test_url_conversion_handles_sqlalchemy_and_sanitizes_environment(monkeypatch
     assert "PGHOSTADDR" not in env and "PGSERVICE" not in env
 
 
-@pytest.mark.parametrize("url", [
-    "sqlite:///local.db", "postgresql://user@server/", "postgresql://h/db?untrusted=x",
-    "postgresql://h/db?sslmode=require&sslmode=disable", "postgresql://h/db#fragment",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "sqlite:///local.db",
+        "postgresql://user@server/",
+        "postgresql://h/db?untrusted=x",
+        "postgresql://h/db?sslmode=require&sslmode=disable",
+        "postgresql://h/db#fragment",
+    ],
+)
 def test_invalid_db_connections_rejected(url):
     with pytest.raises(ValueError):
         dr.postgres_connection_env(url)
@@ -96,7 +113,9 @@ def test_backup_uses_dbname_and_never_exposes_credentials_in_arguments(monkeypat
 
     monkeypatch.setattr(dr.subprocess, "run", fake_run)
     monkeypatch.setattr(dr, "_storage", FakeS3)
-    manifest = dr.backup(tmp_path / "backups", "postgresql+psycopg://hip:password@db/hip_src", "raw")
+    manifest = dr.backup(
+        tmp_path / "backups", "postgresql+psycopg://hip:password@db/hip_src", "raw"
+    )
     args, env, check = seen[0]
     assert args[0] == "pg_dump" and args[args.index("--dbname") + 1] == "hip_src"
     assert "password" not in " ".join(args)
@@ -109,8 +128,12 @@ def test_restore_executes_pg_restore_with_target_db_and_uploads(monkeypatch, tmp
     captured = []
     uploads = []
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setattr(dr.subprocess, "run", lambda args, *, check, env: captured.append((args, env)))
-    monkeypatch.setattr(dr, "_storage", lambda: SimpleNamespace(upload_file=lambda *args: uploads.append(args)))
+    monkeypatch.setattr(
+        dr.subprocess, "run", lambda args, *, check, env: captured.append((args, env))
+    )
+    monkeypatch.setattr(
+        dr, "_storage", lambda: SimpleNamespace(upload_file=lambda *args: uploads.append(args))
+    )
     dr.restore(tmp_path, "postgresql+psycopg://hip:secret@db/hip_restore", "restore-bucket")
     args, env = captured[0]
     assert args[0] == "pg_restore"
@@ -167,7 +190,7 @@ def test_rejects_object_symlink_parent(tmp_path):
     (tmp_path / "objects").rmdir()
     outside = tmp_path.parent / (tmp_path.name + "_outside")
     outside.mkdir()
-    (outside / "a.obj").write_bytes(b"{\"example\": true}")
+    (outside / "a.obj").write_bytes(b'{"example": true}')
     (tmp_path / "objects").symlink_to(outside, target_is_directory=True)
     with pytest.raises(ValueError, match="symlink"):
         dr.validate(tmp_path)
@@ -220,7 +243,9 @@ def test_pg_only_restore_wrapper_requires_confirmation(tmp_path):
     result = subprocess.run(
         ["bash", str(wrapper), str(tmp_path / "archive.dump")],
         env={"PATH": os.getenv("PATH", ""), "DATABASE_URL": "postgresql://localhost/restore"},
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode != 0
     assert "HIP_CONFIRM_PG_RESTORE" in result.stderr

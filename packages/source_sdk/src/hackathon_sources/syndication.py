@@ -5,18 +5,20 @@ schema.org Event data on an independently authorized, fetched HTML page may
 enter the canonical pipeline. Third-party links remain outside this source's
 fetch scope, even if the feed advertises them.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from gzip import GzipFile
 from io import BytesIO
-from zlib import error as ZlibError
 from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree as ET
+from zlib import error as ZlibError
 
-from pydantic import ValidationError
-from defusedxml.ElementTree import DefusedXMLParser, fromstring as safe_xml_fromstring
 from defusedxml.common import DefusedXmlException
+from defusedxml.ElementTree import DefusedXMLParser
+from defusedxml.ElementTree import fromstring as safe_xml_fromstring
+from pydantic import ValidationError
 
 from .models import DiscoveredUrl, FetchResult, IngestionMode
 from .structured_html import StructuredHtmlEventAdapter
@@ -61,13 +63,17 @@ def _next_feed_page(root: ET.Element, kind: str, base: str, hosts: set[str]) -> 
     """
     if kind not in {"feed", "rss", "rdf"}:
         return None
-    channels = [root] if kind == "feed" else [
-        item for item in root if _element_name(item.tag) == "channel"
-    ]
+    channels = (
+        [root]
+        if kind == "feed"
+        else [item for item in root if _element_name(item.tag) == "channel"]
+    )
     for channel in channels:
         for item in channel:
-            if (_element_name(item.tag) != "link" or
-                    item.attrib.get("rel", "").casefold().strip() != "next"):
+            if (
+                _element_name(item.tag) != "link"
+                or item.attrib.get("rel", "").casefold().strip() != "next"
+            ):
                 continue
             href = item.attrib.get("href") or item.text
             next_url = _allowed_url(href, base, hosts)
@@ -84,7 +90,7 @@ class ListingPage:
 
 
 def _element_name(tag: str) -> str:
-    return tag.rsplit('}', 1)[-1] if isinstance(tag, str) else ''
+    return tag.rsplit("}", 1)[-1] if isinstance(tag, str) else ""
 
 
 def _allowed_url(candidate: str | None, base: str, allowed_hosts: set[str]) -> str | None:
@@ -93,9 +99,13 @@ def _allowed_url(candidate: str | None, base: str, allowed_hosts: set[str]) -> s
     try:
         url = urljoin(base, candidate.strip())
         parts = urlsplit(url)
-        if (parts.scheme not in {'http', 'https'} or not parts.hostname or
-                parts.username is not None or parts.password is not None or
-                parts.hostname.lower() not in allowed_hosts):
+        if (
+            parts.scheme not in {"http", "https"}
+            or not parts.hostname
+            or parts.username is not None
+            or parts.password is not None
+            or parts.hostname.lower() not in allowed_hosts
+        ):
             return None
         return url
     except ValueError:
@@ -114,9 +124,7 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         """Compatibility method for nonpersistent runners (first bounded page)."""
         return (await self.parse_listing_page(result)).links
 
-    async def parse_listing_page(
-        self, result: FetchResult, *, offset: int = 0
-    ) -> ListingPage:
+    async def parse_listing_page(self, result: FetchResult, *, offset: int = 0) -> ListingPage:
         """Return one page; persistent runner checkpoints next_offset on commit.
 
         Offset counts all raw XML entries, including invalid/out-of-scope links,
@@ -127,19 +135,19 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         empty = ListingPage([], 0, False)
         if self.definition.ingestion_mode not in (IngestionMode.RSS, IngestionMode.SITEMAP):
             return empty
-        content_type = (result.content_type or '').lower()
-        gzip_encoded = result.body.startswith(b'\x1f\x8b')
-        is_xml = any(t in content_type for t in ('xml', 'rss', 'atom'))
+        content_type = (result.content_type or "").lower()
+        gzip_encoded = result.body.startswith(b"\x1f\x8b")
+        is_xml = any(t in content_type for t in ("xml", "rss", "atom"))
         # HTTP clients may transparently decode Content-Encoding: gzip while
         # retaining application/octet-stream as the origin Content-Type. Trust
         # an XML-looking URL extension only for choosing the parser, never as
         # permission to follow its links or as proof the bytes are valid XML.
-        xml_path = urlsplit(result.final_url).path.lower().endswith(
-            ('.xml', '.xml.gz', '.rss', '.atom')
+        xml_path = (
+            urlsplit(result.final_url).path.lower().endswith((".xml", ".xml.gz", ".rss", ".atom"))
         )
-        if 'html' in content_type or 'json' in content_type:
+        if "html" in content_type or "json" in content_type:
             return empty
-        if not (is_xml or gzip_encoded or xml_path or result.body.lstrip().startswith(b'<?xml')):
+        if not (is_xml or gzip_encoded or xml_path or result.body.lstrip().startswith(b"<?xml")):
             return empty
         body = _bounded_xml_body(result.body)
         if body is None:
@@ -149,7 +157,7 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         # stdlib ElementTree does not resolve external entities, but reject all
         # DTDs/entities explicitly. We do not need them for feeds and sitemaps.
         body_casefold = body.upper()
-        if b'<!DOCTYPE' in body_casefold or b'<!ENTITY' in body_casefold:
+        if b"<!DOCTYPE" in body_casefold or b"<!ENTITY" in body_casefold:
             return empty
         try:
             root = safe_xml_fromstring(body, forbid_dtd=True)
@@ -157,23 +165,29 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
             return empty
 
         kind = _element_name(root.tag).lower()
-        if kind not in {'rss', 'rdf', 'feed', 'urlset', 'sitemapindex'}:
+        if kind not in {"rss", "rdf", "feed", "urlset", "sitemapindex"}:
             return empty
-        if kind in {'rss', 'rdf', 'feed'} and self.definition.ingestion_mode != IngestionMode.RSS:
+        if kind in {"rss", "rdf", "feed"} and self.definition.ingestion_mode != IngestionMode.RSS:
             return empty
-        if kind in {'urlset', 'sitemapindex'} and self.definition.ingestion_mode != IngestionMode.SITEMAP:
+        if (
+            kind in {"urlset", "sitemapindex"}
+            and self.definition.ingestion_mode != IngestionMode.SITEMAP
+        ):
             return empty
 
-        hosts = {self.definition.domain.lower(), *(h.lower() for h in self.definition.allowed_hosts)}
+        hosts = {
+            self.definition.domain.lower(),
+            *(h.lower() for h in self.definition.allowed_hosts),
+        }
         result_links: list[DiscoveredUrl] = []
         seen: set[str] = set()
-        max_links = MAX_CHILD_SITEMAPS if kind == 'sitemapindex' else MAX_FEED_LINKS
-        if kind == 'rss' or kind == 'rdf':
-            elements = (node for node in root.iter() if _element_name(node.tag) == 'item')
-        elif kind == 'feed':
-            elements = (node for node in root if _element_name(node.tag) == 'entry')
+        max_links = MAX_CHILD_SITEMAPS if kind == "sitemapindex" else MAX_FEED_LINKS
+        if kind == "rss" or kind == "rdf":
+            elements = (node for node in root.iter() if _element_name(node.tag) == "item")
+        elif kind == "feed":
+            elements = (node for node in root if _element_name(node.tag) == "entry")
         else:
-            child_tag = 'sitemap' if kind == 'sitemapindex' else 'url'
+            child_tag = "sitemap" if kind == "sitemapindex" else "url"
             elements = (node for node in root if _element_name(node.tag) == child_tag)
 
         items = list(elements)  # bounded by MAX_FEED_BYTES before XML parsing
@@ -183,31 +197,36 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
             title: str | None = None
             for node in item:
                 name = _element_name(node.tag)
-                if name == 'title':
-                    title = (node.text or '').strip()[:200] or None
-                elif name in {'loc', 'link'}:
-                    if name == 'link' and node.attrib.get('rel', 'alternate') != 'alternate':
+                if name == "title":
+                    title = (node.text or "").strip()[:200] or None
+                elif name in {"loc", "link"}:
+                    if name == "link" and node.attrib.get("rel", "alternate") != "alternate":
                         continue
-                    raw_link = node.attrib.get('href') if name == 'link' else node.text
-                    if not raw_link and name == 'link':
+                    raw_link = node.attrib.get("href") if name == "link" else node.text
+                    if not raw_link and name == "link":
                         raw_link = node.text
                     url = _allowed_url(raw_link, result.final_url, hosts)
             if not url or url in seen:
                 continue
             seen.add(url)
             try:
-                result_links.append(DiscoveredUrl(
-                    url=url,
-                    source_key=self.definition.key,
-                    discovery_method=(
-                        'sitemap_index' if kind == 'sitemapindex'
-                        else 'sitemap' if kind == 'urlset' else 'rss_atom'
-                    ),
-                    parent_url=result.final_url,
-                    depth=1,
-                    priority=self.definition.priority,
-                    metadata={'feed_title': title} if title else {},
-                ))
+                result_links.append(
+                    DiscoveredUrl(
+                        url=url,
+                        source_key=self.definition.key,
+                        discovery_method=(
+                            "sitemap_index"
+                            if kind == "sitemapindex"
+                            else "sitemap"
+                            if kind == "urlset"
+                            else "rss_atom"
+                        ),
+                        parent_url=result.final_url,
+                        depth=1,
+                        priority=self.definition.priority,
+                        metadata={"feed_title": title} if title else {},
+                    )
+                )
             except ValidationError:
                 continue
         # An RSS/Atom publisher may paginate into *other XML documents*, unlike
@@ -218,13 +237,17 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
             next_url = _next_feed_page(root, kind, result.final_url, hosts)
             if next_url:
                 try:
-                    result_links.append(DiscoveredUrl(
-                        url=next_url, source_key=self.definition.key,
-                        discovery_method='rss_pagination',
-                        parent_url=result.final_url, depth=1,
-                        priority=self.definition.priority,
-                        metadata={'is_feed_page': True},
-                    ))
+                    result_links.append(
+                        DiscoveredUrl(
+                            url=next_url,
+                            source_key=self.definition.key,
+                            discovery_method="rss_pagination",
+                            parent_url=result.final_url,
+                            depth=1,
+                            priority=self.definition.priority,
+                            metadata={"is_feed_page": True},
+                        )
+                    )
                 except ValidationError:
                     pass
         return ListingPage(result_links, end, end < len(items))
@@ -241,11 +264,15 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
             return empty
         compressed = data.startswith(b"\x1f\x8b")
         stream = GzipFile(fileobj=BytesIO(data)) if compressed else BytesIO(data)
-        hosts = {self.definition.domain.lower(), *(h.lower() for h in self.definition.allowed_hosts)}
+        hosts = {
+            self.definition.domain.lower(),
+            *(h.lower() for h in self.definition.allowed_hosts),
+        }
         # Expat-level DTD/entity rejection also covers UTF-16/UTF-8 encodings;
         # checking only raw ASCII sequences is not sufficient.
         parser = ET.XMLPullParser(
-            events=("start", "end"), _parser=DefusedXMLParser(forbid_dtd=True),
+            events=("start", "end"),
+            _parser=DefusedXMLParser(forbid_dtd=True),
         )
         stack: list[str] = []
         stack_nodes: list[ET.Element] = []
@@ -278,7 +305,10 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                         name = _element_name(elem.tag).lower()
                         if action == "start":
                             elements_seen += 1
-                            if elements_seen > MAX_STREAM_ELEMENTS or len(stack) >= MAX_STREAM_DEPTH:
+                            if (
+                                elements_seen > MAX_STREAM_ELEMENTS
+                                or len(stack) >= MAX_STREAM_DEPTH
+                            ):
                                 return empty
                             stack.append(name)
                             stack_nodes.append(elem)
@@ -287,26 +317,49 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                                 kind = name
                                 if kind not in {"rss", "rdf", "feed", "urlset", "sitemapindex"}:
                                     return empty
-                                if ((kind in {"rss", "rdf", "feed"} and
-                                     self.definition.ingestion_mode != IngestionMode.RSS) or
-                                    (kind in {"urlset", "sitemapindex"} and
-                                     self.definition.ingestion_mode != IngestionMode.SITEMAP)):
+                                if (
+                                    kind in {"rss", "rdf", "feed"}
+                                    and self.definition.ingestion_mode != IngestionMode.RSS
+                                ) or (
+                                    kind in {"urlset", "sitemapindex"}
+                                    and self.definition.ingestion_mode != IngestionMode.SITEMAP
+                                ):
                                     return empty
                             continue
                         parent = stack[-2] if len(stack) > 1 else None
                         # rel=next belongs to the feed/channel, never an entry.
-                        if (name == "link" and elem.attrib.get("rel", "").casefold().strip() == "next"
-                                and ((kind == "feed" and parent == "feed") or
-                                     (kind in {"rss", "rdf"} and parent == "channel"))):
-                            candidate = _allowed_url(elem.attrib.get("href") or elem.text,
-                                                     result.final_url, hosts)
+                        if (
+                            name == "link"
+                            and elem.attrib.get("rel", "").casefold().strip() == "next"
+                            and (
+                                (kind == "feed" and parent == "feed")
+                                or (kind in {"rss", "rdf"} and parent == "channel")
+                            )
+                        ):
+                            candidate = _allowed_url(
+                                elem.attrib.get("href") or elem.text, result.final_url, hosts
+                            )
                             if candidate and candidate != result.final_url and not next_url:
                                 next_url = candidate
-                        entry_kind = ("sitemap" if kind == "sitemapindex" else
-                                      "url" if kind == "urlset" else
-                                      "entry" if kind == "feed" else "item")
-                        if name == entry_kind and parent in {"channel", "feed", "urlset", "sitemapindex", "rdf"}:
-                            maximum = MAX_CHILD_SITEMAPS if kind == "sitemapindex" else MAX_FEED_LINKS
+                        entry_kind = (
+                            "sitemap"
+                            if kind == "sitemapindex"
+                            else "url"
+                            if kind == "urlset"
+                            else "entry"
+                            if kind == "feed"
+                            else "item"
+                        )
+                        if name == entry_kind and parent in {
+                            "channel",
+                            "feed",
+                            "urlset",
+                            "sitemapindex",
+                            "rdf",
+                        }:
+                            maximum = (
+                                MAX_CHILD_SITEMAPS if kind == "sitemapindex" else MAX_FEED_LINKS
+                            )
                             if offset <= entries < offset + maximum:
                                 url: str | None = None
                                 title: str | None = None
@@ -315,21 +368,37 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                                     if field == "title":
                                         title = (child.text or "").strip()[:200] or None
                                     elif field in {"loc", "link"}:
-                                        if field == "link" and child.attrib.get("rel", "alternate") != "alternate":
+                                        if (
+                                            field == "link"
+                                            and child.attrib.get("rel", "alternate") != "alternate"
+                                        ):
                                             continue
-                                        raw = (child.attrib.get("href") or child.text) if field == "link" else child.text
+                                        raw = (
+                                            (child.attrib.get("href") or child.text)
+                                            if field == "link"
+                                            else child.text
+                                        )
                                         url = _allowed_url(raw, result.final_url, hosts)
                                 if url and url not in seen:
                                     seen.add(url)
                                     try:
-                                        links.append(DiscoveredUrl(
-                                            url=url, source_key=self.definition.key,
-                                            discovery_method=("sitemap_index" if kind == "sitemapindex" else
-                                                              "sitemap" if kind == "urlset" else "rss_atom"),
-                                            parent_url=result.final_url, depth=1,
-                                            priority=self.definition.priority,
-                                            metadata={"feed_title": title} if title else {},
-                                        ))
+                                        links.append(
+                                            DiscoveredUrl(
+                                                url=url,
+                                                source_key=self.definition.key,
+                                                discovery_method=(
+                                                    "sitemap_index"
+                                                    if kind == "sitemapindex"
+                                                    else "sitemap"
+                                                    if kind == "urlset"
+                                                    else "rss_atom"
+                                                ),
+                                                parent_url=result.final_url,
+                                                depth=1,
+                                                priority=self.definition.priority,
+                                                metadata={"feed_title": title} if title else {},
+                                            )
+                                        )
                                     except ValidationError:
                                         pass
                             entries += 1
@@ -351,12 +420,17 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
         has_more = end < entries
         if not has_more and next_url:
             try:
-                links.append(DiscoveredUrl(
-                    url=next_url, source_key=self.definition.key,
-                    discovery_method="rss_pagination", parent_url=result.final_url,
-                    depth=1, priority=self.definition.priority,
-                    metadata={"is_feed_page": True},
-                ))
+                links.append(
+                    DiscoveredUrl(
+                        url=next_url,
+                        source_key=self.definition.key,
+                        discovery_method="rss_pagination",
+                        parent_url=result.final_url,
+                        depth=1,
+                        priority=self.definition.priority,
+                        metadata={"is_feed_page": True},
+                    )
+                )
             except ValidationError:
                 pass
         return ListingPage(links, end, has_more)

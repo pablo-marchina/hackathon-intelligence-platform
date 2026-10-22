@@ -62,11 +62,32 @@ def evaluate_extraction_golden(path: Path) -> ExtractionBenchmarkResult:
         # Penalize asserted core values absent from expected only when the source
         # fixture did not contain them; this catches silent hallucination.
         if event is not None:
-            for field in ("name","start_at","end_at","official_url","location_name","organizer_name","event_type","format","prize_text","eligibility_text"):
+            for field in (
+                "name",
+                "start_at",
+                "end_at",
+                "official_url",
+                "location_name",
+                "organizer_name",
+                "event_type",
+                "format",
+                "prize_text",
+                "eligibility_text",
+            ):
                 if field not in expected and getattr(event, field, None) is not None:
                     # Values explicitly in the fixture source are allowed even when not scored.
                     pass
     precision = tp / (tp + fp) if (tp + fp) else 1.0
     recall = tp / (tp + fn) if (tp + fn) else 1.0
     exact_match = exact / assertions if assertions else 1.0
-    return ExtractionBenchmarkResult(len(rows), assertions, tp, fp, fn, precision, recall, exact_match, precision >= .95 and recall >= .95 and exact_match >= .95)
+    return ExtractionBenchmarkResult(
+        len(rows),
+        assertions,
+        tp,
+        fp,
+        fn,
+        precision,
+        recall,
+        exact_match,
+        precision >= 0.95 and recall >= 0.95 and exact_match >= 0.95,
+    )

@@ -21,13 +21,16 @@ class _Connection:
 
 def test_saved_search_projects_only_a_boolean_existence_marker():
     conn = _Connection()
-    assert _match_saved_search(
-        conn,
-        hackathon_id="00000000-0000-0000-0000-000000000001",
-        raw_filters={},
-        schema_version=FILTER_SCHEMA_VERSION,
-        lock_target=True,
-    ) is True
+    assert (
+        _match_saved_search(
+            conn,
+            hackathon_id="00000000-0000-0000-0000-000000000001",
+            raw_filters={},
+            schema_version=FILTER_SCHEMA_VERSION,
+            lock_target=True,
+        )
+        is True
+    )
     assert conn.sql.startswith("SELECT 1 FROM hackathons h ")
     assert "FOR SHARE OF h" in conn.sql
     assert " AS start_sort" not in conn.sql.split(" FROM hackathons h ")[0]
@@ -39,7 +42,13 @@ def test_catalog_query_projects_nullable_order_sentinels():
     from hackathon_api.schemas import HackathonFilters
 
     query = build_hackathon_query(HackathonFilters())
-    assert "NULLIF(COALESCE(h.start_at,'infinity'::timestamptz),'infinity'::timestamptz) AS start_sort" in query.sql
-    assert "NULLIF(COALESCE(h.registration_close_at,'infinity'::timestamptz),'infinity'::timestamptz) AS deadline_sort" in query.sql
+    assert (
+        "NULLIF(COALESCE(h.start_at,'infinity'::timestamptz),'infinity'::timestamptz) AS start_sort"
+        in query.sql
+    )
+    assert (
+        "NULLIF(COALESCE(h.registration_close_at,'infinity'::timestamptz),'infinity'::timestamptz) AS deadline_sort"
+        in query.sql
+    )
     # The ordering expressions retain PostgreSQL infinity as the last-sort sentinel.
     assert "ORDER BY" in query.sql

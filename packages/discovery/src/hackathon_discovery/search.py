@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Callable, Iterable, Protocol
+from typing import Protocol
 from urllib.parse import urlsplit
-
-from pydantic import BaseModel, HttpUrl
 
 from hackathon_sources.models import DiscoveredUrl
 from hackathon_sources.url import canonicalize_url
+from pydantic import BaseModel, HttpUrl
 
 SEARCH_RESULT_AUTHORITY = "DISCOVERY_ONLY"
 
@@ -95,7 +95,9 @@ def ingest_search_results(
     return records
 
 
-def to_discovered_urls(records: Iterable[SearchDiscoveryRecord], *, source_key: str = "open_web_search") -> list[DiscoveredUrl]:
+def to_discovered_urls(
+    records: Iterable[SearchDiscoveryRecord], *, source_key: str = "open_web_search"
+) -> list[DiscoveredUrl]:
     return [
         DiscoveredUrl(
             url=record.canonical_url,

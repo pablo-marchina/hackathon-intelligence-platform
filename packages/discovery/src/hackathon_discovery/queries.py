@@ -7,14 +7,58 @@ from hashlib import sha256
 QUERY_TEMPLATE_VERSION = "w3-query-v1"
 
 EVENT_TERMS: dict[str, tuple[str, ...]] = {
-    "en": ("hackathon", "buildathon", "datathon", "game jam", "innovation challenge", "AI hackathon", "coding challenge", "CTF"),
-    "pt": ("hackathon", "maratona de programação", "datathon", "game jam", "desafio de inovação", "hackathon de IA", "desafio de programação"),
-    "es": ("hackathon", "maratón de programación", "datatón", "game jam", "reto de innovación", "hackathon de IA"),
+    "en": (
+        "hackathon",
+        "buildathon",
+        "datathon",
+        "game jam",
+        "innovation challenge",
+        "AI hackathon",
+        "coding challenge",
+        "CTF",
+    ),
+    "pt": (
+        "hackathon",
+        "maratona de programação",
+        "datathon",
+        "game jam",
+        "desafio de inovação",
+        "hackathon de IA",
+        "desafio de programação",
+    ),
+    "es": (
+        "hackathon",
+        "maratón de programación",
+        "datatón",
+        "game jam",
+        "reto de innovación",
+        "hackathon de IA",
+    ),
     "fr": ("hackathon", "buildathon", "datathon", "game jam", "défi d'innovation", "hackathon IA"),
-    "de": ("Hackathon", "Buildathon", "Datathon", "Game Jam", "Innovationswettbewerb", "KI Hackathon"),
-    "it": ("hackathon", "buildathon", "datathon", "game jam", "sfida di innovazione", "hackathon IA"),
+    "de": (
+        "Hackathon",
+        "Buildathon",
+        "Datathon",
+        "Game Jam",
+        "Innovationswettbewerb",
+        "KI Hackathon",
+    ),
+    "it": (
+        "hackathon",
+        "buildathon",
+        "datathon",
+        "game jam",
+        "sfida di innovazione",
+        "hackathon IA",
+    ),
     "hi": ("हैकाथॉन", "AI हैकाथॉन", "डेटाथॉन", "innovation challenge", "coding challenge"),
-    "ja": ("ハッカソン", "AI ハッカソン", "データソン", "ゲームジャム", "イノベーション チャレンジ"),
+    "ja": (
+        "ハッカソン",
+        "AI ハッカソン",
+        "データソン",
+        "ゲームジャム",
+        "イノベーション チャレンジ",
+    ),
     "ko": ("해커톤", "AI 해커톤", "데이터톤", "게임잼", "혁신 챌린지"),
     "zh": ("黑客松", "人工智能 黑客松", "数据 黑客松", "游戏 创作 马拉松", "创新 挑战赛"),
 }
@@ -106,7 +150,9 @@ def build_templates(*, languages: tuple[str, ...] | None = None) -> list[QueryTe
     return templates
 
 
-def generate_queries(*, today: date | None = None, languages: tuple[str, ...] | None = None) -> list[DiscoveryQuery]:
+def generate_queries(
+    *, today: date | None = None, languages: tuple[str, ...] | None = None
+) -> list[DiscoveryQuery]:
     today = today or date.today()
     quarter = current_quarter(today)
     next_q_year, next_q = _next_quarter(today.year, quarter)

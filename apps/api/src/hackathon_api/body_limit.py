@@ -5,6 +5,7 @@ about the advertised size. Buffer at most the configured limit before entering
 any route or DB transaction, then replay the original body to the downstream
 ASGI application. Intended for the API's small JSON request payloads.
 """
+
 from __future__ import annotations
 
 from starlette.responses import JSONResponse
@@ -34,12 +35,16 @@ class RequestBodyLimitMiddleware:
                 declared = int(lengths[0])
             except (ValueError, UnicodeError):
                 await JSONResponse({"detail": "invalid content-length"}, status_code=400)(
-                    scope, receive, send,
+                    scope,
+                    receive,
+                    send,
                 )
                 return
             if declared > self.max_bytes:
                 await JSONResponse({"detail": "request body too large"}, status_code=413)(
-                    scope, receive, send,
+                    scope,
+                    receive,
+                    send,
                 )
                 return
 
@@ -55,7 +60,9 @@ class RequestBodyLimitMiddleware:
             chunk = message.get("body", b"")
             if len(chunk) > self.max_bytes - len(body):
                 await JSONResponse({"detail": "request body too large"}, status_code=413)(
-                    scope, receive, send,
+                    scope,
+                    receive,
+                    send,
                 )
                 return
             body.extend(chunk)

@@ -3,6 +3,7 @@
 Robots URLs are untrusted network requests. Never allow the HTTP client to follow
 an unchecked redirect, and never silently allow crawling on transport failure.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

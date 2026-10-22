@@ -5,8 +5,6 @@ import json
 from collections.abc import AsyncIterator, Iterable
 from typing import Any
 
-from pydantic import HttpUrl
-
 from .adapter import SourceAdapter
 from .models import DiscoveredUrl, FetchResult, SourceEventRecord
 
@@ -75,7 +73,11 @@ class HackClubHackathonsAdapter(ApiSeedAdapter):
         payload = _json(result)
         discovered: list[DiscoveredUrl] = []
         if isinstance(payload, dict):
-            next_url = _valid_http_url((payload.get("links") or {}).get("next") if isinstance(payload.get("links"), dict) else None)
+            next_url = _valid_http_url(
+                (payload.get("links") or {}).get("next")
+                if isinstance(payload.get("links"), dict)
+                else None
+            )
             if next_url:
                 discovered.append(
                     DiscoveredUrl(

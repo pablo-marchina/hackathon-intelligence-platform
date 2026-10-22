@@ -139,7 +139,12 @@ class SourceRegistryRepository:
                 "rate_limit_per_minute": source.rate_limit_per_minute,
                 "concurrency_limit": source.concurrency_limit,
                 "notes": source.notes,
-                "config": json.dumps({"seed_urls": [str(url) for url in source.seed_urls], "allowed_hosts": source.allowed_hosts}),
+                "config": json.dumps(
+                    {
+                        "seed_urls": [str(url) for url in source.seed_urls],
+                        "allowed_hosts": source.allowed_hosts,
+                    }
+                ),
             },
         )
 

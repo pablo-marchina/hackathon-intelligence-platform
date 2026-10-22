@@ -1,11 +1,10 @@
 """No new permissions are granted by normalization; dates and fees stay factual."""
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
-
 from hackathon_intelligence.incremental import (
     event_kind,
     normalize_format,
@@ -53,7 +52,12 @@ def test_projection_preserves_identity_dates_currency_consent():
 
 
 def test_unknown_prices_deadlines_and_format_remain_unknown():
-    event = prepare_event(example(metadata={"extraction_method": "schema_org_json_ld", "ticket_price": "free!"}, format_raw=""))
+    event = prepare_event(
+        example(
+            metadata={"extraction_method": "schema_org_json_ld", "ticket_price": "free!"},
+            format_raw="",
+        )
+    )
     assert event is not None
     assert "participation_fee" not in event.fields
     assert "is_free" not in event.fields
@@ -62,14 +66,16 @@ def test_unknown_prices_deadlines_and_format_remain_unknown():
     assert "format" not in event.fields
 
 
-@pytest.mark.parametrize("name", ["Industry Conference", "Hack Club office hours", "Webinar and workshop", ""])
+@pytest.mark.parametrize(
+    "name", ["Industry Conference", "Hack Club office hours", "Webinar and workshop", ""]
+)
 def test_unrelated_events_do_not_enter_canonical_catalog(name):
     assert prepare_event(example(name=name)) is None
 
 
 def test_dates_with_unknown_timezone_are_not_assumed_to_be_utc():
     assert parse_date("2027-10-15T09:00:00") is None
-    assert parse_date("2027-10-15") == datetime(2027, 10, 15, tzinfo=timezone.utc)
+    assert parse_date("2027-10-15") == datetime(2027, 10, 15, tzinfo=UTC)
     assert parse_date("not a date") is None
 
 
@@ -84,9 +90,13 @@ def test_payload_staging_is_idempotent_by_event_hash_without_credentials():
     connection = Mock()
     repo = SourcePayloadRepository(connection)
     values = example()
-    args = dict(ref_id="00000000-0000-4000-8000-000000000111",
-                source_id="00000000-0000-4000-8000-000000000222",
-                source_key="campus_feed", raw_document_id=None, payload=values)
+    args = dict(
+        ref_id="00000000-0000-4000-8000-000000000111",
+        source_id="00000000-0000-4000-8000-000000000222",
+        source_key="campus_feed",
+        raw_document_id=None,
+        payload=values,
+    )
     repo.stage(**args)
     repo.stage(**args)
     assert connection.execute.call_count == 2
@@ -94,7 +104,14 @@ def test_payload_staging_is_idempotent_by_event_hash_without_credentials():
     second = connection.execute.call_args_list[1].args[1]
     assert first["digest"] == second["digest"]
     assert json.loads(first["payload"])["metadata"]["ticket_price"] == "50.00"
-    repo.stage(**{**args, "payload": example(metadata={"extraction_method": "schema_org_json_ld", "ticket_price": "10.00"})})
+    repo.stage(
+        **{
+            **args,
+            "payload": example(
+                metadata={"extraction_method": "schema_org_json_ld", "ticket_price": "10.00"}
+            ),
+        }
+    )
     changed = connection.execute.call_args_list[-1].args[1]
     assert changed["digest"] != first["digest"]
     sql = str(connection.execute.call_args_list[0].args[0])
@@ -103,8 +120,11 @@ def test_payload_staging_is_idempotent_by_event_hash_without_credentials():
 
 def test_normalizer_never_opens_network_and_keeps_runtime_opt_in():
     from pathlib import Path
+
     root = Path(__file__).resolve().parents[3]
-    processor = (root / "packages/intelligence/src/hackathon_intelligence/incremental.py").read_text()
+    processor = (
+        root / "packages/intelligence/src/hackathon_intelligence/incremental.py"
+    ).read_text()
     runner = (root / "scripts/run_incremental_canonical.py").read_text()
     assert "SKIP LOCKED" in processor and "FOR SHARE" in processor
     assert "pg_advisory_xact_lock" in processor
@@ -114,7 +134,10 @@ def test_normalizer_never_opens_network_and_keeps_runtime_opt_in():
 
 def test_do_not_automerge_missing_start_date_or_similar_title():
     from pathlib import Path
-    processor = (Path(__file__).resolve().parents[1] / "src/hackathon_intelligence/incremental.py").read_text()
+
+    processor = (
+        Path(__file__).resolve().parents[1] / "src/hackathon_intelligence/incremental.py"
+    ).read_text()
     assert "event.start_at" in processor
     assert "normalized_name=:name" in processor
     assert "LIMIT 2" in processor
@@ -143,8 +166,12 @@ def test_source_ref_distinguishes_editions_sharing_official_url():
 
     connection = RecordingConnection()
     repository = SourceEventRefRepository(connection)
-    base = dict(source_id="00000000-0000-4000-8000-000000000101", raw_document_id=None,
-                source_url="https://organizer.example/events", official_url="https://organizer.example/hackathon")
+    base = dict(
+        source_id="00000000-0000-4000-8000-000000000101",
+        raw_document_id=None,
+        source_url="https://organizer.example/events",
+        official_url="https://organizer.example/hackathon",
+    )
     repository.upsert(**base, source_event_id="edition-2027", edition_start="2027-03-01T10:00:00Z")
     one = connection.queries[-1][1]["normalized_url"]
     repository.upsert(**base, source_event_id="edition-2028", edition_start="2028-03-01T10:00:00Z")
@@ -169,9 +196,11 @@ def test_hackclub_specialized_source_retains_hacks_events_without_weak_general_a
 
 def test_incremental_migration_readiness_and_default_disabled(capsys, monkeypatch):
     from pathlib import Path
+
     from alembic.config import Config
     from alembic.script import ScriptDirectory
     from hackathon_api.main import EXPECTED_DB_REVISION
+
     from scripts import run_incremental_canonical
 
     root = Path(__file__).resolve().parents[3]

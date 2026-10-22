@@ -1,4 +1,5 @@
 """Unit contracts for the W6 opt-in alert outbox, without SMTP or PostgreSQL."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -6,7 +7,6 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
 from hackathon_alerts.delivery import RetryPolicy
 from hackathon_alerts.repository import AlertRepository, EmailDispatchClaim
 from hackathon_worker import alerts as worker
@@ -89,8 +89,12 @@ def config(enabled=True):
         alert_max_attempts=4,
         database_url="postgresql+psycopg://unused",
         web_base_url="https://example.test",
-        smtp_host="localhost", smtp_port=25, smtp_from_address="test@example.test",
-        smtp_username=None, smtp_password=None, smtp_starttls=False,
+        smtp_host="localhost",
+        smtp_port=25,
+        smtp_from_address="test@example.test",
+        smtp_username=None,
+        smtp_password=None,
+        smtp_starttls=False,
     )
 
 
@@ -101,9 +105,14 @@ def test_claim_is_bounded_due_fenced_and_skip_locked():
     result = AlertRepository(conn).claim_due_emails(limit=2, lease_seconds=180)
     assert result == [claim]
     sql = conn.sql[-1]
-    for fragment in ("FOR UPDATE SKIP LOCKED", "next_attempt_at <= clock_timestamp()",
-                     "dispatch_expires_at <= clock_timestamp()", "attempt_count < max_attempts",
-                     "status='PENDING'", "dispatch_token=gen_random_uuid()"):
+    for fragment in (
+        "FOR UPDATE SKIP LOCKED",
+        "next_attempt_at <= clock_timestamp()",
+        "dispatch_expires_at <= clock_timestamp()",
+        "attempt_count < max_attempts",
+        "status='PENDING'",
+        "dispatch_token=gen_random_uuid()",
+    ):
         assert fragment in sql
     assert conn.params[-1] == {"limit": 2, "lease_seconds": 180}
     assert AlertRepository(conn).release_dispatch_claim(claim)
@@ -121,27 +130,38 @@ def test_retry_is_limited_by_persisted_attempt_budget():
     conn = Connection()
     repo = AlertRepository(conn)
     status = repo.record_delivery_result(
-        delivery_id=str(uuid4()), success=False, retry_policy=RetryPolicy(max_attempts=8),
+        delivery_id=str(uuid4()),
+        success=False,
+        retry_policy=RetryPolicy(max_attempts=8),
     )
     assert status == "PENDING"
     assert conn.params[-1]["attempt_count"] == 1
     assert "dispatch_token=NULL" in conn.sql[-1]
     # Persistent maximum wins even if application configuration has a bigger budget.
-    conn.execute = lambda query, params=None: SQLResult(row=(1, 2)) if "SELECT attempt_count" in str(query) else SQLResult()
-    assert repo.record_delivery_result(delivery_id=str(uuid4()), success=False,
-                                       retry_policy=RetryPolicy(max_attempts=8)) == "FAILED"
+    conn.execute = lambda query, params=None: (
+        SQLResult(row=(1, 2)) if "SELECT attempt_count" in str(query) else SQLResult()
+    )
+    assert (
+        repo.record_delivery_result(
+            delivery_id=str(uuid4()), success=False, retry_policy=RetryPolicy(max_attempts=8)
+        )
+        == "FAILED"
+    )
 
 
 def test_dispatch_off_means_no_db_or_queue(monkeypatch):
     monkeypatch.setattr(worker, "get_settings", lambda: config(False))
-    assert worker.dispatch_due_emails(publish=lambda *_: pytest.fail("published")) == {"disabled": 1}
+    assert worker.dispatch_due_emails(publish=lambda *_: pytest.fail("published")) == {
+        "disabled": 1
+    }
 
 
 def test_dispatch_claims_then_publishes_and_releases_on_broker_error(monkeypatch):
     monkeypatch.setattr(worker, "get_settings", config)
     conn = Connection()
     conn.claim_rows = [
-        {"delivery_id": "1", "token": "t1"}, {"delivery_id": "2", "token": "t2"},
+        {"delivery_id": "1", "token": "t1"},
+        {"delivery_id": "2", "token": "t2"},
     ]
     engine = Engine(conn)
     sent = []
@@ -163,7 +183,9 @@ def test_delivery_requires_claim_token_and_due_time(monkeypatch):
     monkeypatch.setattr(worker, "get_settings", config)
     sender = Sender()
     conn = Connection(row=None)
-    result = worker.deliver_pending_email(str(uuid4()), str(uuid4()), engine=Engine(conn), sender=sender)
+    result = worker.deliver_pending_email(
+        str(uuid4()), str(uuid4()), engine=Engine(conn), sender=sender
+    )
     assert result["status"] == "SKIPPED"
     assert sender.calls == []
     assert "d.dispatch_token=CAST(:token AS uuid)" in conn.sql[0]
@@ -179,13 +201,25 @@ def test_deliver_off_does_not_query_or_send(monkeypatch):
 
 def test_successful_delivery_renders_and_records(monkeypatch):
     monkeypatch.setattr(worker, "get_settings", config)
-    monkeypatch.setattr(AlertRepository, "authorized_email_recipient",
-                        lambda *_args, **_kw: "test@example.test")
-    conn = Connection(row={"id": "d", "alert_event_id": uuid4(), "user_id": uuid4(),
-                           "alert_type": "deadline_changed", "payload": {"field_path": "start_at"},
-                           "email": "test@example.test", "slug": "spring-hack", "name": "Spring Hack"})
+    monkeypatch.setattr(
+        AlertRepository, "authorized_email_recipient", lambda *_args, **_kw: "test@example.test"
+    )
+    conn = Connection(
+        row={
+            "id": "d",
+            "alert_event_id": uuid4(),
+            "user_id": uuid4(),
+            "alert_type": "deadline_changed",
+            "payload": {"field_path": "start_at"},
+            "email": "test@example.test",
+            "slug": "spring-hack",
+            "name": "Spring Hack",
+        }
+    )
     sender = Sender()
-    result = worker.deliver_pending_email(str(uuid4()), str(uuid4()), sender=sender, engine=Engine(conn))
+    result = worker.deliver_pending_email(
+        str(uuid4()), str(uuid4()), sender=sender, engine=Engine(conn)
+    )
     assert result["status"] == "SENT"
     assert len(sender.calls) == 1
     assert "Spring Hack" in sender.calls[0]["subject"]
@@ -195,13 +229,25 @@ def test_successful_delivery_renders_and_records(monkeypatch):
 
 def test_smtp_exception_is_redacted_and_retryable(monkeypatch):
     monkeypatch.setattr(worker, "get_settings", config)
-    monkeypatch.setattr(AlertRepository, "authorized_email_recipient",
-                        lambda *_args, **_kw: "test@example.test")
-    conn = Connection(row={"id": "d", "alert_event_id": uuid4(), "user_id": uuid4(),
-                           "alert_type": "deadline_changed", "payload": {},
-                           "email": "test@example.test", "slug": None, "name": None})
+    monkeypatch.setattr(
+        AlertRepository, "authorized_email_recipient", lambda *_args, **_kw: "test@example.test"
+    )
+    conn = Connection(
+        row={
+            "id": "d",
+            "alert_event_id": uuid4(),
+            "user_id": uuid4(),
+            "alert_type": "deadline_changed",
+            "payload": {},
+            "email": "test@example.test",
+            "slug": None,
+            "name": None,
+        }
+    )
     error = RuntimeError("secret-password-private")
-    result = worker.deliver_pending_email(str(uuid4()), str(uuid4()), sender=Sender(error), engine=Engine(conn))
+    result = worker.deliver_pending_email(
+        str(uuid4()), str(uuid4()), sender=Sender(error), engine=Engine(conn)
+    )
     assert result["status"] == "RETRY"
     assert "secret-password-private" not in str(result)
     assert conn.params[-1]["error_message"] == "RuntimeError"
@@ -209,18 +255,32 @@ def test_smtp_exception_is_redacted_and_retryable(monkeypatch):
 
 def test_email_channel_disabled_fails_without_contacting_smtp(monkeypatch):
     monkeypatch.setattr(worker, "get_settings", config)
-    conn = Connection(row={"id": "d", "alert_event_id": uuid4(), "user_id": uuid4(),
-                           "alert_type": "new_match", "payload": {}, "email": None,
-                           "slug": None, "name": None})
+    conn = Connection(
+        row={
+            "id": "d",
+            "alert_event_id": uuid4(),
+            "user_id": uuid4(),
+            "alert_type": "new_match",
+            "payload": {},
+            "email": None,
+            "slug": None,
+            "name": None,
+        }
+    )
     sender = Sender()
-    assert worker.deliver_pending_email(str(uuid4()), str(uuid4()), sender=sender,
-                                        engine=Engine(conn))["status"] == "DISABLED"
+    assert (
+        worker.deliver_pending_email(
+            str(uuid4()), str(uuid4()), sender=sender, engine=Engine(conn)
+        )["status"]
+        == "DISABLED"
+    )
     assert not sender.calls
     assert conn.params[-1]["status"] == "FAILED"
 
 
 def test_migration_declares_dispatch_columns_and_index():
     from pathlib import Path
+
     sql = (Path(__file__).resolve().parents[3] / "db/sql/0008_w6_alert_dispatch.sql").read_text()
     assert "dispatch_token uuid" in sql
     assert "dispatch_expires_at timestamptz" in sql
@@ -259,17 +319,30 @@ def test_saved_search_revoke_after_claim_prevents_smtp(monkeypatch):
     from hackathon_worker import matches
 
     monkeypatch.setattr(worker, "get_settings", config)
-    monkeypatch.setattr(AlertRepository, "authorized_email_recipient",
-                        lambda *_args, **_kw: "test@example.test")
+    monkeypatch.setattr(
+        AlertRepository, "authorized_email_recipient", lambda *_args, **_kw: "test@example.test"
+    )
     called = []
-    monkeypatch.setattr(matches, "allow_new_match_email",
-                        lambda _con, **kw: called.append(kw) or False)
-    conn = Connection(row={"id": "d", "alert_event_id": uuid4(), "user_id": uuid4(),
-                           "alert_type": "new_match", "payload": {"saved_search_id": str(uuid4())},
-                           "hackathon_id": uuid4(), "email": "user@example.test", "slug": None, "name": "Event"})
+    monkeypatch.setattr(
+        matches, "allow_new_match_email", lambda _con, **kw: called.append(kw) or False
+    )
+    conn = Connection(
+        row={
+            "id": "d",
+            "alert_event_id": uuid4(),
+            "user_id": uuid4(),
+            "alert_type": "new_match",
+            "payload": {"saved_search_id": str(uuid4())},
+            "hackathon_id": uuid4(),
+            "email": "user@example.test",
+            "slug": None,
+            "name": "Event",
+        }
+    )
     sender = Sender()
-    result = worker.deliver_pending_email(str(uuid4()), str(uuid4()),
-                                          sender=sender, engine=Engine(conn))
+    result = worker.deliver_pending_email(
+        str(uuid4()), str(uuid4()), sender=sender, engine=Engine(conn)
+    )
     assert result["status"] == "DISABLED"
     assert not sender.calls
     assert len(called) == 1
@@ -281,13 +354,28 @@ def test_valid_new_match_consent_allows_smtp(monkeypatch):
     from hackathon_worker import matches
 
     monkeypatch.setattr(worker, "get_settings", config)
-    monkeypatch.setattr(AlertRepository, "authorized_email_recipient",
-                        lambda *_args, **_kw: "user@example.test")
+    monkeypatch.setattr(
+        AlertRepository, "authorized_email_recipient", lambda *_args, **_kw: "user@example.test"
+    )
     monkeypatch.setattr(matches, "allow_new_match_email", lambda *_args, **_kwargs: True)
-    conn = Connection(row={"id": "d", "alert_event_id": uuid4(), "user_id": uuid4(),
-                           "alert_type": "new_match", "payload": {"saved_search_id": str(uuid4())},
-                           "hackathon_id": uuid4(), "email": "user@example.test", "slug": None, "name": "Event"})
+    conn = Connection(
+        row={
+            "id": "d",
+            "alert_event_id": uuid4(),
+            "user_id": uuid4(),
+            "alert_type": "new_match",
+            "payload": {"saved_search_id": str(uuid4())},
+            "hackathon_id": uuid4(),
+            "email": "user@example.test",
+            "slug": None,
+            "name": "Event",
+        }
+    )
     sender = Sender()
-    assert worker.deliver_pending_email(str(uuid4()), str(uuid4()),
-                                        sender=sender, engine=Engine(conn))["status"] == "SENT"
+    assert (
+        worker.deliver_pending_email(
+            str(uuid4()), str(uuid4()), sender=sender, engine=Engine(conn)
+        )["status"]
+        == "SENT"
+    )
     assert len(sender.calls) == 1

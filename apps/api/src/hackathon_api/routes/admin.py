@@ -4,11 +4,7 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import Connection, text
-
 from hackathon_api.db import connection_dependency
-from hackathon_shared.settings import get_settings
 from hackathon_api.repositories.admin import AdminRepository
 from hackathon_api.security import (
     AdminPrincipal,
@@ -17,6 +13,9 @@ from hackathon_api.security import (
     admin_superuser,
     require_admin,
 )
+from hackathon_shared.settings import get_settings
+from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import Connection, text
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 ConnectionDep = Annotated[Connection, Depends(connection_dependency)]
@@ -105,7 +104,8 @@ def source_insights(
     from hackathon_api.repositories.source_insights import SourceInsightsRepository
 
     return SourceInsightsRepository(connection).snapshot(
-        recent_days=recent_days, run_limit=run_limit,
+        recent_days=recent_days,
+        run_limit=run_limit,
     )
 
 
@@ -194,7 +194,9 @@ def rebuild_search_index(
     principal: SuperuserDep,
     connection: ConnectionDep,
 ) -> dict[str, int]:
-    count = int(connection.execute(text("SELECT rebuild_hackathon_search_documents()" )).scalar_one())
+    count = int(
+        connection.execute(text("SELECT rebuild_hackathon_search_documents()")).scalar_one()
+    )
     AdminRepository(connection).audit_reindex(
         count=count,
         principal=principal,

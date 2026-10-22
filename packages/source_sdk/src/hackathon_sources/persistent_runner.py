@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urlsplit
 
 from sqlalchemy import Connection
 
 from .adapter import SourceAdapter
+from .backlog import BacklogClaim, SourceUrlBacklog
 from .models import FetchResult, IngestionMode, SourceEventRecord
+from .registry import SourceRegistryRepository
 from .repositories import (
     CrawlRepository,
     FrontierRepository,
@@ -18,8 +21,6 @@ from .repositories import (
     SourceEventRefRepository,
     SourcePayloadRepository,
 )
-from .registry import SourceRegistryRepository
-from .backlog import SourceUrlBacklog, BacklogClaim
 from .syndication import MAX_FEED_PAGE_HOPS, MAX_SITEMAP_INDEX_DEPTH
 
 
@@ -112,7 +113,9 @@ async def run_source_persisted(
     if not source_registry.is_active(source_id):
         raise SourcePausedError(f"source {adapter.definition.key} is paused")
     if not source_registry.is_fetch_authorized(source_id):
-        raise SourceNotAuthorizedError(f"source {adapter.definition.key} is not authorized for fetch")
+        raise SourceNotAuthorizedError(
+            f"source {adapter.definition.key} is not authorized for fetch"
+        )
     if lease_token is not None and not source_registry.has_current_lease(source_id, lease_token):
         raise SourcePausedError("scheduled crawl lease no longer owned by this worker")
 
@@ -131,9 +134,13 @@ async def run_source_persisted(
     def same_source(url: str) -> bool:
         try:
             parts = urlsplit(url)
-            return (parts.scheme in ("http", "https") and parts.hostname is not None
-                    and parts.hostname.lower() in allowed_hosts
-                    and parts.username is None and parts.password is None)
+            return (
+                parts.scheme in ("http", "https")
+                and parts.hostname is not None
+                and parts.hostname.lower() in allowed_hosts
+                and parts.username is None
+                and parts.password is None
+            )
         except ValueError:
             return False
 
@@ -149,9 +156,13 @@ async def run_source_persisted(
             if any(not same_source(url) for url in queue):
                 raise ValueError("source seed outside explicitly authorized host")
             for url in queue:
-                backlog_repo.add(source_id, url, kind="SEED",
-                                 priority=adapter.definition.priority,
-                                 metadata={"source_key": adapter.definition.key})
+                backlog_repo.add(
+                    source_id,
+                    url,
+                    kind="SEED",
+                    priority=adapter.definition.priority,
+                    metadata={"source_key": adapter.definition.key},
+                )
             connection.commit()
             queue = []
     except Exception as exc:
@@ -174,7 +185,9 @@ async def run_source_persisted(
         if not source_registry.is_fetch_authorized(source_id):
             output.paused = True
             break
-        if lease_token is not None and not source_registry.has_current_lease(source_id, lease_token):
+        if lease_token is not None and not source_registry.has_current_lease(
+            source_id, lease_token
+        ):
             output.paused = True
             break
         claim: BacklogClaim | None = None
@@ -213,6 +226,7 @@ async def run_source_persisted(
         started_monotonic = time.monotonic()
         try:
             fetched = await fetcher.fetch(adapter.definition, url)
+
             # A heartbeat or operator pause may have arrived DURING the HTTP request.
             # Do not persist content/refs fetched by a stale or unauthorized worker.
             def permitted_after_network() -> bool:
@@ -229,7 +243,9 @@ async def run_source_persisted(
             if not permitted_after_network():
                 output.paused = True
                 frontier_repo.mark_result(
-                    frontier_id, state="FAILED", terminal_reason="source paused or lease lost",
+                    frontier_id,
+                    state="FAILED",
+                    terminal_reason="source paused or lease lost",
                 )
                 if claim is not None:
                     backlog_repo.fail(claim, reason="source paused or lease lost", immediate=True)
@@ -249,15 +265,20 @@ async def run_source_persisted(
             if fetch_status == "FAILED":
                 # Even status metadata must not be committed by a revoked owner.
                 if not permitted_after_network() or not source_registry.authorized_for_commit(
-                    source_id, lease_token=lease_token,
+                    source_id,
+                    lease_token=lease_token,
                 ):
                     connection.rollback()
                     output.paused = True
                     frontier_repo.mark_result(
-                        frontier_id, state="FAILED", terminal_reason="source paused or lease lost",
+                        frontier_id,
+                        state="FAILED",
+                        terminal_reason="source paused or lease lost",
                     )
                     if claim is not None:
-                        backlog_repo.fail(claim, reason="source paused or lease lost", immediate=True)
+                        backlog_repo.fail(
+                            claim, reason="source paused or lease lost", immediate=True
+                        )
                     connection.commit()
                     break
                 if claim is not None:
@@ -290,6 +311,7 @@ async def run_source_persisted(
             has_more = False
             if claim is not None and hasattr(adapter, "parse_listing_page"):
                 from .hashing import sha256_bytes
+
                 digest = sha256_bytes(fetched.body)
                 # A changed listing invalidates the old ordinal cursor.
                 offset = claim.listing_offset if claim.listing_hash == digest else 0
@@ -303,12 +325,15 @@ async def run_source_persisted(
             # Parsing can yield to another coroutine. Recheck the lease and
             # policy BEFORE committing document/ref writes from this page.
             if not permitted_after_network() or not source_registry.authorized_for_commit(
-                source_id, lease_token=lease_token,
+                source_id,
+                lease_token=lease_token,
             ):
                 connection.rollback()
                 output.paused = True
                 frontier_repo.mark_result(
-                    frontier_id, state="FAILED", terminal_reason="source paused or lease lost",
+                    frontier_id,
+                    state="FAILED",
+                    terminal_reason="source paused or lease lost",
                 )
                 if claim is not None:
                     backlog_repo.fail(claim, reason="source paused or lease lost", immediate=True)
@@ -330,8 +355,11 @@ async def run_source_persisted(
                     edition_start=record.starts_at_raw,
                 )
                 payload_repo.stage(
-                    ref_id=ref_id, source_id=source_id, raw_document_id=raw_document_id,
-                    source_key=record.source_key, payload=record.model_dump(mode="json"),
+                    ref_id=ref_id,
+                    source_id=source_id,
+                    raw_document_id=raw_document_id,
+                    source_key=record.source_key,
+                    payload=record.model_dump(mode="json"),
                     crawl_run_id=crawl_run_id,
                 )
 
@@ -364,7 +392,10 @@ async def run_source_persisted(
                                 continue
                             metadata["sitemap_depth"] = depth
                         backlog_repo.add(
-                            source_id, candidate, kind="DISCOVERED", priority=item.priority,
+                            source_id,
+                            candidate,
+                            kind="DISCOVERED",
+                            priority=item.priority,
                             metadata=metadata,
                         )
                     elif candidate not in seen and candidate not in queue:

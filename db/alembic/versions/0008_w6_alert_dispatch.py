@@ -3,6 +3,7 @@
 Revision ID: 0008_w6_alert_dispatch
 Revises: 0007_w6_source_operations
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,4 +25,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS alert_delivery_due_idx")
-    op.execute("ALTER TABLE alert_deliveries DROP COLUMN IF EXISTS dispatch_expires_at, DROP COLUMN IF EXISTS dispatch_token")
+    op.execute(
+        "ALTER TABLE alert_deliveries DROP COLUMN IF EXISTS dispatch_expires_at, DROP COLUMN IF EXISTS dispatch_token"
+    )

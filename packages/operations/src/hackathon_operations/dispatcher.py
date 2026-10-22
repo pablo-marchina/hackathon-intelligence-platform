@@ -1,16 +1,16 @@
 """Optional, bounded source-dispatch loop for the W6 adaptive scheduler."""
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import Engine, text
-
 from hackathon_sources.factory import build_adapter, live_adapter_keys
 from hackathon_sources.fetcher import FetchEngine
 from hackathon_sources.persistent_runner import run_source_persisted
 from hackathon_sources.registry import SourceRegistryRepository, load_source_definitions
+from sqlalchemy import Engine, text
 
 from .lease_heartbeat import LeaseHeartbeat, LeaseLostError
 from .source_maintenance import claim_due_source, complete_lease, maintain_sources
@@ -29,8 +29,12 @@ class DispatchResult:
 
 
 async def run_scheduler_cycle(
-    engine: Engine, *, root: Path, dispatch: bool = False,
-    limit: int = 3, max_pages: int = 5,
+    engine: Engine,
+    *,
+    root: Path,
+    dispatch: bool = False,
+    limit: int = 3,
+    max_pages: int = 5,
 ) -> DispatchResult:
     """Plan health/recrawls and optionally execute approved, due live adapters.
 
@@ -51,7 +55,12 @@ async def run_scheduler_cycle(
         result = maintain_sources(conn)
     if not dispatch:
         return DispatchResult(
-            result.sources_checked, result.runs_processed, result.reviews_created, 0, 0, 0,
+            result.sources_checked,
+            result.runs_processed,
+            result.reviews_created,
+            0,
+            0,
+            0,
         )
 
     keyed = {(d.domain.lower(), d.source_family): d for d in definitions}
@@ -62,25 +71,36 @@ async def run_scheduler_cycle(
                 lease = claim_due_source(conn, allowed_sources=list(keyed))
                 if lease is None:
                     break
-                definition_key = conn.execute(
-                    text("""
+                definition_key = (
+                    conn.execute(
+                        text("""
                         SELECT lower(domain::text) AS domain, source_family FROM sources
                          WHERE id=CAST(:id AS uuid)
                     """),
-                    {"id": lease["source_id"]},
-                ).mappings().one()
+                        {"id": lease["source_id"]},
+                    )
+                    .mappings()
+                    .one()
+                )
             claimed += 1
             definition = keyed.get((definition_key["domain"], definition_key["source_family"]))
             ok = False
             try:
                 if definition is None:
-                    raise LookupError("leased source no longer exists in the local adapter registry")
+                    raise LookupError(
+                        "leased source no longer exists in the local adapter registry"
+                    )
                 async with LeaseHeartbeat(
-                    engine, source_id=lease["source_id"], lease_token=lease["lease_token"],
+                    engine,
+                    source_id=lease["source_id"],
+                    lease_token=lease["lease_token"],
                 ) as heartbeat:
                     with engine.connect() as conn:
                         run = await run_source_persisted(
-                            build_adapter(definition), fetcher, conn, max_pages=max_pages,
+                            build_adapter(definition),
+                            fetcher,
+                            conn,
+                            max_pages=max_pages,
                             lease_token=lease["lease_token"],
                             should_continue=lambda: not heartbeat.lost,
                         )
@@ -96,7 +116,9 @@ async def run_scheduler_cycle(
                 with engine.begin() as conn:
                     # A stale claim must not erase a lease already reissued to another worker.
                     released = complete_lease(
-                        conn, source_id=lease["source_id"], lease_token=lease["lease_token"],
+                        conn,
+                        source_id=lease["source_id"],
+                        lease_token=lease["lease_token"],
                         success=ok,
                     )
                 if not released:
@@ -110,6 +132,10 @@ async def run_scheduler_cycle(
     with engine.begin() as conn:
         after = maintain_sources(conn)
     return DispatchResult(
-        result.sources_checked, result.runs_processed + after.runs_processed,
-        result.reviews_created + after.reviews_created, claimed, succeeded, failed,
+        result.sources_checked,
+        result.runs_processed + after.runs_processed,
+        result.reviews_created + after.reviews_created,
+        claimed,
+        succeeded,
+        failed,
     )

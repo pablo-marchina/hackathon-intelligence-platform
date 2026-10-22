@@ -50,10 +50,15 @@ class RateLimiter:
 
 
 class FetchEngine:
-    def __init__(self, user_agent: str = "HackathonIntelligenceBot/0.1 (+contact-required)") -> None:
+    def __init__(
+        self, user_agent: str = "HackathonIntelligenceBot/0.1 (+contact-required)"
+    ) -> None:
         self.user_agent = user_agent
         self.client = httpx.AsyncClient(
-            headers={"User-Agent": user_agent, "Accept": "text/html,application/json;q=0.9,*/*;q=0.5"},
+            headers={
+                "User-Agent": user_agent,
+                "Accept": "text/html,application/json;q=0.9,*/*;q=0.5",
+            },
             timeout=httpx.Timeout(20.0, connect=10.0),
             follow_redirects=False,
             trust_env=False,
@@ -116,7 +121,10 @@ class FetchEngine:
                 # Stream bodies under an explicit decoded-size ceiling; get() buffers
                 # the full response and can exhaust worker memory on malicious input.
                 async with self.client.stream(
-                    "GET", current_url, headers=headers, follow_redirects=False,
+                    "GET",
+                    current_url,
+                    headers=headers,
+                    follow_redirects=False,
                 ) as response:
                     if response.status_code in REDIRECT_CODES:
                         location = response.headers.get("location")

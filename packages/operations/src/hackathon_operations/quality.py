@@ -47,7 +47,9 @@ def _freshness_score(last_verified_at: datetime | None, now: datetime) -> float:
 
 def compute_quality(value: EventQualityInput, *, now: datetime | None = None) -> QualitySnapshot:
     now = now or datetime.now(UTC)
-    source_score = min(100.0, value.source_count * 18.0 + (20.0 if value.has_official_source else 0.0))
+    source_score = min(
+        100.0, value.source_count * 18.0 + (20.0 if value.has_official_source else 0.0)
+    )
     consistency = max(0.0, 100.0 - value.open_conflicts * 25.0)
     parts = {
         "identity": 100.0 if value.has_name else 0.0,

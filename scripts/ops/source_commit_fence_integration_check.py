@@ -4,6 +4,7 @@
 Creates and deletes an isolated source. Never dispatches network traffic.
 Run only on a disposable migrated test database, with explicit opt-in flags.
 """
+
 from __future__ import annotations
 
 import os
@@ -11,9 +12,8 @@ from datetime import UTC, datetime, timedelta
 from threading import Event, Thread
 from uuid import uuid4
 
-from sqlalchemy import create_engine, text
-
 from hackathon_sources.registry import SourceRegistryRepository
+from sqlalchemy import create_engine, text
 
 
 def verify() -> None:
@@ -31,22 +31,28 @@ def verify() -> None:
     worker: Thread | None = None
     try:
         with engine.begin() as conn:
-            sid = conn.execute(text("""
+            sid = conn.execute(
+                text("""
                 INSERT INTO sources(
                     name, domain, source_family, source_type, ingestion_mode,
                     permission_status, detail_extraction_enabled
                 ) VALUES ('Fence CI', :domain, 'fence-ci', 'API', 'API', 'ALLOWED', true)
                 RETURNING id::text
-            """), {"domain": f"fence-{uuid4().hex}.test"}).scalar_one()
+            """),
+                {"domain": f"fence-{uuid4().hex}.test"},
+            ).scalar_one()
 
         def pause_in_other_transaction() -> None:
             began.set()
             try:
                 with engine.begin() as other:
-                    other.execute(text("""
+                    other.execute(
+                        text("""
                         UPDATE sources SET active=false
                          WHERE id=CAST(:sid AS uuid)
-                    """), {"sid": sid})
+                    """),
+                        {"sid": sid},
+                    )
             except BaseException as exc:
                 failures.append(exc)
             finally:
@@ -66,24 +72,33 @@ def verify() -> None:
         with engine.begin() as conn:
             assert not SourceRegistryRepository(conn).authorized_for_commit(sid)
             lease_token = str(uuid4())
-            conn.execute(text("UPDATE sources SET active=true WHERE id=CAST(:sid AS uuid)"), {"sid": sid})
-            conn.execute(text("""
+            conn.execute(
+                text("UPDATE sources SET active=true WHERE id=CAST(:sid AS uuid)"), {"sid": sid}
+            )
+            conn.execute(
+                text("""
                 INSERT INTO source_operational_state(source_id,lease_token,lease_until)
                 VALUES (CAST(:sid AS uuid),CAST(:token AS uuid),:until)
-            """), {
-                "sid": sid, "token": lease_token,
-                "until": datetime.now(UTC) + timedelta(minutes=2),
-            })
+            """),
+                {
+                    "sid": sid,
+                    "token": lease_token,
+                    "until": datetime.now(UTC) + timedelta(minutes=2),
+                },
+            )
 
         def replace_lease_in_other_transaction() -> None:
             began.set()
             try:
                 with engine.begin() as other:
-                    other.execute(text("""
+                    other.execute(
+                        text("""
                         UPDATE source_operational_state
                            SET lease_token=CAST(:new_token AS uuid)
                          WHERE source_id=CAST(:sid AS uuid)
-                    """), {"sid": sid, "new_token": str(uuid4())})
+                    """),
+                        {"sid": sid, "new_token": str(uuid4())},
+                    )
             except BaseException as exc:
                 failures.append(exc)
             finally:
@@ -104,16 +119,20 @@ def verify() -> None:
         assert not failures, f"lease update failed: {[type(e).__name__ for e in failures]}"
         with engine.begin() as conn:
             assert not SourceRegistryRepository(conn).authorized_for_commit(
-                sid, lease_token=lease_token,
+                sid,
+                lease_token=lease_token,
             ), "stale owner must not commit after token replacement"
 
         # PostgreSQL now() is a transaction snapshot. The fencing read must
         # use clock_timestamp() so an expired token never passes a long TX.
         with engine.begin() as conn:
-            conn.execute(text("""
+            conn.execute(
+                text("""
                 UPDATE source_operational_state SET lease_until=clock_timestamp()-interval '1 second'
                  WHERE source_id=CAST(:sid AS uuid)
-            """), {"sid": sid})
+            """),
+                {"sid": sid},
+            )
             repo = SourceRegistryRepository(conn)
             assert not repo.has_current_lease(sid, lease_token)
             assert not repo.authorized_for_commit(sid, lease_token=lease_token)

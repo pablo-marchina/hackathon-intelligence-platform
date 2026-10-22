@@ -65,8 +65,17 @@ def extract_structured_event(
 
 def missing_core_fields(event: ExtractedEvent) -> tuple[str, ...]:
     fields = (
-        "name", "description", "start_at", "end_at", "registration_url",
-        "official_url", "location_name", "organizer_name", "event_type",
-        "format", "prize_text", "eligibility_text",
+        "name",
+        "description",
+        "start_at",
+        "end_at",
+        "registration_url",
+        "official_url",
+        "location_name",
+        "organizer_name",
+        "event_type",
+        "format",
+        "prize_text",
+        "eligibility_text",
     )
     return tuple(field for field in fields if getattr(event, field, None) in (None, ""))

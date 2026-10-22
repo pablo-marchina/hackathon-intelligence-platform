@@ -1,14 +1,14 @@
 """Readiness reflects database availability AND migration state."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-from sqlalchemy.exc import OperationalError, ProgrammingError
-
 import hackathon_api.main as main
+from fastapi.testclient import TestClient
 from hackathon_api.main import app
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 
 class Connection:

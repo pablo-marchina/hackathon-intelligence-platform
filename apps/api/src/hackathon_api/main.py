@@ -9,19 +9,20 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
 from hackathon_shared.logging import configure_logging
 from hackathon_shared.settings import get_settings
-from hackathon_api.routes.admin import router as admin_router
-from hackathon_api.routes.hackathons import router as hackathons_router
-from hackathon_api.routes.catalog import router as catalog_router
-from hackathon_api.routes.search import router as search_router
-from hackathon_api.routes.auth import router as auth_router
-from hackathon_api.routes.users import router as users_router
-from hackathon_api.routes.personalization import router as personalization_router
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+
 from hackathon_api.body_limit import RequestBodyLimitMiddleware
 from hackathon_api.db import get_engine
+from hackathon_api.routes.admin import router as admin_router
+from hackathon_api.routes.auth import router as auth_router
+from hackathon_api.routes.catalog import router as catalog_router
+from hackathon_api.routes.hackathons import router as hackathons_router
+from hackathon_api.routes.personalization import router as personalization_router
+from hackathon_api.routes.search import router as search_router
+from hackathon_api.routes.users import router as users_router
 
 settings = get_settings()
 configure_logging(settings.log_level)

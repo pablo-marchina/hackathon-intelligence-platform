@@ -10,9 +10,10 @@ class AdminRepository:
         self.connection = connection
 
     def review_queue(self, *, limit: int = 100) -> list[dict[str, Any]]:
-        rows = self.connection.execute(
-            text(
-                """
+        rows = (
+            self.connection.execute(
+                text(
+                    """
                 SELECT id, queue_type, entity_type, entity_id, severity::text AS severity,
                        state::text AS state, payload, created_at, assigned_to_user_id
                   FROM review_queue_items
@@ -22,15 +23,19 @@ class AdminRepository:
                           created_at ASC
                  LIMIT :limit
                 """
-            ),
-            {"limit": limit},
-        ).mappings().all()
+                ),
+                {"limit": limit},
+            )
+            .mappings()
+            .all()
+        )
         return [dict(row) for row in rows]
 
     def source_health(self) -> list[dict[str, Any]]:
-        rows = self.connection.execute(
-            text(
-                """
+        rows = (
+            self.connection.execute(
+                text(
+                    """
                 SELECT s.id, s.name, s.domain, s.health::text AS health, s.priority,
                        s.last_attempt_at, s.last_success_at, s.last_error_at, s.active,
                        st.next_due_at, st.recrawl_priority, st.interval_seconds,
@@ -39,14 +44,18 @@ class AdminRepository:
                   LEFT JOIN source_operational_state st ON st.source_id = s.id
                  ORDER BY s.active DESC, s.priority DESC, s.name ASC
                 """
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         return [dict(row) for row in rows]
 
     def latest_quality(self, *, limit: int = 100) -> list[dict[str, Any]]:
-        rows = self.connection.execute(
-            text(
-                """
+        rows = (
+            self.connection.execute(
+                text(
+                    """
                 SELECT DISTINCT ON (scope_type, scope_id)
                        scope_type, scope_id, measured_at, overall_score,
                        identity_score, dates_score, eligibility_score, prize_score,
@@ -56,9 +65,12 @@ class AdminRepository:
                  ORDER BY scope_type, scope_id, measured_at DESC
                  LIMIT :limit
                 """
-            ),
-            {"limit": limit},
-        ).mappings().all()
+                ),
+                {"limit": limit},
+            )
+            .mappings()
+            .all()
+        )
         return [dict(row) for row in rows]
 
     def _audit(
@@ -110,16 +122,24 @@ class AdminRepository:
         request_id: str | None,
     ) -> dict[str, Any] | None:
         """Lock the target, change its effective state and audit in one DB transaction."""
-        row = self.connection.execute(
-            text("SELECT id::text AS id, active FROM sources WHERE id = CAST(:id AS uuid) FOR UPDATE"),
-            {"id": source_id},
-        ).mappings().first()
+        row = (
+            self.connection.execute(
+                text(
+                    "SELECT id::text AS id, active FROM sources WHERE id = CAST(:id AS uuid) FOR UPDATE"
+                ),
+                {"id": source_id},
+            )
+            .mappings()
+            .first()
+        )
         if row is None:
             return None
         old_active = bool(row["active"])
         if old_active != active:
             self.connection.execute(
-                text("UPDATE sources SET active = :active, updated_at = now() WHERE id = CAST(:id AS uuid)"),
+                text(
+                    "UPDATE sources SET active = :active, updated_at = now() WHERE id = CAST(:id AS uuid)"
+                ),
                 {"id": source_id, "active": active},
             )
             self._audit(
@@ -144,16 +164,20 @@ class AdminRepository:
         principal: Any,
         request_id: str | None,
     ) -> dict[str, Any] | None:
-        row = self.connection.execute(
-            text(
-                """
+        row = (
+            self.connection.execute(
+                text(
+                    """
                 SELECT id::text AS id, state::text AS state,
                        assigned_to_user_id::text AS assigned_to_user_id
                 FROM review_queue_items WHERE id = CAST(:id AS uuid) FOR UPDATE
                 """
-            ),
-            {"id": review_id},
-        ).mappings().first()
+                ),
+                {"id": review_id},
+            )
+            .mappings()
+            .first()
+        )
         if row is None:
             return None
         before = {"state": str(row["state"]), "assigned_to_user_id": row["assigned_to_user_id"]}
@@ -198,17 +222,21 @@ class AdminRepository:
         return {"id": review_id, **after}
 
     def audit_events(self, *, limit: int = 100) -> list[dict[str, Any]]:
-        rows = self.connection.execute(
-            text(
-                """
+        rows = (
+            self.connection.execute(
+                text(
+                    """
                 SELECT id, actor_user_id::text AS actor_user_id, actor_kind,
                        action, entity_type, entity_id, reason,
                        before_json, after_json, created_at, request_id
                   FROM admin_audit_log ORDER BY id DESC LIMIT :limit
                 """
-            ),
-            {"limit": limit},
-        ).mappings().all()
+                ),
+                {"limit": limit},
+            )
+            .mappings()
+            .all()
+        )
         return [dict(row) for row in rows]
 
     def audit_reindex(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 from difflib import SequenceMatcher
 
@@ -98,7 +98,9 @@ def duplicate_score(features: DedupFeatures) -> float:
     )
 
 
-def dedup_decision(score: float, *, auto_merge_threshold: float = 0.97, review_threshold: float = 0.80) -> str:
+def dedup_decision(
+    score: float, *, auto_merge_threshold: float = 0.97, review_threshold: float = 0.80
+) -> str:
     if score >= auto_merge_threshold:
         return "AUTO_MERGE"
     if score >= review_threshold:
@@ -131,9 +133,11 @@ def _month_buckets(start_at: datetime | None) -> tuple[str, ...]:
         m = month + offset
         y = year
         if m < 1:
-            y -= 1; m = 12
+            y -= 1
+            m = 12
         elif m > 12:
-            y += 1; m = 1
+            y += 1
+            m = 1
         buckets.append(f"{y:04d}-{m:02d}")
     return tuple(buckets)
 
@@ -149,7 +153,7 @@ def generate_candidate_pairs(events: list[EventFingerprint]) -> list[DedupCandid
     for idx, event in enumerate(events):
         for external_id in event.external_ids:
             if external_id:
-                blocks[f"external:{external_id}"] .append(idx)
+                blocks[f"external:{external_id}"].append(idx)
         if event.official_url:
             blocks[f"url:{normalize_url_signature(event.official_url)}"].append(idx)
         title_key = _title_block_key(event.name)

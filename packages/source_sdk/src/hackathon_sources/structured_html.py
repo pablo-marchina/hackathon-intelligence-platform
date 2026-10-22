@@ -3,6 +3,7 @@
 This adapter never navigates to event URLs. Only sources independently approved for
 fetching HTML may use it; links emitted as evidence do not authorize crawling.
 """
+
 from __future__ import annotations
 
 import json
@@ -32,7 +33,7 @@ def _scalar(value: Any) -> str | None:
 
 def _label(value: Any) -> str | None:
     if isinstance(value, dict):
-        return _scalar(value.get('name')) or _scalar(value.get('@id'))
+        return _scalar(value.get("name")) or _scalar(value.get("@id"))
     return _scalar(value)
 
 
@@ -48,7 +49,12 @@ def _safe_url(value: Any, base: str) -> str | None:
     absolute = urljoin(base, url)
     try:
         parsed = urlsplit(absolute)
-        if parsed.scheme not in {'http', 'https'} or not parsed.hostname or parsed.username or parsed.password:
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+        ):
             return None
         return absolute
     except ValueError:
@@ -57,7 +63,11 @@ def _safe_url(value: Any, base: str) -> str | None:
 
 def _types(value: Any) -> set[str]:
     values = value if isinstance(value, list) else [value]
-    return {str(item).rsplit('/', 1)[-1].rsplit('#', 1)[-1].casefold() for item in values if isinstance(item, str)}
+    return {
+        str(item).rsplit("/", 1)[-1].rsplit("#", 1)[-1].casefold()
+        for item in values
+        if isinstance(item, str)
+    }
 
 
 def _nodes(payload: Any) -> Iterator[dict[str, Any]]:
@@ -73,7 +83,7 @@ def _nodes(payload: Any) -> Iterator[dict[str, Any]]:
             stack.extend((item, depth + 1) for item in reversed(value))
         elif isinstance(value, dict):
             yield value
-            for key in ('@graph', 'mainEntity', 'itemListElement', 'item', 'subjectOf', 'hasPart'):
+            for key in ("@graph", "mainEntity", "itemListElement", "item", "subjectOf", "hasPart"):
                 if key in value:
                     stack.append((value[key], depth + 1))
 
@@ -85,18 +95,18 @@ def _location(value: Any) -> tuple[dict[str, str], bool]:
     for loc in locations:
         if not isinstance(loc, dict):
             continue
-        if 'virtuallocation' in _types(loc.get('@type')):
+        if "virtuallocation" in _types(loc.get("@type")):
             virtual = True
             continue
-        address = loc.get('address')
+        address = loc.get("address")
         if not isinstance(address, dict):
-            address = loc if 'postaladdress' in _types(loc.get('@type')) else {}
+            address = loc if "postaladdress" in _types(loc.get("@type")) else {}
         fields = {
-            'venue': _label(loc.get('name')),
-            'city': _scalar(address.get('addressLocality')),
-            'state_region': _scalar(address.get('addressRegion')),
-            'country': _label(address.get('addressCountry')),
-            'postal_code': _scalar(address.get('postalCode')),
+            "venue": _label(loc.get("name")),
+            "city": _scalar(address.get("addressLocality")),
+            "state_region": _scalar(address.get("addressRegion")),
+            "country": _label(address.get("addressCountry")),
+            "postal_code": _scalar(address.get("postalCode")),
         }
         physical = {k: v for k, v in fields.items() if v} or physical
     return physical, virtual
@@ -104,18 +114,18 @@ def _location(value: Any) -> tuple[dict[str, str], bool]:
 
 def _attendance(value: Any, *, physical: bool, virtual: bool) -> str | None:
     modes = _types(value)
-    if 'mixedeventattendancemode' in modes:
-        return 'HYBRID'
-    if 'onlineeventattendancemode' in modes:
-        return 'ONLINE'
-    if 'offlineeventattendancemode' in modes:
-        return 'IN_PERSON'
+    if "mixedeventattendancemode" in modes:
+        return "HYBRID"
+    if "onlineeventattendancemode" in modes:
+        return "ONLINE"
+    if "offlineeventattendancemode" in modes:
+        return "IN_PERSON"
     if physical and virtual:
-        return 'HYBRID'
+        return "HYBRID"
     if virtual:
-        return 'ONLINE'
+        return "ONLINE"
     if physical:
-        return 'IN_PERSON'
+        return "IN_PERSON"
     return None
 
 
@@ -125,7 +135,7 @@ def _keywords(value: Any) -> list[str]:
     for item in values:
         if not isinstance(item, str):
             continue
-        for part in re.split(r'[,;]', item):
+        for part in re.split(r"[,;]", item):
             tag = part.strip()[:100]
             if tag and tag not in tags:
                 tags.append(tag)
@@ -141,57 +151,67 @@ def _first_dict(value: Any) -> dict[str, Any]:
 
 
 def _record(node: dict[str, Any], result: FetchResult, source_key: str) -> SourceEventRecord | None:
-    if not (_types(node.get('@type')) & {'event', 'hackathon', 'educationevent', 'businessevent', 'festival', 'competition'}):
+    if not (
+        _types(node.get("@type"))
+        & {"event", "hackathon", "educationevent", "businessevent", "festival", "competition"}
+    ):
         return None
-    name = _scalar(node.get('name'))
+    name = _scalar(node.get("name"))
     if not name:
         return None
-    description = _scalar(node.get('description')) or ''
+    description = _scalar(node.get("description")) or ""
     # Lazy: the API-only adapters also run with source_sdk installed standalone.
     from hackathon_discovery.classifier import classify_page
+
     classification = classify_page(title=name, text=description)
     if not classification.is_hackathon_like:
         return None
-    place, virtual = _location(node.get('location'))
-    offer = _first_dict(node.get('offers'))
-    image = node.get('image')
+    place, virtual = _location(node.get("location"))
+    offer = _first_dict(node.get("offers"))
+    image = node.get("image")
     if isinstance(image, list):
         image = next((part for part in image if isinstance(part, str)), None)
     if isinstance(image, dict):
-        image = image.get('url') or image.get('contentUrl')
-    organizer = _labels(node.get('organizer'))
-    sponsors = _labels(node.get('sponsor'))
-    audience = _first_dict(node.get('audience'))
-    official = _safe_url(node.get('url'), result.final_url) or result.final_url
+        image = image.get("url") or image.get("contentUrl")
+    organizer = _labels(node.get("organizer"))
+    sponsors = _labels(node.get("sponsor"))
+    audience = _first_dict(node.get("audience"))
+    official = _safe_url(node.get("url"), result.final_url) or result.final_url
     # @id is often a *page* identifier reused each year; do not treat it as
     # an edition-stable external event ID for automatic entity merging.
-    identifier = _label(node.get('identifier'))
+    identifier = _label(node.get("identifier"))
     raw_meta: dict[str, Any] = {
-        'extraction_method': 'schema_org_json_ld',
-        'schema_org_id': _scalar(node.get('@id')),
-        'classification_version': classification.classifier_version,
-        'classification_confidence': classification.confidence,
-        'description': description[:2000] or None,
-        'language': _scalar(node.get('inLanguage')),
-        'is_accessible_for_free': (
-            node.get('isAccessibleForFree')
-            if isinstance(node.get('isAccessibleForFree'), bool) else None
+        "extraction_method": "schema_org_json_ld",
+        "schema_org_id": _scalar(node.get("@id")),
+        "classification_version": classification.classifier_version,
+        "classification_confidence": classification.confidence,
+        "description": description[:2000] or None,
+        "language": _scalar(node.get("inLanguage")),
+        "is_accessible_for_free": (
+            node.get("isAccessibleForFree")
+            if isinstance(node.get("isAccessibleForFree"), bool)
+            else None
         ),
-        'maximum_attendee_capacity': (
-            node.get('maximumAttendeeCapacity')
-            if isinstance(node.get('maximumAttendeeCapacity'), int)
-            and not isinstance(node.get('maximumAttendeeCapacity'), bool) else None
+        "maximum_attendee_capacity": (
+            node.get("maximumAttendeeCapacity")
+            if isinstance(node.get("maximumAttendeeCapacity"), int)
+            and not isinstance(node.get("maximumAttendeeCapacity"), bool)
+            else None
         ),
-        'image_url': _safe_url(image, result.final_url),
-        'organizers': organizer[:20],
-        'sponsors': sponsors[:20],
-        'registration_url': _safe_url(offer.get('url'), result.final_url),
-        'ticket_price': _scalar(offer.get('price')),
-        'ticket_currency': _scalar(offer.get('priceCurrency')),
-        'registration_valid_through': _scalar(offer.get('validThrough')),
-        'event_status': _label(node.get('eventStatus')),
-        'location': place,
-        'same_as': [link for raw in _labels(node.get('sameAs'))[:15] if (link := _safe_url(raw, result.final_url))],
+        "image_url": _safe_url(image, result.final_url),
+        "organizers": organizer[:20],
+        "sponsors": sponsors[:20],
+        "registration_url": _safe_url(offer.get("url"), result.final_url),
+        "ticket_price": _scalar(offer.get("price")),
+        "ticket_currency": _scalar(offer.get("priceCurrency")),
+        "registration_valid_through": _scalar(offer.get("validThrough")),
+        "event_status": _label(node.get("eventStatus")),
+        "location": place,
+        "same_as": [
+            link
+            for raw in _labels(node.get("sameAs"))[:15]
+            if (link := _safe_url(raw, result.final_url))
+        ],
     }
     return SourceEventRecord(
         source_key=source_key,
@@ -199,15 +219,17 @@ def _record(node: dict[str, Any], result: FetchResult, source_key: str) -> Sourc
         name=name[:500],
         source_url=result.final_url,
         official_url=official,
-        starts_at_raw=_scalar(node.get('startDate')),
-        ends_at_raw=_scalar(node.get('endDate')),
-        format_raw=_attendance(node.get('eventAttendanceMode'), physical=bool(place), virtual=virtual),
-        city=place.get('city'),
-        state_region=place.get('state_region'),
-        country=place.get('country'),
-        country_code=place.get('country') if len(place.get('country', '')) == 2 else None,
-        eligibility_raw=_scalar(audience.get('name')) or _scalar(audience.get('educationalRole')),
-        tags=_keywords(node.get('keywords')),
+        starts_at_raw=_scalar(node.get("startDate")),
+        ends_at_raw=_scalar(node.get("endDate")),
+        format_raw=_attendance(
+            node.get("eventAttendanceMode"), physical=bool(place), virtual=virtual
+        ),
+        city=place.get("city"),
+        state_region=place.get("state_region"),
+        country=place.get("country"),
+        country_code=place.get("country") if len(place.get("country", "")) == 2 else None,
+        eligibility_raw=_scalar(audience.get("name")) or _scalar(audience.get("educationalRole")),
+        tags=_keywords(node.get("keywords")),
         metadata=raw_meta,
     )
 
@@ -216,15 +238,19 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
     """Extract hackathon-like schema.org Event nodes from already permitted pages."""
 
     async def parse_events(self, result: FetchResult) -> list[SourceEventRecord]:
-        if 'html' not in (result.content_type or '').lower():
+        if "html" not in (result.content_type or "").lower():
             return []
-        soup = BeautifulSoup(result.body, 'html.parser')
+        soup = BeautifulSoup(result.body, "html.parser")
         records: list[SourceEventRecord] = []
         seen: set[tuple[str, str | None, str | None]] = set()
-        scripts = soup.find_all('script', type=lambda t: bool(t and t.split(';')[0].strip().lower() == 'application/ld+json'), limit=MAX_LD_SCRIPTS)
+        scripts = soup.find_all(
+            "script",
+            type=lambda t: bool(t and t.split(";")[0].strip().lower() == "application/ld+json"),
+            limit=MAX_LD_SCRIPTS,
+        )
         for script in scripts:
             raw = script.string or script.get_text()
-            if not raw or len(raw.encode('utf-8')) > MAX_LD_SCRIPT_BYTES:
+            if not raw or len(raw.encode("utf-8")) > MAX_LD_SCRIPT_BYTES:
                 continue
             try:
                 payload = json.loads(raw)
@@ -234,7 +260,11 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
                 record = _record(node, result, self.definition.key)
                 if record is None:
                     continue
-                fingerprint = (str(record.official_url), record.name.casefold(), record.starts_at_raw)
+                fingerprint = (
+                    str(record.official_url),
+                    record.name.casefold(),
+                    record.starts_at_raw,
+                )
                 if fingerprint in seen:
                     continue
                 seen.add(fingerprint)

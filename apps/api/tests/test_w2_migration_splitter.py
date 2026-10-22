@@ -32,7 +32,19 @@ def test_w2_migration_splitter_keeps_plpgsql_bodies_intact() -> None:
     statements = migration._split_sql(sql)
     functions = [statement for statement in statements if "CREATE OR REPLACE FUNCTION" in statement]
     assert len(functions) == 5
-    assert any("merge_hackathons_transactional" in statement and "RETURN v_merge_id" in statement for statement in functions)
-    assert any("undo_hackathon_merge" in statement and "reversed_at = now()" in statement for statement in functions)
-    assert any("split_hackathon_merge" in statement and "PERFORM undo_hackathon_merge" in statement for statement in functions)
-    assert any("assign_hackathon_series" in statement and "event_series_assignment_audit" in statement for statement in functions)
+    assert any(
+        "merge_hackathons_transactional" in statement and "RETURN v_merge_id" in statement
+        for statement in functions
+    )
+    assert any(
+        "undo_hackathon_merge" in statement and "reversed_at = now()" in statement
+        for statement in functions
+    )
+    assert any(
+        "split_hackathon_merge" in statement and "PERFORM undo_hackathon_merge" in statement
+        for statement in functions
+    )
+    assert any(
+        "assign_hackathon_series" in statement and "event_series_assignment_audit" in statement
+        for statement in functions
+    )

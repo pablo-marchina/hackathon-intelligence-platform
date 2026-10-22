@@ -3,10 +3,11 @@
 Revision ID: 0006_w6_admin_control_plane
 Revises: 0005_w5_recommendation_alerts
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from alembic import op
 
@@ -26,5 +27,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS admin_audit_created_at_idx")
-    op.execute("ALTER TABLE admin_audit_log DROP COLUMN IF EXISTS request_id, DROP COLUMN IF EXISTS actor_kind")
+    op.execute(
+        "ALTER TABLE admin_audit_log DROP COLUMN IF EXISTS request_id, DROP COLUMN IF EXISTS actor_kind"
+    )
     op.execute("DROP TABLE IF EXISTS admin_user_roles")

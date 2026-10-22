@@ -5,6 +5,7 @@ The archive is NOT a point-in-time consistent snapshot across PostgreSQL and S3.
 Quiesce writes or use a coordinated snapshot procedure for a recovery-point SLA.
 Never restore an untrusted archive: SHA-256 checksums are not authenticity proofs.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,6 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, unquote, urlsplit
-
 
 # These are libpq environment variables, not PostgreSQL command-line flags.
 # In particular, passwords must never appear in process arguments.
@@ -121,8 +121,16 @@ def backup(destination: Path, db_url: str, bucket: str) -> dict:
     os.chmod(destination, 0o700)
     dump = destination / "database.dump"
     subprocess.run(
-        ["pg_dump", "--format=custom", "--no-owner", "--no-acl", "--file", str(dump),
-         "--dbname", dbname],
+        [
+            "pg_dump",
+            "--format=custom",
+            "--no-owner",
+            "--no-acl",
+            "--file",
+            str(dump),
+            "--dbname",
+            dbname,
+        ],
         check=True,
         env=env,
     )
@@ -145,10 +153,14 @@ def backup(destination: Path, db_url: str, bucket: str) -> dict:
             local.parent.mkdir(exist_ok=True)
             client.download_file(bucket, key, str(local))
             os.chmod(local, 0o600)
-            objects.append({
-                "key": key, "file": "objects/" + filename,
-                "sha256": sha256_file(local), "size": local.stat().st_size,
-            })
+            objects.append(
+                {
+                    "key": key,
+                    "file": "objects/" + filename,
+                    "sha256": sha256_file(local),
+                    "size": local.stat().st_size,
+                }
+            )
         if not page.get("IsTruncated"):
             break
         next_token = page.get("NextContinuationToken")
@@ -156,10 +168,11 @@ def backup(destination: Path, db_url: str, bucket: str) -> dict:
             raise ValueError("invalid S3 listing continuation token")
         continuation = next_token
     manifest = {
-        "format": "hip-dr-v1", "created_at": datetime.now(UTC).isoformat(),
-        "db": {"file": "database.dump", "sha256": sha256_file(dump),
-               "size": dump.stat().st_size},
-        "object_bucket": bucket, "objects": objects,
+        "format": "hip-dr-v1",
+        "created_at": datetime.now(UTC).isoformat(),
+        "db": {"file": "database.dump", "sha256": sha256_file(dump), "size": dump.stat().st_size},
+        "object_bucket": bucket,
+        "objects": objects,
     }
     manifest_path = destination / "manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -211,8 +224,11 @@ def validate(directory: Path) -> dict:
             raise ValueError("manifest path escape")
         if not candidate.is_file() or not stat.S_ISREG(candidate.stat().st_mode):
             raise ValueError("backup entry is not a regular file")
-        if "size" in entry and (type(entry["size"]) is not int or
-                                entry["size"] < 0 or candidate.stat().st_size != entry["size"]):
+        if "size" in entry and (
+            type(entry["size"]) is not int
+            or entry["size"] < 0
+            or candidate.stat().st_size != entry["size"]
+        ):
             raise ValueError(f"size mismatch: {name}")
         if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
             raise ValueError("invalid SHA-256 checksum")
@@ -221,8 +237,9 @@ def validate(directory: Path) -> dict:
     return manifest
 
 
-def restore(directory: Path, db_url: str, destination_bucket: str,
-            *, allow_source_target: bool = False) -> None:
+def restore(
+    directory: Path, db_url: str, destination_bucket: str, *, allow_source_target: bool = False
+) -> None:
     if not destination_bucket or not destination_bucket.strip():
         raise ValueError("restore needs an explicit destination bucket")
     source = os.getenv("DATABASE_URL")
@@ -236,8 +253,17 @@ def restore(directory: Path, db_url: str, destination_bucket: str,
         raise ValueError("refusing restore into the original source bucket")
     client = _storage()
     subprocess.run(
-        ["pg_restore", "--clean", "--if-exists", "--no-owner", "--no-acl",
-         "--exit-on-error", "--dbname", dbname, str(directory / manifest["db"]["file"])],
+        [
+            "pg_restore",
+            "--clean",
+            "--if-exists",
+            "--no-owner",
+            "--no-acl",
+            "--exit-on-error",
+            "--dbname",
+            dbname,
+            str(directory / manifest["db"]["file"]),
+        ],
         check=True,
         env=env,
     )
@@ -257,18 +283,27 @@ def main() -> None:
     r.add_argument("--target-db", required=True)
     r.add_argument("--target-bucket", required=True)
     r.add_argument("--confirm-restore", action="store_true")
-    r.add_argument("--allow-source-target", action="store_true",
-                   help="DANGEROUS: explicitly permit restore into source or production")
+    r.add_argument(
+        "--allow-source-target",
+        action="store_true",
+        help="DANGEROUS: explicitly permit restore into source or production",
+    )
     args = parser.parse_args()
     if args.command == "backup":
-        print(json.dumps(backup(args.directory, os.environ["DATABASE_URL"], os.environ["S3_BUCKET"])))
+        print(
+            json.dumps(backup(args.directory, os.environ["DATABASE_URL"], os.environ["S3_BUCKET"]))
+        )
     elif args.command == "validate":
         print(json.dumps({"ok": True, "objects": len(validate(args.directory)["objects"])}))
     else:
         if not args.confirm_restore:
             parser.error("restore requires --confirm-restore")
-        restore(args.directory, args.target_db, args.target_bucket,
-                allow_source_target=args.allow_source_target)
+        restore(
+            args.directory,
+            args.target_db,
+            args.target_bucket,
+            allow_source_target=args.allow_source_target,
+        )
         print("restore completed and input checksums verified")
 
 

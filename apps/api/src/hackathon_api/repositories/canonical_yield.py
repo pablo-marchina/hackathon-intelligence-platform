@@ -1,4 +1,5 @@
 """Immutable, crawl-attributed canonical outcomes (not inferred from crawl stats)."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -20,7 +21,9 @@ class CanonicalYieldRepository:
         now = now.astimezone(UTC)
         since = now - timedelta(days=days)
         params = {"since": since, "as_of": now}
-        rows = self.connection.execute(text("""
+        rows = (
+            self.connection.execute(
+                text("""
             SELECT s.id::text AS source_id, s.name AS source_name,
                    COUNT(o.id) AS processed_versions,
                    COUNT(o.id) FILTER (WHERE o.outcome='CREATED') AS created,
@@ -33,16 +36,36 @@ class CanonicalYieldRepository:
                 ON o.source_id=s.id AND o.processed_at >= :since AND o.processed_at <= :as_of
              GROUP BY s.id, s.name
              ORDER BY s.name, s.id
-        """), params).mappings().all()
-        sources = [{
-            "source_id": str(r["source_id"]), "name": str(r["source_name"]),
-            **{key: int(r[key]) for key in (
-                "processed_versions", "created", "linked", "updated", "rejected", "unattributed")},
-        } for r in rows]
+        """),
+                params,
+            )
+            .mappings()
+            .all()
+        )
+        sources = [
+            {
+                "source_id": str(r["source_id"]),
+                "name": str(r["source_name"]),
+                **{
+                    key: int(r[key])
+                    for key in (
+                        "processed_versions",
+                        "created",
+                        "linked",
+                        "updated",
+                        "rejected",
+                        "unattributed",
+                    )
+                },
+            }
+            for r in rows
+        ]
         # Run cohorts use the original crawl ID, not event first_seen_at or
         # the time of a delayed normalization task. An old payload may have
         # no crawl ID and is explicitly labelled unattributed.
-        runs = self.connection.execute(text("""
+        runs = (
+            self.connection.execute(
+                text("""
             SELECT o.crawl_run_id::text AS crawl_run_id,
                    o.source_id::text AS source_id,
                    COUNT(*) AS processed_versions,
@@ -56,16 +79,44 @@ class CanonicalYieldRepository:
              GROUP BY o.crawl_run_id, o.source_id
              ORDER BY MAX(o.processed_at) DESC, o.crawl_run_id
              LIMIT 100
-        """), params).mappings().all()
+        """),
+                params,
+            )
+            .mappings()
+            .all()
+        )
         return {
-            "as_of": now.isoformat(), "recent_window_days": days,
-            "totals": {key: sum(s[key] for s in sources) for key in (
-                "processed_versions", "created", "linked", "updated", "rejected", "unattributed")},
+            "as_of": now.isoformat(),
+            "recent_window_days": days,
+            "totals": {
+                key: sum(s[key] for s in sources)
+                for key in (
+                    "processed_versions",
+                    "created",
+                    "linked",
+                    "updated",
+                    "rejected",
+                    "unattributed",
+                )
+            },
             "sources": sources,
-            "runs": [{"crawl_run_id": str(r["crawl_run_id"]), "source_id": str(r["source_id"]),
-                      **{key: int(r[key]) for key in (
-                          "processed_versions", "created", "linked", "updated", "rejected")}}
-                     for r in runs],
+            "runs": [
+                {
+                    "crawl_run_id": str(r["crawl_run_id"]),
+                    "source_id": str(r["source_id"]),
+                    **{
+                        key: int(r[key])
+                        for key in (
+                            "processed_versions",
+                            "created",
+                            "linked",
+                            "updated",
+                            "rejected",
+                        )
+                    },
+                }
+                for r in runs
+            ],
             "methodology": {
                 "created": "Durable canonical creation outcomes, not announcements or currently active events.",
                 "linked": "Source record linked to a pre-existing canonical; not a new hackathon.",

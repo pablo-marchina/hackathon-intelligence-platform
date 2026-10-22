@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from hackathon_api.main import app
 
 

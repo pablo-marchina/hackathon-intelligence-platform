@@ -7,7 +7,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hackathon_intelligence.dedup import EventFingerprint, build_features, dedup_decision, duplicate_score
+from hackathon_intelligence.dedup import (
+    EventFingerprint,
+    build_features,
+    dedup_decision,
+    duplicate_score,
+)
 
 
 @dataclass(frozen=True)
@@ -52,7 +57,9 @@ def wilson_lower_bound(successes: int, trials: int, *, z: float = 1.959963984540
     proportion = successes / trials
     denominator = 1 + z * z / trials
     center = (proportion + z * z / (2 * trials)) / denominator
-    margin = z * math.sqrt((proportion * (1 - proportion) + z * z / (4 * trials)) / trials) / denominator
+    margin = (
+        z * math.sqrt((proportion * (1 - proportion) + z * z / (4 * trials)) / trials) / denominator
+    )
     return max(0.0, center - margin)
 
 

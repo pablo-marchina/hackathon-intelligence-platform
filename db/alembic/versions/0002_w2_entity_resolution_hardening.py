@@ -3,10 +3,11 @@
 Revision ID: 0002_w2_entity_resolution_hardening
 Revises: 0001_initial_schema
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from alembic import op
 

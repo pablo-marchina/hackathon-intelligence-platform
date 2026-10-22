@@ -39,12 +39,18 @@ def common_discovery_urls(base_url: str) -> dict[str, list[str]]:
     origin = origin_for(base_url)
     return {
         "robots": [f"{origin}/robots.txt"],
-        "sitemaps": [f"{origin}/sitemap.xml", f"{origin}/sitemap_index.xml", f"{origin}/sitemap-index.xml"],
+        "sitemaps": [
+            f"{origin}/sitemap.xml",
+            f"{origin}/sitemap_index.xml",
+            f"{origin}/sitemap-index.xml",
+        ],
         "feeds": [f"{origin}/feed", f"{origin}/rss", f"{origin}/rss.xml", f"{origin}/atom.xml"],
     }
 
 
-def parse_sitemap(xml: str, *, max_urls: int = 5_000, max_child_sitemaps: int = 100) -> tuple[list[FeedUrl], list[str]]:
+def parse_sitemap(
+    xml: str, *, max_urls: int = 5_000, max_child_sitemaps: int = 100
+) -> tuple[list[FeedUrl], list[str]]:
     root = ET.fromstring(xml)
     tag = root.tag.rsplit("}", 1)[-1]
     urls: list[FeedUrl] = []

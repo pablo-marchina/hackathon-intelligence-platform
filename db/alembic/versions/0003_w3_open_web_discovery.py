@@ -3,10 +3,11 @@
 Revision ID: 0003_w3_open_web_discovery
 Revises: 0002_w2_entity_resolution_hardening
 """
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from alembic import op
 

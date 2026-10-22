@@ -85,7 +85,9 @@ def series_pair_score(left: SeriesEvent, right: SeriesEvent) -> tuple[float, tup
     right_key = series_name_key(right.name)
     exact_series_name = bool(left_key and left_key == right_key)
     title_similarity = _sim(left.name, right.name)
-    same_host = bool(_host(left.official_url) and _host(left.official_url) == _host(right.official_url))
+    same_host = bool(
+        _host(left.official_url) and _host(left.official_url) == _host(right.official_url)
+    )
     organizer_similarity = _sim(left.organizer, right.organizer)
     city_similarity = _sim(left.city, right.city)
 
@@ -160,7 +162,9 @@ def infer_series(
         for member in members:
             key_counts[series_name_key(member.name)] += 1
         series_key = max(key_counts, key=lambda item: (key_counts[item], len(item)))
-        representative = min(members, key=lambda item: (len(normalize_name(item.name)), item.name.casefold()))
+        representative = min(
+            members, key=lambda item: (len(normalize_name(item.name)), item.name.casefold())
+        )
 
         per_year: dict[int, list[SeriesEvent]] = defaultdict(list)
         for member in members:
@@ -175,7 +179,9 @@ def infer_series(
             elif len(per_year[year]) == 1:
                 edition_label = str(year)
             else:
-                ordered = sorted(per_year[year], key=lambda item: (item.start_at or datetime.max, item.event_id))
+                ordered = sorted(
+                    per_year[year], key=lambda item: (item.start_at or datetime.max, item.event_id)
+                )
                 ordinal = ordered.index(member) + 1
                 month = member.start_at.month if member.start_at else 0
                 edition_label = f"{year}-{month:02d}-{ordinal}"

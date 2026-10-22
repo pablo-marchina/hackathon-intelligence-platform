@@ -30,6 +30,7 @@ def ping() -> str:
 @celery_app.task(name="alerts.deliver_email")
 def deliver_alert_email(delivery_id: str, dispatch_token: str) -> dict[str, object]:
     from hackathon_worker.alerts import deliver_pending_email
+
     return deliver_pending_email(delivery_id, dispatch_token)
 
 
@@ -37,14 +38,18 @@ def deliver_alert_email(delivery_id: str, dispatch_token: str) -> dict[str, obje
 def dispatch_pending_email() -> dict[str, int]:
     from hackathon_worker.alerts import dispatch_due_emails
 
-    return dispatch_due_emails(publish=lambda delivery_id, token: celery_app.send_task(
-        "alerts.deliver_email", args=[delivery_id, token],
-    ))
+    return dispatch_due_emails(
+        publish=lambda delivery_id, token: celery_app.send_task(
+            "alerts.deliver_email",
+            args=[delivery_id, token],
+        )
+    )
 
 
 @celery_app.task(name="alerts.generate_matches")
 def generate_saved_search_matches() -> dict[str, int]:
     from hackathon_worker.matches import process_new_matches
+
     return process_new_matches()
 
 
@@ -55,9 +60,8 @@ def run_source_scheduler_task() -> dict[str, int]:
     from dataclasses import asdict
     from pathlib import Path
 
-    from sqlalchemy import create_engine
-
     from hackathon_operations.dispatcher import run_scheduler_cycle
+    from sqlalchemy import create_engine
 
     config = get_settings()
     if not config.source_scheduler_enabled:
@@ -65,11 +69,15 @@ def run_source_scheduler_task() -> dict[str, int]:
     root = Path(__file__).resolve().parents[4]
     engine = create_engine(config.database_url, pool_pre_ping=True)
     try:
-        report = asyncio.run(run_scheduler_cycle(
-            engine, root=root, dispatch=True,
-            limit=config.source_scheduler_batch_size,
-            max_pages=config.source_scheduler_max_pages,
-        ))
+        report = asyncio.run(
+            run_scheduler_cycle(
+                engine,
+                root=root,
+                dispatch=True,
+                limit=config.source_scheduler_batch_size,
+                max_pages=config.source_scheduler_max_pages,
+            )
+        )
         return asdict(report)
     finally:
         engine.dispose()
@@ -79,12 +87,14 @@ def run_source_scheduler_task() -> dict[str, int]:
 # are opt-in, independent, and disabled by default.
 beat_schedule: dict[str, dict[str, object]] = {}
 if settings.source_scheduler_enabled:
-    beat_schedule.update({
-        "adaptive-source-maintenance": {
-            "task": "sources.maintenance_and_dispatch",
-            "schedule": 900.0,  # 15 minutes; database leases prevent concurrent claims.
+    beat_schedule.update(
+        {
+            "adaptive-source-maintenance": {
+                "task": "sources.maintenance_and_dispatch",
+                "schedule": 900.0,  # 15 minutes; database leases prevent concurrent claims.
+            }
         }
-    })
+    )
 
 if settings.alert_match_enabled:
     beat_schedule["saved-search-new-matches"] = {

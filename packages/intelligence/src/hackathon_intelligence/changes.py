@@ -20,7 +20,9 @@ class CanonicalChange:
 def is_meaningful_change(field_path: str, old: Any, new: Any) -> bool:
     if old is None and new is None:
         return False
-    if normalized_signature(old, field_path=field_path) == normalized_signature(new, field_path=field_path):
+    if normalized_signature(old, field_path=field_path) == normalized_signature(
+        new, field_path=field_path
+    ):
         return False
     if field_path in {"full_description", "short_description", "description"}:
         old_words = set(str(old or "").casefold().split())
@@ -38,7 +40,13 @@ def classify_change_type(field_path: str) -> str:
         return "PRIZE"
     if field_path in {"status", "registration_status", "submission_status", "event_status"}:
         return "STATUS"
-    if field_path in {"venue", "location", "primary_location_id", "city", "country"} or field_path.startswith("location."):
+    if field_path in {
+        "venue",
+        "location",
+        "primary_location_id",
+        "city",
+        "country",
+    } or field_path.startswith("location."):
         return "VENUE"
     if field_path.startswith("eligibility"):
         return "ELIGIBILITY"

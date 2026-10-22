@@ -3,7 +3,9 @@
 Revision ID: 0011_source_url_backlog
 Revises: 0010_incremental_canonical_pipeline
 """
+
 from pathlib import Path
+
 from alembic import op
 
 revision = "0011_source_url_backlog"
@@ -13,7 +15,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    sql = (Path(__file__).resolve().parents[2] / "sql" / "0011_source_url_backlog.sql").read_text(encoding="utf-8")
+    sql = (Path(__file__).resolve().parents[2] / "sql" / "0011_source_url_backlog.sql").read_text(
+        encoding="utf-8"
+    )
     for stmt in sql.split(";"):
         if stmt.strip():
             op.execute(stmt)

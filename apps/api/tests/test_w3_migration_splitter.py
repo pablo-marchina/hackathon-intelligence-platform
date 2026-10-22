@@ -22,7 +22,9 @@ def test_w3_migration_contains_discovery_persistence_and_admin_feedback() -> Non
 
 def test_w3_alembic_downgrade_is_reversible() -> None:
     root = Path(__file__).resolve().parents[3]
-    migration = (root / "db/alembic/versions/0003_w3_open_web_discovery.py").read_text(encoding="utf-8")
+    migration = (root / "db/alembic/versions/0003_w3_open_web_discovery.py").read_text(
+        encoding="utf-8"
+    )
     assert 'down_revision: str | None = "0002_w2_entity_resolution_hardening"' in migration
     assert "DROP TRIGGER IF EXISTS discovery_false_positive_review_trg" in migration
     assert "DROP TABLE IF EXISTS discovery_query_templates" in migration

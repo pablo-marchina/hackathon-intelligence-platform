@@ -4,6 +4,7 @@ Historical crawl_runs are used as recorded, without pretending that their
 `unique_event_count` is canonical deduplication or that the current payload
 rejection classification is a historical time series.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -18,23 +19,28 @@ class SourceInsightsRepository:
         self.connection = connection
 
     def snapshot(
-        self, *, as_of: datetime | None = None, recent_days: int = 7,
+        self,
+        *,
+        as_of: datetime | None = None,
+        recent_days: int = 7,
         run_limit: int = 40,
     ) -> dict[str, Any]:
         if not 1 <= recent_days <= 90:
-            raise ValueError('recent_days must be between 1 and 90')
+            raise ValueError("recent_days must be between 1 and 90")
         if not 1 <= run_limit <= 200:
-            raise ValueError('run_limit must be between 1 and 200')
+            raise ValueError("run_limit must be between 1 and 200")
         instant = as_of or datetime.now(UTC)
         if instant.tzinfo is None:
-            raise ValueError('as_of must be timezone-aware')
+            raise ValueError("as_of must be timezone-aware")
         instant = instant.astimezone(UTC)
         since = instant - timedelta(days=recent_days)
-        params = {'since': since, 'as_of': instant}
+        params = {"since": since, "as_of": instant}
 
         # Keep ref and URL cohorts independent: one source may report multiple
         # events per URL and an event may appear in several sources.
-        sources = self.connection.execute(text('''
+        sources = (
+            self.connection.execute(
+                text("""
             WITH refs AS (
                 SELECT source_id,
                        COUNT(*) FILTER (WHERE first_seen_at >= :since
@@ -57,11 +63,18 @@ class SourceInsightsRepository:
               LEFT JOIN refs r ON r.source_id = s.id
               LEFT JOIN due d ON d.source_id = s.id
              ORDER BY s.name, s.id
-        '''), params).mappings().all()
+        """),
+                params,
+            )
+            .mappings()
+            .all()
+        )
 
         # Lifetime crawl runs remain in crawl_runs; these aggregates use ALL
         # runs in the selected interval (not only the limited history list).
-        aggregates = self.connection.execute(text('''
+        aggregates = (
+            self.connection.execute(
+                text("""
             SELECT source_id::text AS source_id,
                    COUNT(*) AS run_count,
                    COUNT(*) FILTER (WHERE status = 'SUCCEEDED') AS succeeded,
@@ -75,13 +88,20 @@ class SourceInsightsRepository:
               FROM crawl_runs
              WHERE started_at >= :since AND started_at <= :as_of
              GROUP BY source_id
-        '''), params).mappings().all()
-        runs_by_source = {str(row['source_id']): dict(row) for row in aggregates}
+        """),
+                params,
+            )
+            .mappings()
+            .all()
+        )
+        runs_by_source = {str(row["source_id"]): dict(row) for row in aggregates}
 
         # This is a *current state* breakdown of staged records, NOT counts of
         # historical rejections. Do not emit raw last_error text (can contain
         # exception details or sensitive source payload data).
-        reasons = self.connection.execute(text('''
+        reasons = (
+            self.connection.execute(
+                text("""
             WITH classes AS (
                 SELECT source_id,
                        CASE
@@ -99,12 +119,20 @@ class SourceInsightsRepository:
               FROM classes
              GROUP BY source_id, reason
              ORDER BY source_id, reason
-        ''')).mappings().all()
+        """)
+            )
+            .mappings()
+            .all()
+        )
         by_source_reasons: dict[str, dict[str, int]] = {}
         for row in reasons:
-            by_source_reasons.setdefault(str(row['source_id']), {})[str(row['reason'])] = int(row['count'])
+            by_source_reasons.setdefault(str(row["source_id"]), {})[str(row["reason"])] = int(
+                row["count"]
+            )
 
-        latest_runs = self.connection.execute(text('''
+        latest_runs = (
+            self.connection.execute(
+                text("""
             SELECT id::text AS id, source_id::text AS source_id,
                    status::text AS status, started_at, finished_at,
                    discovered_count, fetched_count, parsed_count,
@@ -113,80 +141,118 @@ class SourceInsightsRepository:
              WHERE started_at >= :since AND started_at <= :as_of
              ORDER BY started_at DESC, id DESC
              LIMIT :limit
-        '''), {**params, 'limit': run_limit}).mappings().all()
+        """),
+                {**params, "limit": run_limit},
+            )
+            .mappings()
+            .all()
+        )
 
         results: list[dict[str, Any]] = []
         for item in sources:
             data = dict(item)
-            sid = str(data['source_id'])
+            sid = str(data["source_id"])
             run_info = runs_by_source.get(sid, {})
-            runs = {key: int(run_info.get(key) or 0) for key in (
-                'run_count', 'succeeded', 'partial', 'failed', 'cancelled', 'running',
-                'fetched_pages', 'parsed_records', 'reported_failures',
-            )}
+            runs = {
+                key: int(run_info.get(key) or 0)
+                for key in (
+                    "run_count",
+                    "succeeded",
+                    "partial",
+                    "failed",
+                    "cancelled",
+                    "running",
+                    "fetched_pages",
+                    "parsed_records",
+                    "reported_failures",
+                )
+            }
             errors = by_source_reasons.get(sid, {})
-            new_refs = int(data['new_refs'])
-            ready = int(data['ready_urls'])
-            exhausted = int(data['exhausted_urls'])
+            new_refs = int(data["new_refs"])
+            ready = int(data["ready_urls"])
+            exhausted = int(data["exhausted_urls"])
             eligible = bool(
-                data['active'] and data['permission_status'] == 'ALLOWED'
-                and data['discovery_enabled'] and data['detail_extraction_enabled']
-                and data['ingestion_mode'] not in ('BLOCKED', 'DISCOVERY_ONLY', 'MANUAL')
+                data["active"]
+                and data["permission_status"] == "ALLOWED"
+                and data["discovery_enabled"]
+                and data["detail_extraction_enabled"]
+                and data["ingestion_mode"] not in ("BLOCKED", "DISCOVERY_ONLY", "MANUAL")
             )
             # Diagnostic heuristic only; do NOT mutate scheduler priority or
             # activate any source. A source without runs cannot be scored reliably.
             if not eligible:
                 score = None
-                action = 'REVIEW_PERMISSIONS_OR_PAUSE'
-            elif not runs['run_count']:
+                action = "REVIEW_PERMISSIONS_OR_PAUSE"
+            elif not runs["run_count"]:
                 score = None
-                action = 'VALIDATE_WITH_CONTROLLED_RUN'
+                action = "VALIDATE_WITH_CONTROLLED_RUN"
             else:
-                success_fraction = runs['succeeded'] / runs['run_count']
-                penalty = min(20, 5 * runs['failed'] + 2 * runs['partial'] + exhausted)
-                score = round(max(0, min(100,
-                    15 * log1p(new_refs) / log1p(50)
-                    + min(30, ready * 2)
-                    + 25 * success_fraction
-                    + 10 * int(data['priority']) / 100
-                    + min(20, errors.get('PROCESSING_ERROR_PENDING', 0) * 2)
-                    - penalty,
-                )), 1)
-                if errors.get('PROCESSING_ERROR_PENDING', 0) or runs['failed'] > runs['succeeded']:
-                    action = 'INVESTIGATE_FAILURES'
+                success_fraction = runs["succeeded"] / runs["run_count"]
+                penalty = min(20, 5 * runs["failed"] + 2 * runs["partial"] + exhausted)
+                score = round(
+                    max(
+                        0,
+                        min(
+                            100,
+                            15 * log1p(new_refs) / log1p(50)
+                            + min(30, ready * 2)
+                            + 25 * success_fraction
+                            + 10 * int(data["priority"]) / 100
+                            + min(20, errors.get("PROCESSING_ERROR_PENDING", 0) * 2)
+                            - penalty,
+                        ),
+                    ),
+                    1,
+                )
+                if errors.get("PROCESSING_ERROR_PENDING", 0) or runs["failed"] > runs["succeeded"]:
+                    action = "INVESTIGATE_FAILURES"
                 elif ready:
-                    action = 'PROCESS_AUTHORIZED_BACKLOG'
+                    action = "PROCESS_AUTHORIZED_BACKLOG"
                 else:
-                    action = 'MONITOR_AND_EXPAND_EVIDENCE'
-            results.append({
-                'source_id': sid, 'name': str(data['name']),
-                'eligible_for_controlled_collection': eligible,
-                'permission_status': data['permission_status'],
-                'active': bool(data['active']),
-                'new_references_in_window': new_refs,
-                'ready_urls_now': ready,
-                'exhausted_urls': exhausted,
-                'runs_in_window': runs,
-                'current_rejection_reasons': errors,
-                'triage_score': score,
-                'suggested_action': action,
-            })
-        results.sort(key=lambda row: (row['triage_score'] is None,
-                                      -(row['triage_score'] or 0), row['name'], row['source_id']))
+                    action = "MONITOR_AND_EXPAND_EVIDENCE"
+            results.append(
+                {
+                    "source_id": sid,
+                    "name": str(data["name"]),
+                    "eligible_for_controlled_collection": eligible,
+                    "permission_status": data["permission_status"],
+                    "active": bool(data["active"]),
+                    "new_references_in_window": new_refs,
+                    "ready_urls_now": ready,
+                    "exhausted_urls": exhausted,
+                    "runs_in_window": runs,
+                    "current_rejection_reasons": errors,
+                    "triage_score": score,
+                    "suggested_action": action,
+                }
+            )
+        results.sort(
+            key=lambda row: (
+                row["triage_score"] is None,
+                -(row["triage_score"] or 0),
+                row["name"],
+                row["source_id"],
+            )
+        )
         return {
-            'as_of': instant.isoformat(), 'recent_window_days': recent_days,
-            'sources': results,
-            'recent_runs': [
-                {**dict(row), 'source_id': str(row['source_id']), 'id': str(row['id']),
-                 'started_at': row['started_at'].isoformat(),
-                 'finished_at': row['finished_at'].isoformat() if row['finished_at'] else None}
+            "as_of": instant.isoformat(),
+            "recent_window_days": recent_days,
+            "sources": results,
+            "recent_runs": [
+                {
+                    **dict(row),
+                    "source_id": str(row["source_id"]),
+                    "id": str(row["id"]),
+                    "started_at": row["started_at"].isoformat(),
+                    "finished_at": row["finished_at"].isoformat() if row["finished_at"] else None,
+                }
                 for row in latest_runs
             ],
-            'methodology': {
-                'historical_runs': 'Runs in the rolling window, including failures. A run is not a unique hackathon.',
-                'current_rejection_reasons': 'Current staged payload status grouped into fixed categories; not historical totals. Raw errors are never exposed.',
-                'new_references_in_window': 'Source event references first seen in the rolling window; NOT unique new hackathons and overlapping sources remain separate.',
-                'triage_score': 'Read-only operational heuristic for eligible sources with run evidence. Does not authorize collection or change scheduler priority. Missing score means insufficient evidence or permission.',
-                'recent_runs': 'Most recent runs across all sources (globally limited); per-source totals include all runs in the window.',
+            "methodology": {
+                "historical_runs": "Runs in the rolling window, including failures. A run is not a unique hackathon.",
+                "current_rejection_reasons": "Current staged payload status grouped into fixed categories; not historical totals. Raw errors are never exposed.",
+                "new_references_in_window": "Source event references first seen in the rolling window; NOT unique new hackathons and overlapping sources remain separate.",
+                "triage_score": "Read-only operational heuristic for eligible sources with run evidence. Does not authorize collection or change scheduler priority. Missing score means insufficient evidence or permission.",
+                "recent_runs": "Most recent runs across all sources (globally limited); per-source totals include all runs in the window.",
             },
         }

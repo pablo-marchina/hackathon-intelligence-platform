@@ -115,9 +115,10 @@ class FrontierRepository:
         return int(row)
 
     def claim_next(self) -> FrontierItem | None:
-        row = self.connection.execute(
-            text(
-                """
+        row = (
+            self.connection.execute(
+                text(
+                    """
                 WITH candidate AS (
                     SELECT id
                       FROM url_frontier
@@ -133,13 +134,20 @@ class FrontierRepository:
                  WHERE f.id = candidate.id
                 RETURNING f.id, f.canonical_url, f.source_id::text
                 """
+                )
             )
-        ).mappings().first()
+            .mappings()
+            .first()
+        )
         if row is None:
             return None
-        return FrontierItem(id=int(row["id"]), canonical_url=str(row["canonical_url"]), source_id=row["source_id"])
+        return FrontierItem(
+            id=int(row["id"]), canonical_url=str(row["canonical_url"]), source_id=row["source_id"]
+        )
 
-    def mark_result(self, frontier_id: int, *, state: str, terminal_reason: str | None = None) -> None:
+    def mark_result(
+        self, frontier_id: int, *, state: str, terminal_reason: str | None = None
+    ) -> None:
         self.connection.execute(
             text(
                 """
@@ -287,7 +295,9 @@ class RawDocumentRepository:
                 "content_hash": content_hash,
                 "object_storage_key": object_storage_key,
                 "extracted_text": extracted_text,
-                "structured_data": json.dumps(structured_data) if structured_data is not None else None,
+                "structured_data": json.dumps(structured_data)
+                if structured_data is not None
+                else None,
                 "fetched_at": result.fetched_at,
             },
         ).scalar_one()
@@ -300,15 +310,24 @@ class SourcePayloadRepository:
     def __init__(self, connection: Connection) -> None:
         self.connection = connection
 
-    def stage(self, *, ref_id: str, source_id: str, raw_document_id: str | None,
-              source_key: str, payload: dict[str, Any],
-              crawl_run_id: str | None = None) -> None:
+    def stage(
+        self,
+        *,
+        ref_id: str,
+        source_id: str,
+        raw_document_id: str | None,
+        source_key: str,
+        payload: dict[str, Any],
+        crawl_run_id: str | None = None,
+    ) -> None:
         # Hash the event record, not the API page, so unrelated page changes do
         # not force expensive reprocessing of every event from that page.
         import hashlib
+
         serialized = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
         digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
-        self.connection.execute(text("""
+        self.connection.execute(
+            text("""
             INSERT INTO source_event_payloads (
                 source_event_ref_id, source_id, source_key, raw_document_id, payload, content_hash, staged_crawl_run_id
             ) VALUES (
@@ -321,11 +340,17 @@ class SourcePayloadRepository:
                 staged_crawl_run_id=EXCLUDED.staged_crawl_run_id,
                 observed_at=now(), last_error=NULL
             WHERE source_event_payloads.content_hash IS DISTINCT FROM EXCLUDED.content_hash
-        """), {
-            "ref_id": ref_id, "source_id": source_id, "source_key": source_key,
-            "raw_document_id": raw_document_id, "payload": serialized, "digest": digest,
-            "crawl_run_id": crawl_run_id,
-        })
+        """),
+            {
+                "ref_id": ref_id,
+                "source_id": source_id,
+                "source_key": source_key,
+                "raw_document_id": raw_document_id,
+                "payload": serialized,
+                "digest": digest,
+                "crawl_run_id": crawl_run_id,
+            },
+        )
 
 
 class SourceEventRefRepository:
@@ -349,18 +374,24 @@ class SourceEventRefRepository:
         gets a date discriminator. Keep `url` factual; only `normalized_url` is
         extended with internal disambiguators. This does not grant fetch rights.
         """
-        from urllib.parse import quote, urlsplit, urlunsplit
         import hashlib
         import re
+        from urllib.parse import quote, urlsplit, urlunsplit
 
         factual_url = official_url or source_url
         normalized_url = canonicalize_url(factual_url)
         identity = None
         if source_event_id:
             # Bound untrusted external IDs while retaining stable identity.
-            stable_id = source_event_id if len(source_event_id) <= 160 else hashlib.sha256(source_event_id.encode()).hexdigest()
+            stable_id = (
+                source_event_id
+                if len(source_event_id) <= 160
+                else hashlib.sha256(source_event_id.encode()).hexdigest()
+            )
             identity = ("__source_event_id", stable_id)
-        elif isinstance(edition_start, str) and re.match(r"^\d{4}-\d{2}-\d{2}(?:$|[T ])", edition_start):
+        elif isinstance(edition_start, str) and re.match(
+            r"^\d{4}-\d{2}-\d{2}(?:$|[T ])", edition_start
+        ):
             identity = ("__event_start", edition_start[:10])
         if identity:
             parts = urlsplit(normalized_url)

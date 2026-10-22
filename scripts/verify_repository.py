@@ -30,20 +30,51 @@ REQUIRED_PATHS = [
 ]
 
 EXPECTED_TABLES = {
-    "hackathons", "event_series", "locations", "organizations", "people", "tracks",
-    "technologies", "eligibility_rules", "event_phases", "prize_pools", "prizes",
-    "sources", "crawl_runs", "url_frontier", "fetch_attempts", "raw_documents",
-    "source_observations", "canonical_field_selections", "field_conflicts",
-    "canonical_changes", "dedup_candidates", "users", "saved_searches", "alert_events",
-    "review_queue_items", "quality_snapshots",
-    "event_series_assignment_audit", "merge_source_ref_moves",
-    "merge_observation_moves", "merge_alias_changes",
-    "discovery_query_templates", "discovery_runs", "discovery_queries",
-    "discovery_results", "domain_discovery_budgets", "page_classifications",
+    "hackathons",
+    "event_series",
+    "locations",
+    "organizations",
+    "people",
+    "tracks",
+    "technologies",
+    "eligibility_rules",
+    "event_phases",
+    "prize_pools",
+    "prizes",
+    "sources",
+    "crawl_runs",
+    "url_frontier",
+    "fetch_attempts",
+    "raw_documents",
+    "source_observations",
+    "canonical_field_selections",
+    "field_conflicts",
+    "canonical_changes",
+    "dedup_candidates",
+    "users",
+    "saved_searches",
+    "alert_events",
+    "review_queue_items",
+    "quality_snapshots",
+    "event_series_assignment_audit",
+    "merge_source_ref_moves",
+    "merge_observation_moves",
+    "merge_alias_changes",
+    "discovery_query_templates",
+    "discovery_runs",
+    "discovery_queries",
+    "discovery_results",
+    "domain_discovery_budgets",
+    "page_classifications",
     "discovery_classifier_feedback",
-    "hackathon_search_documents", "auth_sessions", "privacy_requests",
-    "source_operational_state", "source_regression_state",
-    "user_preference_versions", "alert_channel_preferences", "admin_user_roles",
+    "hackathon_search_documents",
+    "auth_sessions",
+    "privacy_requests",
+    "source_operational_state",
+    "source_regression_state",
+    "user_preference_versions",
+    "alert_channel_preferences",
+    "admin_user_roles",
 }
 EXPECTED_EXTENSIONS = {"pgcrypto", "citext", "pg_trgm", "unaccent", "vector"}
 
@@ -55,7 +86,9 @@ def main() -> None:
 
     sql_files = sorted((ROOT / "db/sql").glob("*.sql"))
     sql = "\n".join(path.read_text(encoding="utf-8") for path in sql_files)
-    tables = set(re.findall(r"CREATE TABLE(?: IF NOT EXISTS)?\s+([a-zA-Z_][a-zA-Z0-9_]*)", sql, re.I))
+    tables = set(
+        re.findall(r"CREATE TABLE(?: IF NOT EXISTS)?\s+([a-zA-Z_][a-zA-Z0-9_]*)", sql, re.I)
+    )
     extensions = set(re.findall(r"CREATE EXTENSION IF NOT EXISTS\s+([a-zA-Z0-9_]+)", sql, re.I))
 
     missing_tables = EXPECTED_TABLES - tables
@@ -72,24 +105,42 @@ def main() -> None:
         raise SystemExit("Canonical field active-selection constraint missing")
     if "dedup_candidate_pair_unique_idx" not in sql:
         raise SystemExit("Order-independent dedup unique index missing")
-    for function_name in ("merge_hackathons_transactional", "undo_hackathon_merge", "split_hackathon_merge", "assign_hackathon_series"):
+    for function_name in (
+        "merge_hackathons_transactional",
+        "undo_hackathon_merge",
+        "split_hackathon_merge",
+        "assign_hackathon_series",
+    ):
         if function_name not in sql:
             raise SystemExit(f"Expected W2 function missing: {function_name}")
 
-
-    for function_name in ("ingest_discovery_result_to_frontier", "enqueue_discovery_false_positive_review"):
+    for function_name in (
+        "ingest_discovery_result_to_frontier",
+        "enqueue_discovery_false_positive_review",
+    ):
         if function_name not in sql:
             raise SystemExit(f"Expected W3 function missing: {function_name}")
     if "DISCOVERY_ONLY" not in sql or "DISCOVERY_FALSE_POSITIVE" not in sql:
         raise SystemExit("W3 provenance/admin safeguards missing")
 
-    for function_name in ("refresh_hackathon_search_document", "rebuild_hackathon_search_documents"):
+    for function_name in (
+        "refresh_hackathon_search_document",
+        "rebuild_hackathon_search_documents",
+    ):
         if function_name not in sql:
             raise SystemExit(f"Expected W4 search function missing: {function_name}")
     if "auth_sessions" not in sql or "privacy_requests" not in sql:
         raise SystemExit("W4 auth/privacy schema safeguards missing")
 
-    for token in ("user_preference_versions", "snapshot_hash", "input_hash", "definition_hash", "alert_channel_preferences", "next_attempt_at", "max_attempts"):
+    for token in (
+        "user_preference_versions",
+        "snapshot_hash",
+        "input_hash",
+        "definition_hash",
+        "alert_channel_preferences",
+        "next_attempt_at",
+        "max_attempts",
+    ):
         if token not in sql:
             raise SystemExit(f"Expected W5 reproducibility/delivery guard missing: {token}")
 

@@ -32,7 +32,9 @@ class AlertRepository:
     def __init__(self, connection: Connection) -> None:
         self.connection = connection
 
-    def create_event(self, candidate: AlertCandidate, *, alert_rule_id: str | None = None) -> str | None:
+    def create_event(
+        self, candidate: AlertCandidate, *, alert_rule_id: str | None = None
+    ) -> str | None:
         row = self.connection.execute(
             text(
                 """
@@ -98,7 +100,11 @@ class AlertRepository:
         return str(row)
 
     def authorized_email_recipient(
-        self, *, user_id: str, alert_type: str, lock_user: bool = False,
+        self,
+        *,
+        user_id: str,
+        alert_type: str,
+        lock_user: bool = False,
     ) -> str | None:
         """Return the *current* address only after explicit, type-specific consent.
 
@@ -115,24 +121,32 @@ class AlertRepository:
               AND NULLIF(email::text, '') IS NOT NULL
         """ + (" FOR SHARE" if lock_user else "")
         address = self.connection.execute(
-            text(user_query), {"user_id": user_id},
+            text(user_query),
+            {"user_id": user_id},
         ).scalar_one_or_none()
         if not address:
             return None
-        enabled = self.connection.execute(text("""
+        enabled = self.connection.execute(
+            text("""
             SELECT enabled FROM alert_channel_preferences
             WHERE user_id=CAST(:user_id AS uuid) AND channel='EMAIL'
               AND alert_type IN (:alert_type, '*')
             ORDER BY CASE WHEN alert_type=:alert_type THEN 0 ELSE 1 END
             LIMIT 1
-        """), {"user_id": user_id, "alert_type": alert_type}).scalar_one_or_none()
+        """),
+            {"user_id": user_id, "alert_type": alert_type},
+        ).scalar_one_or_none()
         return str(address) if enabled is True else None
 
     def channel_enabled(self, *, user_id: str, channel: str, alert_type: str) -> bool:
         if channel == "EMAIL":
-            return self.authorized_email_recipient(
-                user_id=user_id, alert_type=alert_type,
-            ) is not None
+            return (
+                self.authorized_email_recipient(
+                    user_id=user_id,
+                    alert_type=alert_type,
+                )
+                is not None
+            )
         row = self.connection.execute(
             text(
                 """
@@ -172,8 +186,9 @@ class AlertRepository:
         """
         if not 1 <= limit <= 100 or not 60 <= lease_seconds <= 900:
             raise ValueError("invalid alert dispatcher limits")
-        rows = self.connection.execute(
-            text("""
+        rows = (
+            self.connection.execute(
+                text("""
                 WITH due AS (
                     SELECT id FROM alert_deliveries
                     WHERE channel='EMAIL' AND status='PENDING'
@@ -191,21 +206,26 @@ class AlertRepository:
                 FROM due WHERE d.id=due.id
                 RETURNING d.id::text AS delivery_id, d.dispatch_token::text AS token
             """),
-            {"limit": limit, "lease_seconds": lease_seconds},
-        ).mappings().all()
-        return [EmailDispatchClaim(delivery_id=r["delivery_id"], token=r["token"])
-                for r in rows]
+                {"limit": limit, "lease_seconds": lease_seconds},
+            )
+            .mappings()
+            .all()
+        )
+        return [EmailDispatchClaim(delivery_id=r["delivery_id"], token=r["token"]) for r in rows]
 
     def release_dispatch_claim(self, claim: EmailDispatchClaim) -> bool:
         """Release only our own claim; a stale publisher cannot release a new one."""
-        return bool(self.connection.execute(
-            text("""
+        return bool(
+            self.connection.execute(
+                text("""
                 UPDATE alert_deliveries
                 SET dispatch_token=NULL, dispatch_expires_at=NULL
                 WHERE id=CAST(:id AS uuid) AND dispatch_token=CAST(:token AS uuid)
                   AND status='PENDING'
-            """), {"id": claim.delivery_id, "token": claim.token},
-        ).rowcount)
+            """),
+                {"id": claim.delivery_id, "token": claim.token},
+            ).rowcount
+        )
 
     def record_delivery_result(
         self,
@@ -218,8 +238,10 @@ class AlertRepository:
         retry_policy: RetryPolicy = RetryPolicy(),
     ) -> str:
         attempt, max_attempts = self.connection.execute(
-            text("SELECT attempt_count, max_attempts FROM alert_deliveries "
-                 "WHERE id=CAST(:id AS uuid) FOR UPDATE"),
+            text(
+                "SELECT attempt_count, max_attempts FROM alert_deliveries "
+                "WHERE id=CAST(:id AS uuid) FOR UPDATE"
+            ),
             {"id": delivery_id},
         ).one()
         next_count = int(attempt) + 1

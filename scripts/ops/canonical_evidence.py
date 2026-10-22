@@ -4,6 +4,7 @@ Never mix synthetic fixtures with production collection metrics. Receipts contai
 only aggregate outcomes, a fake-source identifier, and the database revision;
 no URLs, credentials, raw documents or actual user data.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,12 +27,18 @@ def _counts(values: object) -> dict[str, int]:
     return counts
 
 
-def controlled_receipt(*, source: str, first: dict[str, Any], repeat: dict[str, Any]) -> dict[str, Any]:
+def controlled_receipt(
+    *, source: str, first: dict[str, Any], repeat: dict[str, Any]
+) -> dict[str, Any]:
     """Verify an isolated fake-HTTP crawl genuinely created exactly one canonical.
 
     This is a fixture-specific acceptance assertion, not a claim of live events.
     """
-    if not source.startswith("ci_controlled_") or first.get("source") != source or repeat.get("source") != source:
+    if (
+        not source.startswith("ci_controlled_")
+        or first.get("source") != source
+        or repeat.get("source") != source
+    ):
         raise ValueError("only isolated controlled CI fixture sources are accepted")
     if first.get("status") != "SUCCEEDED" or repeat.get("status") != "SUCCEEDED":
         raise ValueError("controlled ingestion did not succeed")
@@ -39,7 +46,11 @@ def controlled_receipt(*, source: str, first: dict[str, Any], repeat: dict[str, 
     later = _counts(repeat.get("run_outcomes"))
     if original != {"CREATED": 1, "LINKED": 0, "UPDATED": 0, "REJECTED": 0}:
         raise ValueError("first crawl must create exactly one canonical")
-    if any(later.values()) or first.get("catalog_delta_observed") != 1 or repeat.get("catalog_delta_observed") != 0:
+    if (
+        any(later.values())
+        or first.get("catalog_delta_observed") != 1
+        or repeat.get("catalog_delta_observed") != 0
+    ):
         raise ValueError("repeat must not produce new canonical outcomes")
     if repeat.get("pages_fetched") != 0:
         raise ValueError("repeat unexpectedly fetched pages")
@@ -96,6 +107,11 @@ def multisource_receipt(snapshot: dict[str, Any], source_ids: dict[str, str]) ->
         },
         "distinct_new_canonicals": 2,
         "attributed_reference_outcomes": 5,
-        "assertions": ["cross_source_dedup", "version_update", "rejection", "restricted_source_denied"],
+        "assertions": [
+            "cross_source_dedup",
+            "version_update",
+            "rejection",
+            "restricted_source_denied",
+        ],
         "note": "Transaction is rolled back after fixture assertions; not a live catalog count.",
     }
