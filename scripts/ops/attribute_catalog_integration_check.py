@@ -2,6 +2,7 @@
 
 Synthetic fixtures; never fetches any real external source. Run only in test.
 """
+
 from __future__ import annotations
 
 import json
@@ -123,7 +124,9 @@ def verify() -> None:
                 )
                 attrs = selected_attributes(connection, event_ids[0])
                 assert {item["key"] for item in attrs} == {
-                    "language", "capacity", "source_event_status"
+                    "language",
+                    "capacity",
+                    "source_event_status",
                 }
                 assert next(item for item in attrs if item["key"] == "language")["source_url"] == (
                     f"https://{unique}.invalid/events/one"
@@ -131,22 +134,24 @@ def verify() -> None:
                 assert selected_attributes(connection, event_ids[1]) == []
 
                 cases = (
-                    (event_ids[0], {"and": [
-                        {"field": "attrs.language", "op": "eq", "value": "pt"},
-                        {"field": "attrs.capacity", "op": "gte", "value": 500},
-                    ]}, True),
-                    (event_ids[0], {
-                        "field": "attrs.capacity", "op": "lt", "value": 500
-                    }, False),
-                    (event_ids[1], {
-                        "field": "attrs.capacity", "op": "is_unknown"
-                    }, True),
-                    (event_ids[1], {
-                        "field": "attrs.capacity", "op": "gte", "value": 0
-                    }, False),
-                    (event_ids[1], {
-                        "not": {"field": "attrs.capacity", "op": "eq", "value": 0}
-                    }, False),
+                    (
+                        event_ids[0],
+                        {
+                            "and": [
+                                {"field": "attrs.language", "op": "eq", "value": "pt"},
+                                {"field": "attrs.capacity", "op": "gte", "value": 500},
+                            ]
+                        },
+                        True,
+                    ),
+                    (event_ids[0], {"field": "attrs.capacity", "op": "lt", "value": 500}, False),
+                    (event_ids[1], {"field": "attrs.capacity", "op": "is_unknown"}, True),
+                    (event_ids[1], {"field": "attrs.capacity", "op": "gte", "value": 0}, False),
+                    (
+                        event_ids[1],
+                        {"not": {"field": "attrs.capacity", "op": "eq", "value": 0}},
+                        False,
+                    ),
                 )
                 for event_id, expression, expected in cases:
                     filters = AdvancedHackathonFilters(expression=expression)
