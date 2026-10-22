@@ -4,8 +4,8 @@ import base64
 import hashlib
 import json
 import unicodedata
-from datetime import date
 from collections.abc import AsyncIterator, Iterable
+from datetime import date
 from typing import Any
 
 from .adapter import SourceAdapter
