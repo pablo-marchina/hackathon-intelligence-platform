@@ -21,6 +21,7 @@ from .repositories import (
     SourceEventRefRepository,
     SourcePayloadRepository,
 )
+from .structured_html import MAX_HTML_PAGINATION_HOPS
 from .syndication import MAX_FEED_PAGE_HOPS, MAX_SITEMAP_INDEX_DEPTH
 
 
@@ -124,8 +125,12 @@ async def run_source_persisted(
     raw_repo = RawDocumentRepository(connection)
     ref_repo = SourceEventRefRepository(connection)
 
-    syndicated = adapter.definition.ingestion_mode in (IngestionMode.RSS, IngestionMode.SITEMAP)
-    backlog_repo = SourceUrlBacklog(connection) if syndicated else None
+    # Persist HTML discoveries too: an in-memory queue restarted at the same seeds
+    # each run and could never reach later event pages beyond max_pages.
+    backlogged = adapter.definition.ingestion_mode in (
+        IngestionMode.RSS, IngestionMode.SITEMAP, IngestionMode.STATIC_HTML
+    )
+    backlog_repo = SourceUrlBacklog(connection) if backlogged else None
     allowed_hosts = {
         adapter.definition.domain.lower(),
         *(h.lower() for h in adapter.definition.allowed_hosts),
@@ -376,11 +381,16 @@ async def run_source_persisted(
                             "discovery_method": item.discovery_method,
                             "parent_url": str(item.parent_url) if item.parent_url else None,
                         }
-                        if item.discovery_method == "rss_pagination":
+                        if item.discovery_method in {"rss_pagination", "html_pagination"}:
                             # Durable hop budget: malicious or broken feeds must
                             # not generate an infinite chain across worker runs.
                             depth = (claim.pagination_depth if claim else 0) + 1
-                            if depth > MAX_FEED_PAGE_HOPS:
+                            limit = (
+                                MAX_HTML_PAGINATION_HOPS
+                                if item.discovery_method == "html_pagination"
+                                else MAX_FEED_PAGE_HOPS
+                            )
+                            if depth > limit:
                                 continue
                             metadata["pagination_depth"] = depth
                         elif item.discovery_method == "sitemap_index":
