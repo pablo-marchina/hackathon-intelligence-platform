@@ -1,0 +1,38 @@
+name: One-off final Ruff fixes
+on:
+  pull_request:
+    types: [synchronize]
+permissions:
+  contents: write
+jobs:
+  final-fix:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'checkpoint/iteration31-20261022'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install 'ruff>=0.12,<1'
+      - run: ruff check --fix --unsafe-fixes apps packages scripts db/alembic/versions
+      - run: ruff format apps packages scripts db/alembic/versions
+      - run: ruff check apps packages scripts db/alembic/versions
+      - run: ruff format --check apps packages scripts db/alembic/versions
+      - name: Commit verified cleanup to the checkpoint branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps packages scripts db/alembic/versions
+          if ! git diff --cached --quiet; then
+            git commit -m 'style(python): finish remaining Ruff refactors'
+            git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          fi
+      - name: Archive verified source
+        run: tar --exclude=.git --exclude='*.egg-info' --exclude='__pycache__' --exclude='.ruff_cache' --exclude='.pytest_cache' -czf /tmp/hip32-ruff-clean.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hip32-final-ruff-source
+          path: /tmp/hip32-ruff-clean.tar.gz
