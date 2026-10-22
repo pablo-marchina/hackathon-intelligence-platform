@@ -2,6 +2,7 @@
 
 Registry membership is NOT equivalent to collection authorization or crawl success.
 """
+
 from pathlib import Path
 from urllib.parse import urlsplit
 
