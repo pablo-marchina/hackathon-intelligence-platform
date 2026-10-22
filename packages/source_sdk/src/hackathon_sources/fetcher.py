@@ -17,6 +17,20 @@ MAX_SOURCE_BYTES = 8 * 1024 * 1024  # decoded payload ceiling (includes compress
 REDIRECT_CODES = {301, 302, 303, 307, 308}
 
 
+def robots_required(source: SourceDefinition, url: str) -> bool:
+    """RSS feed endpoints are documented contracts; crawled detail pages are not.
+
+    Redirect targets are checked separately against the configured seed URLs.
+    API sources preserve their existing documented-contract behavior.
+    """
+    if source.ingestion_mode is IngestionMode.API:
+        return False
+    if source.ingestion_mode is IngestionMode.RSS:
+        seeds = {str(seed).rstrip("/") for seed in source.seed_urls}
+        return url.rstrip("/") not in seeds
+    return True
+
+
 class RateLimiter:
     def __init__(self) -> None:
         self._locks: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
@@ -74,9 +88,11 @@ class FetchEngine:
         if domain not in allowed_hosts:
             raise PermissionError(f"host {domain!r} is not allowed for source {source.key!r}")
 
-        # Documented API/RSS endpoints are governed by their API contract rather than
-        # web-crawler robots directives. HTML/browser sources must still pass robots.
-        if source.ingestion_mode not in {IngestionMode.API, IngestionMode.RSS}:
+        # Feed endpoints may follow their documented contract. HTML *detail* pages
+        # discovered through RSS are crawled pages and MUST honor robots.txt.
+        # (API behavior remains unchanged for explicitly documented API sources.)
+        use_robots = robots_required(source, url)
+        if use_robots:
             if not await self.robots.allowed(url, allowed_hosts=allowed_hosts):
                 raise PermissionError("robots.txt disallows fetch for configured user-agent")
 
@@ -92,7 +108,9 @@ class FetchEngine:
         async with semaphore:
             for _redirect in range(6):
                 await validate_destination(current_url, allowed_hosts)
-                if source.ingestion_mode not in {IngestionMode.API, IngestionMode.RSS}:
+                # A feed endpoint redirect is a *new* destination, not an
+                # implicitly authorized HTML detail page. Recheck robots.
+                if use_robots or robots_required(source, current_url):
                     if not await self.robots.allowed(current_url, allowed_hosts=allowed_hosts):
                         raise PermissionError("robots.txt disallows redirect destination")
                 # Stream bodies under an explicit decoded-size ceiling; get() buffers

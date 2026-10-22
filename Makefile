@@ -1,4 +1,4 @@
-.PHONY: install-python lint format-check typecheck test verify db-up db-down db-migrate api worker web
+.PHONY: install-python lint format-check typecheck test verify source-coverage db-up db-down db-migrate api worker web
 
 install-python:
 	python -m pip install -e '.[dev]'
@@ -35,3 +35,6 @@ worker:
 
 web:
 	cd apps/web && npm run dev
+
+source-coverage:
+	python scripts/source_coverage_report.py --format markdown

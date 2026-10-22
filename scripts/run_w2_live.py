@@ -9,6 +9,13 @@ from difflib import SequenceMatcher
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 import httpx
+from pathlib import Path
+if __package__:
+    from scripts._local_packages import add_repo_packages
+else:
+    from _local_packages import add_repo_packages
+add_repo_packages(Path(__file__).resolve().parents[1])
+from hackathon_intelligence.structured_projection import project_structured_metadata, PROJECTION_VERSION
 
 PIPELINE_VERSION = "w2-live-v2"
 RECONCILE_VERSION = "reconcile-v1"
@@ -175,6 +182,18 @@ async def main():
             for fp,val in fields.items():
                 if val is None or val==[]: continue
                 observation_rows.append({"pipeline_run_id":run_id,"hackathon_id":provisional_id,"source_event_ref_id":r["id"],"raw_document_id":r.get("raw_document_id"),"source_key":source,"field_path":fp,"value_json":val,"normalized_value_json": norm_text(val) if isinstance(val,str) and fp in {"name","city","state_region","country","eligibility"} else val,"extraction_method":"API" if fp not in {"normalized_name","is_hackathon_like","classification_score","event_type"} else "DETERMINISTIC","extraction_confidence":.99 if fp not in {"is_hackathon_like","classification_score","event_type"} else round(max(.5,cls_score),4),"evidence_locator":"source_event_ref.payload","derived":fp in {"normalized_name","is_hackathon_like","classification_score","event_type"},"method_version":PIPELINE_VERSION,"observed_at":started})
+            # Structured HTML evidence is stored separately from derived conclusions.
+            # A missing or ambiguous field never becomes a guessed deadline, price or eligibility.
+            for evidence in project_structured_metadata(p):
+                observation_rows.append({
+                    "pipeline_run_id": run_id, "hackathon_id": provisional_id,
+                    "source_event_ref_id": r["id"], "raw_document_id": r.get("raw_document_id"),
+                    "source_key": source, "field_path": evidence.field_path,
+                    "value_json": evidence.original, "normalized_value_json": evidence.normalized,
+                    "extraction_method": "JSON_LD", "extraction_confidence": evidence.confidence,
+                    "evidence_locator": evidence.evidence_locator, "derived": False,
+                    "method_version": PROJECTION_VERSION, "observed_at": started,
+                })
         print(json.dumps({"stage":"extract","observations":len(observation_rows),"accepted":len(candidates),"rejected":len(rejected)}))
         # provisional hackathons
         prov_rows=[]
@@ -220,7 +239,7 @@ async def main():
             for c in members: members_rows.append({"hackathon_id":survivor_id,"source_event_ref_id":c["ref_id"],"source_key":c["source_key"]})
             for c in members:
                 if c["provisional_id"]!=survivor_id: updates.append({"id":c["provisional_id"],"is_active":False,"merged_into_id":survivor_id})
-            fields=["name","official_url","start_at","end_at","format","city","state_region","country","country_code","eligibility","event_type"]
+            fields=["name","official_url","start_at","end_at","format","city","state_region","country","country_code","eligibility","event_type", "short_description", "registration_url", "is_free", "participation_fee", "participation_fee_currency", "language", "image_url", "organizers", "sponsors", "offer_valid_through", "capacity", "source_event_status"]
             selected={}
             for fp in fields:
                 vals=[]
@@ -237,7 +256,7 @@ async def main():
                     agreement=freq[sig]/len(vals); score=.45*AUTHORITY[c["source_key"]]+.25*float(ob.get("extraction_confidence") or .9)+.15*1.0+.15*agreement
                     scored.append((score,c,ob,value))
                 scored.sort(key=lambda x:(x[0],AUTHORITY[x[1]["source_key"]]),reverse=True); sc,cw,ow,value=scored[0]
-                selected[fp]=value
+                selected[fp]=ow.get("normalized_value_json") if fp in {"participation_fee", "participation_fee_currency"} else value
                 canonical_selections.append({"pipeline_run_id":run_id,"hackathon_id":survivor_id,"field_path":fp,"selected_observation_id":ow["id"],"policy_version":RECONCILE_VERSION,"score":round(sc,6),"selected_at":started,"active":True})
                 unique={x[3] for x in vals}
                 if len(unique)>1 and fp in {"start_at","end_at","official_url","city","country","format"}:
@@ -247,7 +266,7 @@ async def main():
             start=parse_dt(selected.get("start_at")); end=parse_dt(selected.get("end_at")); src_count=len({c["source_key"] for c in members})
             completeness_fields=[selected.get("name"),selected.get("official_url"),selected.get("start_at"),selected.get("end_at"),selected.get("city") or selected.get("country"),selected.get("format")]
             q=round(100*sum(v not in {None,"","UNKNOWN"} for v in completeness_fields)/len(completeness_fields),2)
-            updates.append({"id":survivor_id,"name":selected.get("name") or by_id[survivor_id]["name"],"normalized_name":norm_text(selected.get("name") or by_id[survivor_id]["name"]),"official_url":selected.get("official_url"),"start_at":selected.get("start_at"),"end_at":selected.get("end_at"),"format":selected.get("format") or "UNKNOWN","city":selected.get("city"),"state_region":selected.get("state_region"),"country":selected.get("country"),"country_code":selected.get("country_code"),"event_type":selected.get("event_type") or "hackathon","status":status_for(start,end),"source_count":src_count,"quality_score":q,"last_verified_at":started,"is_active":True,"merged_into_id":None})
+            updates.append({"id":survivor_id,"name":selected.get("name") or by_id[survivor_id]["name"],"normalized_name":norm_text(selected.get("name") or by_id[survivor_id]["name"]),"official_url":selected.get("official_url"),"short_description":selected.get("short_description"),"registration_url":selected.get("registration_url"),"is_free":selected.get("is_free"),"participation_fee":selected.get("participation_fee"),"participation_fee_currency":selected.get("participation_fee_currency"),"start_at":selected.get("start_at"),"end_at":selected.get("end_at"),"format":selected.get("format") or "UNKNOWN","city":selected.get("city"),"state_region":selected.get("state_region"),"country":selected.get("country"),"country_code":selected.get("country_code"),"event_type":selected.get("event_type") or "hackathon","status":status_for(start,end),"source_count":src_count,"quality_score":q,"last_verified_at":started,"is_active":True,"merged_into_id":None})
         await gate.insert("canonical_event_members",members_rows)
         await gate.insert("canonical_field_selections",canonical_selections,batch=80)
         if conflicts: await gate.insert("field_conflicts",conflicts)

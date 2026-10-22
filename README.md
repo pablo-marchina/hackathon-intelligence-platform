@@ -2,7 +2,35 @@
 
 Production-oriented monorepo for discovering, ingesting, reconciling, searching, and recommending hackathons globally.
 
-> **Checkpoint mais recente (19/10/2026):** W6 Iteração 15; **351 testes Python locais aprovados**. A W6 **não está aprovada para produção**; PostgreSQL/Redis/Celery e build completo do Next.js continuam pendentes neste checkpoint. Veja `docs/execution/W6_ITERATION_15_2026-10-19.md` e [GITHUB_PUBLICACAO.md](GITHUB_PUBLICACAO.md). Os baselines mais antigos abaixo são históricos.
+> **Checkpoint local (19/10/2026): Iteração 19.** O SDK inclui descoberta de páginas via RSS/Atom/sitemap para **fontes explicitamente autorizadas**, usando JSON-LD em páginas no mesmo host. Não houve autorização de novas fontes ou execução de coletas externas; a cobertura histórica de 250 eventos permanece sem atualização. A Iteração 19 não foi publicada no GitHub nem aprovada para produção. Veja [`docs/execution/ITERATION_19_2026-10-19.md`](docs/execution/ITERATION_19_2026-10-19.md).
+
+## Fontes RSS/Atom e sitemaps (Iteração 19)
+
+Fontes com `ingestion_mode=RSS` ou `SITEMAP`, `permission_status=ALLOWED` e `detail_extraction_enabled=true` podem descobrir páginas por feeds XML autorizados e coletar `schema.org/Event` nessas páginas sem seguir links para terceiros. O modo RSS **exige robots.txt para páginas de detalhes**. Consulte o runbook da Iteração 19 para configurar fontes em modo `REVIEW_REQUIRED` por padrão, definir hosts permitidos e testar em staging. Listagens maiores que o orçamento de páginas ainda requerem implementação de backlog persistente para cobertura completa.
+
+> **Checkpoint local mais recente (19/10/2026):** Iteração 18, baseada na Iteração 17; **391 testes Python locais aprovados**. O código ainda não foi sincronizado com o GitHub, e a plataforma não está aprovada para produção. PostgreSQL/Redis/Celery e o build Next.js continuam pendentes. Veja `docs/execution/ITERATION_18_2026-10-19.md` e [GITHUB_PUBLICACAO.md](GITHUB_PUBLICACAO.md). Os baselines mais antigos abaixo são históricos.
+
+
+> **Cobertura global — nova prioridade (19/10/2026):** maximizar hackathons únicos, fontes legítimas, metadados verificáveis e filtros. A Iteração 16 incorpora extração genérica de eventos `schema.org` em HTML **autorizado**, filtros avançados na busca e auditoria offline do catálogo de fontes. Neste checkpoint: **23 fontes configuradas; somente 4 elegíveis a fetch por configuração; 19 em revisão**. Isso **não** implica novas coletas reais nem aprovação para produção. Veja [`docs/product/COVERAGE_FIRST_PLAN.md`](docs/product/COVERAGE_FIRST_PLAN.md).
+
+Para auditar o backlog de fontes sem fazer chamadas de rede:
+
+```bash
+python scripts/source_coverage_report.py --format markdown
+```
+
+## Ingestão incremental de fontes autorizadas (Iteração 18)
+
+O coletor persistente agora grava `source_event_payloads` de forma transacional com cada `source_event_ref`. Após aplicar a migração `0010_incremental_canonical_pipeline`, execute explicitamente `python -m scripts.run_incremental_canonical --apply --limit 100` para normalizar snapshots **já coletados**, sem iniciar crawls. Sem `--apply`, o comando permanece desativado. Consulte `docs/execution/ITERATION_18_2026-10-19.md` para gates, riscos e limitações. O endpoint `/ready` exige a nova revisão. Não use em produção sem staging.
+
+## Medir cobertura real (Iteração 17)
+
+- `python scripts/source_coverage_report.py --format json`: inventário **configurado**, não eventos coletados.
+- `python scripts/catalog_coverage_report.py --format json`: contagem **real** de canônicos no PostgreSQL migrado, sem substituir por W2 histórico se a conexão falhar.
+- `GET /admin/coverage`: métricas da base atual protegidas por autenticação administrativa, também exibidas no painel `/admin`.
+- `docs/execution/ITERATION_17_2026-10-19.md`: implementações, testes locais e gates ainda pendentes.
+
+**Importante:** 250 hackathons é o resultado histórico da fase W2, não o catálogo atual validado em produção. A coleta periódica permanece desligada por padrão.
 
 ## Repository layout
 

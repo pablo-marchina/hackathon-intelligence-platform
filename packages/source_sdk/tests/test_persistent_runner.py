@@ -5,6 +5,7 @@ import json
 from datetime import UTC, datetime
 
 import hackathon_sources.persistent_runner as module
+import pytest
 from hackathon_sources.adapter import SourceAdapter
 from hackathon_sources.models import (
     DiscoveredUrl,
@@ -146,6 +147,22 @@ class Refs:
         return "00000000-0000-4000-8000-000000000004"
 
 
+@pytest.fixture(autouse=True)
+def stage_records_in_memory(monkeypatch):
+    """The production handoff writes SQL; fake Connections cannot execute SQL."""
+    class Payloads:
+        staged: list[dict] = []
+
+        def __init__(self, connection):
+            pass
+
+        def stage(self, **kwargs):
+            self.staged.append(kwargs)
+
+    monkeypatch.setattr(module, "SourcePayloadRepository", Payloads)
+    yield Payloads
+
+
 def definition() -> SourceDefinition:
     return SourceDefinition(
         key="example",
@@ -160,7 +177,7 @@ def definition() -> SourceDefinition:
     )
 
 
-def test_persistent_runner_closes_crawl_raw_and_refs(monkeypatch) -> None:
+def test_persistent_runner_closes_crawl_raw_and_refs(monkeypatch, stage_records_in_memory) -> None:
     Raw.attempts = Raw.docs = Refs.count = 0
     Frontier.marked = []
     Crawl.finished = None
@@ -180,6 +197,11 @@ def test_persistent_runner_closes_crawl_raw_and_refs(monkeypatch) -> None:
     assert result.persisted_documents == 1
     assert result.persisted_event_refs == 1
     assert Raw.attempts == 1 and Raw.docs == 1 and Refs.count == 1
+    staged = stage_records_in_memory.staged
+    assert len(staged) == 1
+    assert staged[0]["source_key"] == "example"
+    assert staged[0]["payload"]["source_event_id"] == "e1"
+    assert staged[0]["raw_document_id"] == "00000000-0000-4000-8000-000000000003"
     assert Frontier.marked == [(7, "FETCHED", None)]
     assert Crawl.finished is not None
     status, stats = Crawl.finished

@@ -21,6 +21,7 @@ jobs:
       - run: pytest -q
       - run: python scripts/check_eval_gates.py
       - run: python scripts/verify_repository.py
+      - run: python scripts/source_coverage_report.py --format json > /tmp/source-coverage.json
 
   database-migrations:
     runs-on: ubuntu-latest
@@ -53,6 +54,16 @@ jobs:
       - run: alembic -c db/alembic.ini upgrade head
       - run: alembic -c db/alembic.ini downgrade base
       - run: alembic -c db/alembic.ini upgrade head
+      - name: Verify live catalog snapshot against migrated PostgreSQL
+        env:
+          HIP_ALLOW_COVERAGE_DB_DRILL: "1"
+        run: |
+          python scripts/catalog_coverage_report.py --format json > /tmp/hip-live-coverage.json
+          python -m scripts.ops.catalog_coverage_integration_check
+      - name: Verify authorized multi-source canonicalization in real PostgreSQL
+        env:
+          HIP_ALLOW_CANONICAL_DB_DRILL: "1"
+        run: python -m scripts.ops.incremental_canonical_integration_check
       - run: python scripts/ops/api_readiness_integration_check.py
       - run: python scripts/ops/admin_integration_check.py
       - run: python scripts/ops/source_maintenance_integration_check.py

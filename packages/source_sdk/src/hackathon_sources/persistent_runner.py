@@ -16,6 +16,7 @@ from .repositories import (
     FrontierRepository,
     RawDocumentRepository,
     SourceEventRefRepository,
+    SourcePayloadRepository,
 )
 from .registry import SourceRegistryRepository
 
@@ -252,13 +253,21 @@ async def run_source_persisted(
             else:
                 output.changed_pages += 1
             output.records.extend(records)
+            payload_repo = SourcePayloadRepository(connection)
             for record in records:
-                ref_repo.upsert(
+                if record.source_key != adapter.definition.key:
+                    raise ValueError("parser returned an event belonging to a different source")
+                ref_id = ref_repo.upsert(
                     source_id=source_id,
                     raw_document_id=raw_document_id,
                     source_event_id=record.source_event_id,
                     source_url=str(record.source_url),
                     official_url=str(record.official_url) if record.official_url else None,
+                    edition_start=record.starts_at_raw,
+                )
+                payload_repo.stage(
+                    ref_id=ref_id, source_id=source_id, raw_document_id=raw_document_id,
+                    source_key=record.source_key, payload=record.model_dump(mode="json"),
                 )
                 output.persisted_event_refs += 1
 

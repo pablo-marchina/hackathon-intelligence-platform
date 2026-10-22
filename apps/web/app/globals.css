@@ -33,3 +33,11 @@
 .unread-alert{border-color:var(--accent)}
 .alert-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .alert-actions .button{display:inline-flex;padding:10px;border-radius:10px}
+/* Discovery coverage: advanced filters mirror the API's full search contract. */
+.search-filter-group{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:12px;min-width:0}
+.search-filter-group legend{font-weight:750;color:var(--accent2);padding:0 6px}
+.search-filter-hint{font-size:.78rem;color:var(--muted);margin:0}
+.search-inline-check{display:flex!important;flex-direction:row;align-items:center;gap:9px}
+.search-inline-check input{width:auto}
+.search-reset{text-align:center;padding:10px;border-radius:10px;border:1px solid var(--line)}
+.filter-panel h2{font-size:1.2rem;margin:.3rem 0}

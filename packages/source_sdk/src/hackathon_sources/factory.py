@@ -9,8 +9,10 @@ from .live_adapters import (
     HackClubHackathonsAdapter,
     HackClubProgramsAdapter,
 )
-from .models import SourceDefinition
+from .models import IngestionMode, PermissionStatus, SourceDefinition
 from .seed_adapter import SeedUrlAdapter
+from .structured_html import StructuredHtmlEventAdapter
+from .syndication import SyndicatedEventAdapter
 
 AdapterFactory = Callable[[SourceDefinition], SourceAdapter]
 
@@ -23,8 +25,22 @@ _LIVE_ADAPTERS: dict[str, type[SourceAdapter]] = {
 
 
 def build_adapter(definition: SourceDefinition) -> SourceAdapter:
-    adapter_type = _LIVE_ADAPTERS.get(definition.key, SeedUrlAdapter)
-    return adapter_type(definition)
+    adapter_type = _LIVE_ADAPTERS.get(definition.key)
+    if adapter_type is not None:
+        return adapter_type(definition)
+    if (
+        definition.ingestion_mode in (IngestionMode.RSS, IngestionMode.SITEMAP)
+        and definition.permission_status is PermissionStatus.ALLOWED
+        and definition.detail_extraction_enabled
+    ):
+        return SyndicatedEventAdapter(definition)
+    if (
+        definition.ingestion_mode is IngestionMode.STATIC_HTML
+        and definition.permission_status is PermissionStatus.ALLOWED
+        and definition.detail_extraction_enabled
+    ):
+        return StructuredHtmlEventAdapter(definition)
+    return SeedUrlAdapter(definition)
 
 
 def live_adapter_keys() -> frozenset[str]:
