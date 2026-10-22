@@ -63,6 +63,9 @@
     "seed_urls": [
       "https://www.hackerearth.com/challenges/hackathon/",
       "https://www.hackerearth.com/challenges/"
+    ],
+    "allowed_hosts": [
+      "www.hackerearth.com"
     ]
   },
   {
@@ -120,6 +123,9 @@
     "priority": 87,
     "seed_urls": [
       "https://www.encode.club/programmes"
+    ],
+    "allowed_hosts": [
+      "www.encode.club"
     ]
   },
   {
@@ -150,6 +156,9 @@
     "trust_score": 1,
     "seed_urls": [
       "https://www.spaceappschallenge.org/"
+    ],
+    "allowed_hosts": [
+      "www.spaceappschallenge.org"
     ]
   },
   {
@@ -178,6 +187,9 @@
     "priority": 80,
     "seed_urls": [
       "https://www.kaggle.com/competitions"
+    ],
+    "allowed_hosts": [
+      "www.kaggle.com"
     ]
   },
   {
@@ -206,6 +218,9 @@
     "priority": 74,
     "seed_urls": [
       "https://www.drivendata.org/competitions/"
+    ],
+    "allowed_hosts": [
+      "www.drivendata.org"
     ]
   },
   {
@@ -234,6 +249,9 @@
     "priority": 72,
     "seed_urls": [
       "https://www.eventbrite.com/"
+    ],
+    "allowed_hosts": [
+      "www.eventbrite.com"
     ]
   },
   {
@@ -248,6 +266,9 @@
     "priority": 70,
     "seed_urls": [
       "https://www.meetup.com/"
+    ],
+    "allowed_hosts": [
+      "www.meetup.com"
     ]
   },
   {
@@ -262,6 +283,9 @@
     "priority": 80,
     "seed_urls": [
       "https://www.sympla.com.br/"
+    ],
+    "allowed_hosts": [
+      "www.sympla.com.br"
     ]
   },
   {
@@ -277,6 +301,9 @@
     "trust_score": 1,
     "seed_urls": [
       "https://www.gov.br/"
+    ],
+    "allowed_hosts": [
+      "www.gov.br"
     ]
   },
   {
