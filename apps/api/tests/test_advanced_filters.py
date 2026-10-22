@@ -7,6 +7,7 @@ never interpolates untrusted values into its text.
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,6 +18,7 @@ from hackathon_api.advanced_filters import (
     filter_field_catalog,
     validate_expression,
 )
+from hackathon_api.db import connection_dependency
 from hackathon_api.main import app
 from hackathon_api.repositories.hackathons import (
     build_hackathon_query,
@@ -195,3 +197,41 @@ def test_invalid_expression_http_rejected_before_connection() -> None:
         json={"expression": {"field": "name", "op": "sql", "value": "evil"}},
     )
     assert response.status_code == 422
+
+
+def test_post_query_e2e_with_fake_database_and_bound_filter_values() -> None:
+    class Rows:
+        def mappings(self):
+            return self
+
+        def all(self):
+            return [
+                {
+                    "id": UUID("00000000-0000-0000-0000-000000000001"),
+                    "slug": "sample-hackathon",
+                    "name": "Sample Hackathon",
+                    "event_type": "hackathon",
+                    "status": "REGISTRATION_OPEN",
+                    "format": "ONLINE",
+                    "source_count": 2,
+                }
+            ]
+
+    class FakeConnection:
+        def execute(self, sql, params):
+            assert "h.format::text" in str(sql)
+            assert params["advanced_0"] == "ONLINE"
+            assert "ONLINE" not in str(sql)
+            return Rows()
+
+    app.dependency_overrides[connection_dependency] = lambda: FakeConnection()
+    try:
+        response = TestClient(app).post(
+            "/v1/hackathons/query",
+            json={"expression": {"field": "format", "op": "eq", "value": "ONLINE"}},
+        )
+    finally:
+        app.dependency_overrides.pop(connection_dependency, None)
+    assert response.status_code == 200
+    assert response.json()["items"][0]["slug"] == "sample-hackathon"
+    assert response.json()["next_cursor"] is None
