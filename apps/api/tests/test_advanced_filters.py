@@ -3,6 +3,7 @@
 All validation and query tests are offline; SQL text uses a strict registry and
 never interpolates untrusted values into its text.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
