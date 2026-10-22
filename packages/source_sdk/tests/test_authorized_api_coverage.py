@@ -47,9 +47,11 @@ def test_documented_event_status_partitions_are_bounded_and_same_source() -> Non
     assert entry.ingestion_mode is IngestionMode.API
     assert entry.allowed_hosts == ["hackclub.com"]
     assert len(entry.seed_urls) == 3
-    assert {
-        str(u).split("status=", 1)[1].split("&", 1)[0] for u in entry.seed_urls
-    } == {"upcoming", "ongoing", "ended"}
+    assert {str(u).split("status=", 1)[1].split("&", 1)[0] for u in entry.seed_urls} == {
+        "upcoming",
+        "ongoing",
+        "ended",
+    }
     assert all(
         str(u).startswith("https://hackclub.com/api/v1/events?status=")
         and str(u).endswith("&limit=100")
@@ -59,7 +61,11 @@ def test_documented_event_status_partitions_are_bounded_and_same_source() -> Non
 
 def test_status_partitioned_adapter_yields_distinct_events_and_real_hybrid_format() -> None:
     entry = source("hackclub_programs")
-    names = {"upcoming": "AI Hackathon", "ongoing": "Climate Datathon", "ended": "Global Buildathon"}
+    names = {
+        "upcoming": "AI Hackathon",
+        "ongoing": "Climate Datathon",
+        "ended": "Global Buildathon",
+    }
 
     class StubFetcher:
         def __init__(self) -> None:
@@ -103,7 +109,9 @@ def test_status_partitioned_adapter_yields_distinct_events_and_real_hybrid_forma
         "https://ended.example.org/",
     }
     assert {x.source_event_id for x in result.records} == {
-        "rec-upcoming", "rec-ongoing", "rec-ended"
+        "rec-upcoming",
+        "rec-ongoing",
+        "rec-ended",
     }
     for record in result.records:
         candidate = prepare_event(record.model_dump(mode="json"), source_key=record.source_key)
@@ -233,12 +241,14 @@ def test_event_identity_is_stable_when_days_change_and_distinguishes_same_date()
     assert len(set(ids.values())) == len(ids)
     missing_site = next(record for record in before if record.name == "Student Datathon")
     assert missing_site.official_url is None
-    assert missing_site.source_event_id != next(
-        record for record in before if record.name == "Game Jam Weekend"
-    ).source_event_id
-    assert prepare_event(
-        missing_site.model_dump(mode="json"), source_key=missing_site.source_key
-    ) is not None
+    assert (
+        missing_site.source_event_id
+        != next(record for record in before if record.name == "Game Jam Weekend").source_event_id
+    )
+    assert (
+        prepare_event(missing_site.model_dump(mode="json"), source_key=missing_site.source_key)
+        is not None
+    )
     active = next(record for record in before if record.name == "São Paulo Hackathon")
     assert active.metadata["days"] == ["12", "13"]
     assert active.metadata["archived"] is False
