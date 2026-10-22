@@ -1,0 +1,96 @@
+name: One-off authorized external source acceptance test
+on:
+  pull_request:
+    types: [synchronize]
+permissions:
+  contents: read
+jobs:
+  authorized-live-source:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'checkpoint/iteration31-20261022'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: hackathon
+          POSTGRES_USER: hackathon
+          POSTGRES_PASSWORD: hackathon
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hackathon -d hackathon"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://hackathon:hackathon@localhost:5432/hackathon
+      APP_ENV: staging
+      HIP_ALLOW_LIVE_INGESTION: '1'
+      SOURCE_SCHEDULER_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: alembic -c db/alembic.ini upgrade head
+      - name: Explicitly register approved public API sources in disposable DB
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from sqlalchemy import create_engine
+          from hackathon_sources.models import PermissionStatus
+          from hackathon_sources.registry import SourceRegistryRepository, load_source_definitions
+          from scripts.ops.controlled_catalog_ingestion import validate_selection
+          import os
+          definitions = load_source_definitions(Path('db/seeds/sources_v0_1.json'))
+          engine = create_engine(os.environ['DATABASE_URL'])
+          try:
+              with engine.begin() as conn:
+                  for key in ('hackclub_hackathons', 'agenda_tech_brasil'):
+                      source = validate_selection(definitions, key)
+                      assert source.permission_status is PermissionStatus.ALLOWED
+                      SourceRegistryRepository(conn).upsert(source)
+                      print('Registered approved public API in isolated staging DB:', key)
+          finally:
+              engine.dispose()
+          PY
+      - name: Run bounded official Hack Club API collection, normalization and yield
+        id: hackclub
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/hip-live-receipts
+          python -m scripts.ops.controlled_catalog_ingestion \
+            --source hackclub_hackathons --apply --max-pages 1 --max-versions 300 \
+            > /tmp/hip-live-receipts/hackclub_hackathons.json
+          cat /tmp/hip-live-receipts/hackclub_hackathons.json
+      - name: Run bounded public GitHub API collection, normalization and yield
+        id: agenda
+        continue-on-error: true
+        run: |
+          mkdir -p /tmp/hip-live-receipts
+          python -m scripts.ops.controlled_catalog_ingestion \
+            --source agenda_tech_brasil --apply --max-pages 1 --max-versions 300 \
+            > /tmp/hip-live-receipts/agenda_tech_brasil.json
+          cat /tmp/hip-live-receipts/agenda_tech_brasil.json
+      - name: Report validation results only (never promote these staging records)
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for p in sorted(Path('/tmp/hip-live-receipts').glob('*.json')):
+              try:
+                  d = json.loads(p.read_text())
+                  print(json.dumps({k:d.get(k) for k in ('source','status','pages_fetched','references_persisted','versions_processed','run_outcomes','catalog_delta_observed')}))
+              except Exception:
+                  print('No valid receipt for:', p.name)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hip-iteration32-authorized-live-receipts
+          path: /tmp/hip-live-receipts/*.json
+          if-no-files-found: warn
