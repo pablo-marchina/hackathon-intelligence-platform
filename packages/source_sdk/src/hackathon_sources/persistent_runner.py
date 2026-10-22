@@ -128,7 +128,9 @@ async def run_source_persisted(
     # Persist HTML discoveries too: an in-memory queue restarted at the same seeds
     # each run and could never reach later event pages beyond max_pages.
     backlogged = adapter.definition.ingestion_mode in (
-        IngestionMode.RSS, IngestionMode.SITEMAP, IngestionMode.STATIC_HTML
+        IngestionMode.RSS,
+        IngestionMode.SITEMAP,
+        IngestionMode.STATIC_HTML,
     )
     backlog_repo = SourceUrlBacklog(connection) if backlogged else None
     allowed_hosts = {
