@@ -10,7 +10,7 @@ import json
 import re
 from collections.abc import Iterator
 from typing import Any
-from urllib.parse import urljoin, urlsplit, urldefrag
+from urllib.parse import urldefrag, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
 
