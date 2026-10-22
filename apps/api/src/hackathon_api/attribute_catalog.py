@@ -3,6 +3,7 @@
 Definitions do not authorize crawling and are not writable through the public API.
 Only attributes selected in canonical_field_selections can be searched.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -30,13 +31,17 @@ def load_attribute_fields(
     if keys is not None and not keys:
         return {}
     condition = " AND key = ANY(:keys)" if keys is not None else ""
-    result = connection.execute(
-        text(
-            "SELECT key, data_type, description, unit FROM attribute_definitions "
-            "WHERE active=true AND filterable=true" + condition + " ORDER BY key"
-        ),
-        {"keys": sorted(keys)} if keys is not None else {},
-    ).mappings().all()
+    result = (
+        connection.execute(
+            text(
+                "SELECT key, data_type, description, unit FROM attribute_definitions "
+                "WHERE active=true AND filterable=true" + condition + " ORDER BY key"
+            ),
+            {"keys": sorted(keys)} if keys is not None else {},
+        )
+        .mappings()
+        .all()
+    )
     fields: dict[str, FilterField] = {}
     for row in result:
         kind = row["data_type"]
@@ -71,8 +76,9 @@ def expression_attribute_keys(expression: dict[str, Any] | None) -> set[str]:
 
 def selected_attributes(connection: Connection, hackathon_id: Any) -> list[dict[str, Any]]:
     """Render only typed, actively selected values alongside their source evidence."""
-    rows = connection.execute(
-        text("""
+    rows = (
+        connection.execute(
+            text("""
             SELECT d.key, d.label, d.data_type, d.unit,
                    so.normalized_value_json AS value,
                    so.extraction_confidence AS confidence,
@@ -93,6 +99,9 @@ def selected_attributes(connection: Connection, hackathon_id: Any) -> list[dict[
                    END
              ORDER BY d.category,d.label LIMIT 100
         """),
-        {"id": hackathon_id},
-    ).mappings().all()
+            {"id": hackathon_id},
+        )
+        .mappings()
+        .all()
+    )
     return [dict(row) for row in rows]
