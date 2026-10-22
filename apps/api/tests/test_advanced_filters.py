@@ -166,7 +166,9 @@ def test_cost_budget_for_deep_or_expensive_groups() -> None:
 
 def test_cursor_fingerprint_includes_advanced_predicate() -> None:
     row = {"id": "00000000-0000-0000-0000-000000000001"}
-    filters = AdvancedHackathonFilters(expression={"field": "format", "op": "eq", "value": "ONLINE"})
+    filters = AdvancedHackathonFilters(
+        expression={"field": "format", "op": "eq", "value": "ONLINE"}
+    )
     cursor = encode_cursor(row, filters)
     assert decode_cursor(cursor)["id"] == row["id"]
     assert build_hackathon_query(filters.model_copy(update={"cursor": cursor})).sql
