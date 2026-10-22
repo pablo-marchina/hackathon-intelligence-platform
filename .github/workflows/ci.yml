@@ -70,6 +70,10 @@ jobs:
         env:
           HIP_ALLOW_BACKLOG_DB_DRILL: "1"
         run: python -m scripts.ops.source_url_backlog_integration_check
+      - name: Typed canonical attributes and advanced filtering (PostgreSQL)
+        env:
+          HIP_ALLOW_ATTRIBUTES_DB_DRILL: "1"
+        run: python -m scripts.ops.attribute_catalog_integration_check
       - run: python scripts/ops/api_readiness_integration_check.py
       - run: python scripts/ops/admin_integration_check.py
       - run: python scripts/ops/source_maintenance_integration_check.py
