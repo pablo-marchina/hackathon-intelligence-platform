@@ -214,10 +214,7 @@ def _agenda_events(payload: dict[str, Any]) -> Iterable[tuple[int, str, dict[str
             events = month_block.get("eventos")
             if not isinstance(events, list):
                 continue
-            archived = (
-                year_block.get("arquivado") is True
-                or month_block.get("arquivado") is True
-            )
+            archived = year_block.get("arquivado") is True or month_block.get("arquivado") is True
             for event in events:
                 if isinstance(event, dict):
                     yield year, month_name, event, archived
@@ -262,12 +259,8 @@ class AgendaTechBrasilAdapter(ApiSeedAdapter):
                     if day_number not in days:
                         days.append(day_number)
             days.sort()
-            starts = (
-                date(year, month, days[0]).isoformat() if month and days else None
-            )
-            ends = (
-                date(year, month, days[-1]).isoformat() if month and days else starts
-            )
+            starts = date(year, month, days[0]).isoformat() if month and days else None
+            ends = date(year, month, days[-1]).isoformat() if month and days else starts
             # The public calendar does not publish immutable event IDs.
             # Stable across edits to days within a month, yet edition-scoped;
             # identical dates on a shared API endpoint must not collapse events.
