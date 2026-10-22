@@ -313,7 +313,6 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                             stack.append(name)
                             stack_nodes.append(elem)
                             if len(stack) == 1:
-                                root = elem
                                 kind = name
                                 if kind not in {"rss", "rdf", "feed", "urlset", "sitemapindex"}:
                                     return empty
