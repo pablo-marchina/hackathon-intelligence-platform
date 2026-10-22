@@ -243,7 +243,7 @@ class HackathonRepository:
     def __init__(self, connection: Connection):
         self.connection = connection
 
-    def search(self, filters):
+    def search(self, filters: HackathonFilters) -> HackathonPage:
         spec = build_hackathon_query(filters)
         rows = [
             dict(r) for r in self.connection.execute(text(spec.sql), spec.params).mappings().all()
