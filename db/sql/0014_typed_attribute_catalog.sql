@@ -17,7 +17,7 @@ CREATE INDEX attribute_definitions_filterable_idx
     ON attribute_definitions(key) WHERE filterable AND active;
 
 -- These are already projected by project_structured_metadata for authorized
--- schema.org/Event inputs; their source values retain existing provenance.
+-- schema.org/Event inputs. Their source values retain existing provenance.
 INSERT INTO attribute_definitions
     (key, label, category, data_type, description, unit, filterable)
 VALUES
@@ -26,4 +26,4 @@ VALUES
     ('capacity', 'Maximum attendees', 'participation', 'number',
      'Published maximum attendee capacity (not team size)', 'attendees', true),
     ('source_event_status', 'Official event status', 'event', 'text',
-     'Raw structured event status; not inferred from deadlines', NULL, true);
+     'Raw structured event status, not inferred from deadlines', NULL, true);
