@@ -170,7 +170,10 @@ def discover_related_links(
     seen: set[str] = set()
     result: list[RelatedLink] = []
     for anchor in soup.find_all("a", href=True):
-        absolute = urljoin(base_url, anchor["href"])
+        href = anchor.get("href")
+        if not isinstance(href, str):
+            continue
+        absolute = urljoin(base_url, href)
         if absolute in seen or not absolute.startswith(("http://", "https://")):
             continue
         text = " ".join(anchor.get_text(" ", strip=True).split())
