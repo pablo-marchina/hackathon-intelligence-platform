@@ -17,7 +17,17 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install 'ruff>=0.12,<1'
-      - run: ruff check --fix --unsafe-fixes apps packages scripts db/alembic/versions
+      - run: ruff check --fix --unsafe-fixes apps packages scripts db/alembic/versions || true
+      - name: Normalize Ruff-inserted contextlib import in dynamically bootstrapped script
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/run_w2_live.py')
+          s = p.read_text()
+          marker = 'add_repo_packages(Path(__file__).resolve().parents[1])\\nimport contextlib\\n'
+          if marker in s:
+              p.write_text(s.replace(marker, 'add_repo_packages(Path(__file__).resolve().parents[1])\\n'))
+          PY
       - run: ruff format apps packages scripts db/alembic/versions
       - run: ruff check apps packages scripts db/alembic/versions
       - run: ruff format --check apps packages scripts db/alembic/versions
