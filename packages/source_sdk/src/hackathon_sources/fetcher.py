@@ -115,9 +115,10 @@ class FetchEngine:
                 await validate_destination(current_url, allowed_hosts)
                 # A feed endpoint redirect is a *new* destination, not an
                 # implicitly authorized HTML detail page. Recheck robots.
-                if use_robots or robots_required(source, current_url):
-                    if not await self.robots.allowed(current_url, allowed_hosts=allowed_hosts):
-                        raise PermissionError("robots.txt disallows redirect destination")
+                if (use_robots or robots_required(source, current_url)) and not await self.robots.allowed(
+                    current_url, allowed_hosts=allowed_hosts
+                ):
+                    raise PermissionError("robots.txt disallows redirect destination")
                 # Stream bodies under an explicit decoded-size ceiling; get() buffers
                 # the full response and can exhaust worker memory on malicious input.
                 async with self.client.stream(
