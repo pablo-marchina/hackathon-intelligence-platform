@@ -71,7 +71,9 @@ def _split_sql(script: str) -> list[str]:
 def upgrade() -> None:
     bind = op.get_bind()
     for statement in _split_sql(SQL_PATH.read_text(encoding="utf-8")):
-        bind.exec_driver_sql(statement)
+        # psycopg uses %-style placeholders even for DDL: escape literal
+        # PostgreSQL PL/pgSQL %ROWTYPE and RAISE format markers.
+        bind.exec_driver_sql(statement.replace("%", "%%"))
 
 
 def downgrade() -> None:
