@@ -6,6 +6,7 @@ never interpolates untrusted values into its text.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime
 from uuid import UUID
 
@@ -18,19 +19,19 @@ from hackathon_api.advanced_filters import (
     filter_field_catalog,
     validate_expression,
 )
-from hackathon_api.db import connection_dependency
 from hackathon_api.main import app
 from hackathon_api.repositories.hackathons import (
     build_hackathon_query,
     decode_cursor,
     encode_cursor,
 )
-from hackathon_api.schemas import HackathonFilters
+from hackathon_api.routes import hackathons as hackathon_routes
+from hackathon_api.schemas import AdvancedHackathonFilters
 from pydantic import ValidationError
 
 
 def test_nested_boolean_expression_compiles_with_bound_values() -> None:
-    filters = HackathonFilters(
+    filters = AdvancedHackathonFilters(
         expression={
             "and": [
                 {"field": "status", "op": "eq", "value": "REGISTRATION_OPEN"},
@@ -64,7 +65,7 @@ def test_nested_boolean_expression_compiles_with_bound_values() -> None:
 
 def test_range_numeric_and_datetime_and_missing_value_semantics() -> None:
     spec = build_hackathon_query(
-        HackathonFilters(
+        AdvancedHackathonFilters(
             expression={
                 "and": [
                     {"field": "prize_pool_usd", "op": "gte", "value": 1500},
@@ -90,7 +91,7 @@ def test_range_numeric_and_datetime_and_missing_value_semantics() -> None:
 
 def test_search_over_existing_relationship_tables() -> None:
     spec = build_hackathon_query(
-        HackathonFilters(
+        AdvancedHackathonFilters(
             expression={
                 "or": [
                     {"field": "technology", "op": "in", "value": ["python", "javascript"]},
@@ -150,7 +151,7 @@ def test_contains_does_not_treat_sql_wildcards_as_pattern() -> None:
 )
 def test_malformed_expressions_rejected_before_db(invalid: dict) -> None:
     with pytest.raises((ValueError, ValidationError)):
-        HackathonFilters(expression=invalid)
+        AdvancedHackathonFilters(expression=invalid)
 
 
 def test_cost_budget_for_deep_or_expensive_groups() -> None:
@@ -165,13 +166,13 @@ def test_cost_budget_for_deep_or_expensive_groups() -> None:
 
 def test_cursor_fingerprint_includes_advanced_predicate() -> None:
     row = {"id": "00000000-0000-0000-0000-000000000001"}
-    filters = HackathonFilters(expression={"field": "format", "op": "eq", "value": "ONLINE"})
+    filters = AdvancedHackathonFilters(expression={"field": "format", "op": "eq", "value": "ONLINE"})
     cursor = encode_cursor(row, filters)
     assert decode_cursor(cursor)["id"] == row["id"]
     assert build_hackathon_query(filters.model_copy(update={"cursor": cursor})).sql
     with pytest.raises(ValueError, match="cursor does not match"):
         build_hackathon_query(
-            HackathonFilters(
+            AdvancedHackathonFilters(
                 expression={"field": "format", "op": "eq", "value": "HYBRID"},
                 cursor=cursor,
             )
@@ -199,7 +200,9 @@ def test_invalid_expression_http_rejected_before_connection() -> None:
     assert response.status_code == 422
 
 
-def test_post_query_e2e_with_fake_database_and_bound_filter_values() -> None:
+def test_post_query_e2e_with_fake_database_and_bound_filter_values(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     class Rows:
         def mappings(self):
             return self
@@ -224,14 +227,16 @@ def test_post_query_e2e_with_fake_database_and_bound_filter_values() -> None:
             assert "ONLINE" not in str(sql)
             return Rows()
 
-    app.dependency_overrides[connection_dependency] = lambda: FakeConnection()
-    try:
-        response = TestClient(app).post(
-            "/v1/hackathons/query",
-            json={"expression": {"field": "format", "op": "eq", "value": "ONLINE"}},
-        )
-    finally:
-        app.dependency_overrides.pop(connection_dependency, None)
+    class FakeEngine:
+        @contextmanager
+        def begin(self):
+            yield FakeConnection()
+
+    monkeypatch.setattr(hackathon_routes, "get_engine", lambda: FakeEngine())
+    response = TestClient(app).post(
+        "/v1/hackathons/query",
+        json={"expression": {"field": "format", "op": "eq", "value": "ONLINE"}},
+    )
     assert response.status_code == 200
     assert response.json()["items"][0]["slug"] == "sample-hackathon"
     assert response.json()["next_cursor"] is None
