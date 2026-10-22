@@ -26,7 +26,10 @@ jobs:
           s = p.read_text()
           marker = 'add_repo_packages(Path(__file__).resolve().parents[1])\nimport contextlib\n'
           if marker in s:
-              p.write_text(s.replace(marker, 'add_repo_packages(Path(__file__).resolve().parents[1])\n'))
+              s = s.replace(marker, 'add_repo_packages(Path(__file__).resolve().parents[1])\n')
+          if 'import contextlib\n' not in s.split('add_repo_packages(Path(__file__).resolve().parents[1])')[0]:
+              s = s.replace('import asyncio\n', 'import asyncio\nimport contextlib\n')
+          p.write_text(s)
           PY
       - run: ruff format apps packages scripts db/alembic/versions
       - run: ruff check apps packages scripts db/alembic/versions
