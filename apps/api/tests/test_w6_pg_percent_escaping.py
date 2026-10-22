@@ -16,3 +16,9 @@ def test_literal_percent_signs_escaped_before_driver(name):
     assert "%ROWTYPE" in sql
     assert 'bind.exec_driver_sql(statement.replace("%", "%%"))' in migration
     assert "%%ROWTYPE" in sql.replace("%", "%%")
+
+
+def test_alembic_revision_column_widened_before_long_w2_revision():
+    migration = (ROOT / "db" / "alembic" / "versions" / "0002_w2_entity_resolution_hardening.py").read_text()
+    assert "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)" in migration
+    assert migration.index("ALTER TABLE alembic_version") < migration.index("for statement in _split_sql")
