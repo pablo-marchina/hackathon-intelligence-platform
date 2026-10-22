@@ -20,7 +20,7 @@ if __package__:
 else:
     from _local_packages import add_repo_packages
 add_repo_packages(Path(__file__).resolve().parents[1])
-from hackathon_intelligence.structured_projection import (
+from hackathon_intelligence.structured_projection import (  # noqa: E402
     PROJECTION_VERSION,
     project_structured_metadata,
 )
@@ -551,7 +551,7 @@ async def main():
                 ]
             )
 
-        for root, members in groups.items():
+        for members in groups.values():
             survivor = max(
                 members,
                 key=lambda c: (
@@ -591,7 +591,7 @@ async def main():
         # observations now, need returned IDs
         obs_inserted = await gate.insert("source_observations", observation_rows, batch=80)
         obs_by_ref_field = {(x["source_event_ref_id"], x["field_path"]): x for x in obs_inserted}
-        for root, members in groups.items():
+        for members in groups.values():
             survivor_id = survivor_for[members[0]["provisional_id"]]
             for c in members:
                 members_rows.append(
