@@ -182,7 +182,7 @@ jobs:
         run: >-
           docker run -d --rm --name hip-dr-minio -p 9000:9000
           -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin
-          ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z server /data
+          cgr.dev/chainguard/minio:latest server /data
       - name: PostgreSQL + MinIO backup/restore and byte-for-byte verification
         run: python scripts/ops/dr_integration_check.py
 
