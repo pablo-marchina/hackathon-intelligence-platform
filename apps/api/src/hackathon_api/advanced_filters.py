@@ -4,6 +4,7 @@ Never interpolate client-provided SQL, paths, operators or values into SQL text.
 Only registered field definitions may be queried. Missing scalar data is SQL
 NULL: negative comparisons do not silently promote unknown values to False.
 """
+
 from __future__ import annotations
 
 import math
@@ -54,63 +55,76 @@ FIELDS: dict[str, FilterField] = {
     "is_free": FilterField("boolean", BOOLEAN_OPERATORS, "h.is_free"),
     "eligible_worldwide": FilterField("boolean", BOOLEAN_OPERATORS, "h.eligible_worldwide"),
     "minimum_age": FilterField(
-        "number", NUMBER_OPERATORS,
+        "number",
+        NUMBER_OPERATORS,
         "(SELECT er.minimum_age FROM eligibility_rules er WHERE er.hackathon_id=h.id)",
     ),
     "maximum_age": FilterField(
-        "number", NUMBER_OPERATORS,
+        "number",
+        NUMBER_OPERATORS,
         "(SELECT er.maximum_age FROM eligibility_rules er WHERE er.hackathon_id=h.id)",
     ),
     "minimum_team_size": FilterField(
-        "number", NUMBER_OPERATORS,
+        "number",
+        NUMBER_OPERATORS,
         "(SELECT er.minimum_team_size FROM eligibility_rules er WHERE er.hackathon_id=h.id)",
     ),
     "maximum_team_size": FilterField(
-        "number", NUMBER_OPERATORS,
+        "number",
+        NUMBER_OPERATORS,
         "(SELECT er.maximum_team_size FROM eligibility_rules er WHERE er.hackathon_id=h.id)",
     ),
     "student_required": FilterField(
-        "boolean", BOOLEAN_OPERATORS,
+        "boolean",
+        BOOLEAN_OPERATORS,
         "(SELECT er.student_required FROM eligibility_rules er WHERE er.hackathon_id=h.id)",
     ),
     "individual_allowed": FilterField(
-        "boolean", BOOLEAN_OPERATORS,
+        "boolean",
+        BOOLEAN_OPERATORS,
         "(SELECT er.individual_allowed FROM eligibility_rules er WHERE er.hackathon_id=h.id)",
     ),
     "prize_pool_usd": FilterField(
-        "number", NUMBER_OPERATORS,
+        "number",
+        NUMBER_OPERATORS,
         "(SELECT MAX(pp.normalized_usd_amount) FROM prize_pools pp WHERE pp.hackathon_id=h.id)",
         description="Largest reported prize pool, not a sum of awards.",
     ),
     "track": FilterField(
-        "text", RELATION_OPERATORS,
+        "text",
+        RELATION_OPERATORS,
         relation_from="hackathon_tracks ht JOIN tracks t ON t.id=ht.track_id",
         relation_value="t.slug",
     ),
     "technology": FilterField(
-        "text", RELATION_OPERATORS,
+        "text",
+        RELATION_OPERATORS,
         relation_from="hackathon_technologies hx JOIN technologies tx ON tx.id=hx.technology_id",
         relation_value="tx.slug",
     ),
     "organizer": FilterField(
-        "text", RELATION_OPERATORS,
+        "text",
+        RELATION_OPERATORS,
         relation_from="hackathon_organizations ho JOIN organizations o ON o.id=ho.organization_id",
         relation_value="o.slug",
         description="Official organizer/co-organizer/host slug.",
     ),
     "sponsor": FilterField(
-        "text", RELATION_OPERATORS,
+        "text",
+        RELATION_OPERATORS,
         relation_from="hackathon_organizations ho JOIN organizations o ON o.id=ho.organization_id",
         relation_value="o.slug",
         description="Sponsor or prize/technology partner slug.",
     ),
     "source_domain": FilterField(
-        "text", RELATION_OPERATORS,
+        "text",
+        RELATION_OPERATORS,
         relation_from="source_event_refs sr JOIN sources s ON s.id=sr.source_id",
         relation_value="s.domain",
     ),
     "eligible_country": FilterField(
-        "country", RELATION_OPERATORS,
+        "country",
+        RELATION_OPERATORS,
         relation_from="eligibility_countries ec",
         relation_value="ec.country_code",
         description="Explicitly allowed countries; worldwide eligibility is stored separately.",
@@ -142,7 +156,7 @@ def _typed_value(field: FilterField, value: Any) -> Any:
             raise ValueError("boolean filter values must be true or false")
         return value
     if kind == "number":
-        if type(value) not in (int, float) or not math.isfinite(value) or abs(value) > 1e12:
+        if type(value) not in (int, float) or abs(value) > 1e12 or not math.isfinite(value):
             raise ValueError("number filter must be finite and within supported bounds")
         return value
     if not isinstance(value, str) or not 1 <= len(value) <= 200:
@@ -259,7 +273,9 @@ def compile_expression(expression: dict[str, Any], params: dict[str, Any]) -> st
                 predicate = f"{field.relation_value}={bound(values[0])}"
             else:
                 predicate = f"{field.relation_value}=ANY({bound(values)})"
-            exists = f"EXISTS (SELECT 1 FROM {field.relation_from} WHERE {identity} AND {predicate})"
+            exists = (
+                f"EXISTS (SELECT 1 FROM {field.relation_from} WHERE {identity} AND {predicate})"
+            )
             if node["field"] == "eligible_country":
                 return f"(h.eligible_worldwide=true OR {exists})"
             return exists
@@ -278,9 +294,7 @@ def compile_expression(expression: dict[str, Any], params: dict[str, Any]) -> st
         value = _typed_value(field, node["value"])
         if op == "contains":
             return f"(POSITION(LOWER({bound(value)}) IN LOWER({column}))>0)"
-        sql_op = {
-            "eq": "=", "ne": "<>", "gt": ">", "gte": ">=", "lt": "<", "lte": "<="
-        }[op]
+        sql_op = {"eq": "=", "ne": "<>", "gt": ">", "gte": ">=", "lt": "<", "lte": "<="}[op]
         return f"({column}{sql_op}{bound(value)})"
 
     return compile_node(expression)
