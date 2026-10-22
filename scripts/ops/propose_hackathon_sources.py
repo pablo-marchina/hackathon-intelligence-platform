@@ -5,6 +5,7 @@ OFFLINE ONLY: no web requests, no database writes, no seed-registry mutation.
 Import candidates from your authorized discovery/search provider as one URL per line.
 Only an operator can add proposals to the source registry and approve collection.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,10 +33,14 @@ def safe_candidate_url(raw: str) -> tuple[str, str] | None:
         url = urlsplit(value)
         host = (url.hostname or "").lower().rstrip(".")
         if (
-            url.scheme != "https" or not host or url.username is not None
-            or url.password is not None or url.port is not None
+            url.scheme != "https"
+            or not host
+            or url.username is not None
+            or url.password is not None
+            or url.port is not None
             or not re.fullmatch(r"[a-z0-9.-]+", host)
-            or ".." in host or host.startswith("-")
+            or ".." in host
+            or host.startswith("-")
             or host.endswith((".local", ".localhost", ".internal", ".test", ".example"))
             or "." not in host
         ):
@@ -111,9 +116,12 @@ def propose(urls: list[str], registered: list) -> dict[str, object]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, type=Path, help="UTF-8 file, one HTTPS URL per line")
     parser.add_argument(
-        "--registry", type=Path,
+        "--input", required=True, type=Path, help="UTF-8 file, one HTTPS URL per line"
+    )
+    parser.add_argument(
+        "--registry",
+        type=Path,
         default=ROOT / "db/seeds/sources_v0_1.json",
     )
     parser.add_argument("--output", type=Path, help="optional JSON report file")
