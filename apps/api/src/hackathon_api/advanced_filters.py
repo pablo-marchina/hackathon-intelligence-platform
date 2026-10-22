@@ -96,7 +96,13 @@ FIELDS: dict[str, FilterField] = {
         "text", RELATION_OPERATORS,
         relation_from="hackathon_organizations ho JOIN organizations o ON o.id=ho.organization_id",
         relation_value="o.slug",
-        description="Includes all organization roles; use role-specific filters in the classic API.",
+        description="Official organizer/co-organizer/host slug.",
+    ),
+    "sponsor": FilterField(
+        "text", RELATION_OPERATORS,
+        relation_from="hackathon_organizations ho JOIN organizations o ON o.id=ho.organization_id",
+        relation_value="o.slug",
+        description="Sponsor or prize/technology partner slug.",
     ),
     "source_domain": FilterField(
         "text", RELATION_OPERATORS,
@@ -238,8 +244,14 @@ def compile_expression(expression: dict[str, Any], params: dict[str, Any]) -> st
             assert field.relation_value is not None
             alias = field.relation_from.split(" ")[1]
             identity = f"{alias}.hackathon_id=h.id"
+            if node["field"] == "organizer":
+                identity += " AND ho.role::text IN ('ORGANIZER','CO_ORGANIZER','HOST')"
+            elif node["field"] == "sponsor":
+                identity += " AND ho.role::text IN ('SPONSOR','PRIZE_PARTNER','TECHNOLOGY_PARTNER')"
             if op in ("is_known", "is_unknown"):
                 exists = f"EXISTS (SELECT 1 FROM {field.relation_from} WHERE {identity})"
+                if node["field"] == "eligible_country":
+                    exists = f"(h.eligible_worldwide=true OR {exists})"
                 return exists if op == "is_known" else "(NOT " + exists + ")"
             values = node["value"] if op == "in" else [node["value"]]
             values = [_typed_value(field, item) for item in values]
@@ -247,7 +259,10 @@ def compile_expression(expression: dict[str, Any], params: dict[str, Any]) -> st
                 predicate = f"{field.relation_value}={bound(values[0])}"
             else:
                 predicate = f"{field.relation_value}=ANY({bound(values)})"
-            return f"EXISTS (SELECT 1 FROM {field.relation_from} WHERE {identity} AND {predicate})"
+            exists = f"EXISTS (SELECT 1 FROM {field.relation_from} WHERE {identity} AND {predicate})"
+            if node["field"] == "eligible_country":
+                return f"(h.eligible_worldwide=true OR {exists})"
+            return exists
         assert field.column is not None
         column = field.column
         if op == "is_known":
