@@ -113,4 +113,4 @@ def test_migration_and_api_readiness_track_new_fields():
     ddl = (root / 'db/sql/0012_syndication_continuation.sql').read_text()
     assert 'listing_offset' in ddl and 'listing_hash' in ddl
     from hackathon_api.main import EXPECTED_DB_REVISION
-    assert EXPECTED_DB_REVISION == '0012_syndication_continuation'
+    assert EXPECTED_DB_REVISION == '0013_canonical_yield'

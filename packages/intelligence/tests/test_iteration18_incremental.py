@@ -176,7 +176,7 @@ def test_incremental_migration_readiness_and_default_disabled(capsys, monkeypatc
 
     root = Path(__file__).resolve().parents[3]
     revision = ScriptDirectory.from_config(Config(str(root / "db/alembic.ini"))).get_current_head()
-    assert revision == EXPECTED_DB_REVISION == "0012_syndication_continuation"
+    assert revision == EXPECTED_DB_REVISION == "0013_canonical_yield"
     ddl = (root / "db/sql/0010_incremental_canonical_pipeline.sql").read_text()
     assert "source_event_payloads" in ddl and "processed_hash" in ddl
     monkeypatch.setattr("sys.argv", ["run_incremental_canonical.py"])

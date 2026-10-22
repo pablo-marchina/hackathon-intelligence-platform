@@ -330,6 +330,7 @@ async def run_source_persisted(
                 payload_repo.stage(
                     ref_id=ref_id, source_id=source_id, raw_document_id=raw_document_id,
                     source_key=record.source_key, payload=record.model_dump(mode="json"),
+                    crawl_run_id=crawl_run_id,
                 )
 
             for item in discovered:

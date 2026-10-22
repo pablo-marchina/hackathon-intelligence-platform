@@ -82,6 +82,18 @@ def coverage(
     return CoverageRepository(connection).snapshot(recent_days=recent_days)
 
 
+@router.get("/canonical-yield")
+def canonical_yield(
+    principal: ViewerDep,
+    connection: ConnectionDep,
+    days: int = Query(default=7, ge=1, le=90),
+) -> dict[str, Any]:
+    """Read-only per-crawl canonical outcomes, preserving unattributed legacy records."""
+    from hackathon_api.repositories.canonical_yield import CanonicalYieldRepository
+
+    return CanonicalYieldRepository(connection).snapshot(days=days)
+
+
 @router.get("/source-insights")
 def source_insights(
     principal: ViewerDep,

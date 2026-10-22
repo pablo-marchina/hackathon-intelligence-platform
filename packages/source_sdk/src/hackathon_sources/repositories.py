@@ -301,7 +301,8 @@ class SourcePayloadRepository:
         self.connection = connection
 
     def stage(self, *, ref_id: str, source_id: str, raw_document_id: str | None,
-              source_key: str, payload: dict[str, Any]) -> None:
+              source_key: str, payload: dict[str, Any],
+              crawl_run_id: str | None = None) -> None:
         # Hash the event record, not the API page, so unrelated page changes do
         # not force expensive reprocessing of every event from that page.
         import hashlib
@@ -309,19 +310,21 @@ class SourcePayloadRepository:
         digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
         self.connection.execute(text("""
             INSERT INTO source_event_payloads (
-                source_event_ref_id, source_id, source_key, raw_document_id, payload, content_hash
+                source_event_ref_id, source_id, source_key, raw_document_id, payload, content_hash, staged_crawl_run_id
             ) VALUES (
                 CAST(:ref_id AS uuid), CAST(:source_id AS uuid), :source_key,
-                CAST(:raw_document_id AS uuid), CAST(:payload AS jsonb), :digest
+                CAST(:raw_document_id AS uuid), CAST(:payload AS jsonb), :digest, CAST(:crawl_run_id AS uuid)
             ) ON CONFLICT (source_event_ref_id) DO UPDATE SET
                 raw_document_id=EXCLUDED.raw_document_id,
                 payload=EXCLUDED.payload,
                 content_hash=EXCLUDED.content_hash,
+                staged_crawl_run_id=EXCLUDED.staged_crawl_run_id,
                 observed_at=now(), last_error=NULL
             WHERE source_event_payloads.content_hash IS DISTINCT FROM EXCLUDED.content_hash
         """), {
             "ref_id": ref_id, "source_id": source_id, "source_key": source_key,
             "raw_document_id": raw_document_id, "payload": serialized, "digest": digest,
+            "crawl_run_id": crawl_run_id,
         })
 
 

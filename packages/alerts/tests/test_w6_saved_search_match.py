@@ -333,7 +333,7 @@ def test_match_migration_and_readiness_are_coherent():
 
     root = Path(__file__).resolve().parents[3]
     head = ScriptDirectory.from_config(Config(str(root / "db/alembic.ini"))).get_current_head()
-    assert head == "0012_syndication_continuation"
+    assert head == "0013_canonical_yield"
     assert api_main.EXPECTED_DB_REVISION == head
     ddl = (root / "db/sql/0009_w6_alert_match.sql").read_text()
     assert "PRIMARY KEY" in ddl and "hackathons_match_scan_idx" in ddl

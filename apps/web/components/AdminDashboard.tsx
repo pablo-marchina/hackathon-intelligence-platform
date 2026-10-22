@@ -28,6 +28,7 @@ type Coverage={
 };
 type SourceInsight={source_id:string;name:string;eligible_for_controlled_collection:boolean;permission_status:string|null;active:boolean;new_references_in_window:number;ready_urls_now:number;exhausted_urls:number;runs_in_window:{run_count:number;succeeded:number;partial:number;failed:number;cancelled:number;running:number;fetched_pages:number;parsed_records:number;reported_failures:number};current_rejection_reasons:Record<string,number>;triage_score:number|null;suggested_action:string};
 type SourceInsights={as_of:string;recent_window_days:number;sources:SourceInsight[];recent_runs:Array<{id:string;source_id:string;status:string;started_at:string;finished_at:string|null;fetched_count:number;parsed_count:number;failed_count:number}>;methodology:Record<string,string>};
+type CanonicalYield={as_of:string;recent_window_days:number;totals:{processed_versions:number;created:number;linked:number;updated:number;rejected:number;unattributed:number};sources:Array<{source_id:string;name:string;created:number;linked:number;updated:number;rejected:number;unattributed:number}>;runs:Array<{crawl_run_id:string;source_id:string;created:number;linked:number;updated:number;rejected:number}>;methodology:Record<string,string>};
 type Tab='coverage'|'sources'|'reviews'|'quality'|'audit';
 
 function percentOrNA(value:number|null):string{return value===null?'N/A':`${value}%`;}
@@ -64,6 +65,7 @@ export function AdminDashboard(){
   const [sources,setSources]=useState<Source[]>([]);
   const [coverage,setCoverage]=useState<Coverage|null>(null);
   const [insights,setInsights]=useState<SourceInsights|null>(null);
+  const [canonicalYield,setCanonicalYield]=useState<CanonicalYield|null>(null);
   const [reviews,setReviews]=useState<Review[]>([]);
   const [quality,setQuality]=useState<Quality[]>([]);
   const [audit,setAudit]=useState<Audit[]>([]);
@@ -73,15 +75,16 @@ export function AdminDashboard(){
 
   const refresh=useCallback(async()=>{
     // Parallel reads are safe: every API request carries the same user session.
-    const [nextCoverage,nextInsights,nextSources,nextReviews,nextQuality,nextAudit]=await Promise.all([
-      adminRequest<SourceInsights>('/source-insights?recent_days=7&run_limit=25'),
+    const [nextCoverage,nextInsights,nextYield,nextSources,nextReviews,nextQuality,nextAudit]=await Promise.all([
       adminRequest<Coverage>('/coverage'),
+      adminRequest<SourceInsights>('/source-insights?recent_days=7&run_limit=25'),
+      adminRequest<CanonicalYield>('/canonical-yield?days=7'),
       adminRequest<Source[]>('/source-health'),
       adminRequest<Review[]>('/review-queue?limit=100'),
       adminRequest<Quality[]>('/quality?limit=100'),
       adminRequest<Audit[]>('/audit?limit=50'),
     ]);
-    setCoverage(nextCoverage);setInsights(nextInsights);setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);
+    setCoverage(nextCoverage);setInsights(nextInsights);setCanonicalYield(nextYield);setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);
   },[]);
 
   useEffect(()=>{
@@ -176,6 +179,21 @@ export function AdminDashboard(){
         <p className="muted">Growth counts canonical rows created in the database, including historical backfills; it does not imply newly announced events. Per-source counts overlap.</p>
         <details><summary>Daily catalog growth (UTC)</summary><ul>{coverage.growth.daily.map(day=><li key={day.date}>{day.date}: {day.new_active_canonicals} new active rows</li>)}</ul></details>
         <p className="muted">{coverage.catalog.unknown_registration_close} events have no known registration deadline. Unknown is not equivalent to open. Per-source attribution overlaps.</p>
+        {canonicalYield&&<section aria-label="Verified canonical yield">
+          <h3>Confirmed canonicalization outcomes (last 7 days)</h3>
+          <p className="muted">{canonicalYield.methodology.created} {canonicalYield.methodology.window}</p>
+          <div className="admin-stats">
+            <div><strong>{canonicalYield.totals.created}</strong><span>New canonical events created</span></div>
+            <div><strong>{canonicalYield.totals.linked}</strong><span>Matched an existing event</span></div>
+            <div><strong>{canonicalYield.totals.updated}</strong><span>Existing event versions updated</span></div>
+            <div><strong>{canonicalYield.totals.rejected}</strong><span>Rejected event versions</span></div>
+            <div><strong>{canonicalYield.totals.unattributed}</strong><span>Missing original crawl ID</span></div>
+          </div>
+          <p className="muted">Older catalog imports are not backfilled into these numbers. Creation is not proof of a newly announced event. Only outcomes recorded after migration 0013 are included.</p>
+          <details><summary>Contribution by source</summary><ul>
+            {canonicalYield.sources.filter(s=>s.created+s.linked+s.updated+s.rejected>0).map(source=><li key={source.source_id}>{source.name}: {source.created} created, {source.linked} linked, {source.updated} updated, {source.rejected} rejected; {source.unattributed} unattributed</li>)}
+          </ul></details>
+        </section>}
         {insights&&<section aria-label="Historical crawl health">
           <h3>Historical crawl health and source triage</h3>
           <p className="muted">{insights.methodology.triage_score} The scores are read-only recommendations, not permissions or automatic collection priority. New references are not unique newly discovered hackathons.</p>

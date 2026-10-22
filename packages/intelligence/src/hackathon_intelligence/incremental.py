@@ -143,7 +143,8 @@ class CanonicalProcessor:
         row = self._execute("""
             SELECT p.source_event_ref_id::text AS ref_id, p.source_id::text AS source_id,
                    p.source_key, p.raw_document_id::text AS raw_document_id,
-                   p.payload, p.content_hash, r.hackathon_id::text AS hackathon_id
+                   p.payload, p.content_hash, p.staged_crawl_run_id::text AS crawl_run_id,
+                   r.hackathon_id::text AS hackathon_id
               FROM source_event_payloads p
               JOIN source_event_refs r ON r.id = p.source_event_ref_id
               JOIN sources s ON s.id = p.source_id
@@ -174,11 +175,13 @@ class CanonicalProcessor:
         event = prepare_event(payload, source_key=row["source_key"])
         if event is None:
             self._mark(row, rejection="not_hackathon_like_or_missing_name")
+            self._record_outcome(row, outcome="REJECTED", hackathon_id=None)
             return "REJECTED"
         # Serialise contenders for the same official URL, even across sources.
         if event.official_url:
             self._execute("SELECT pg_advisory_xact_lock(hashtextextended(:url, 0))", {"url": event.official_url})
-        hackathon_id = row["hackathon_id"]
+        previous_hackathon_id = row["hackathon_id"]
+        hackathon_id = previous_hackathon_id
         if hackathon_id:
             valid = self._execute("""
                 SELECT id::text FROM hackathons WHERE id=CAST(:id AS uuid)
@@ -288,7 +291,27 @@ class CanonicalProcessor:
             WHERE id=CAST(:event AS uuid)
         """, {"event": hackathon_id})
         self._mark(row)
+        result = "CREATED" if created else ("UPDATED" if previous_hackathon_id else "LINKED")
+        self._record_outcome(row, outcome=result, hackathon_id=hackathon_id)
+        # Keep return values backward-compatible with existing worker reports.
         return "CREATED" if created else "UPDATED"
+
+    def _record_outcome(self, row: Any, *, outcome: str, hackathon_id: str | None) -> None:
+        """Append exactly one durable outcome per source-record version.
+
+        Shares the source-row lock and transaction with canonical creation and
+        _mark(): a rollback cannot leave a false discovery count behind. The
+        crawl ID comes from the original staging run, never an inferred date.
+        """
+        self._execute("""
+            INSERT INTO canonical_processing_outcomes
+                (source_event_ref_id, source_id, crawl_run_id, content_hash, outcome, hackathon_id)
+            VALUES (CAST(:ref AS uuid), CAST(:source AS uuid), CAST(:run AS uuid),
+                    :digest, :outcome, CAST(:event AS uuid))
+            ON CONFLICT (source_event_ref_id, content_hash) DO NOTHING
+        """, {"ref": row["ref_id"], "source": row["source_id"],
+              "run": row["crawl_run_id"], "digest": row["content_hash"],
+              "outcome": outcome, "event": hackathon_id})
 
     def _apply_field(self, event_id: str, field: str, value: Any) -> None:
         # Allowlist: relationship arrays, source-specific statuses and unverified

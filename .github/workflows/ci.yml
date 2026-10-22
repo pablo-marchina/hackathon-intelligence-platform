@@ -60,7 +60,7 @@ jobs:
         run: |
           python scripts/catalog_coverage_report.py --format json > /tmp/hip-live-coverage.json
           python -m scripts.ops.catalog_coverage_integration_check
-      - name: Verify authorized multi-source canonicalization in real PostgreSQL
+      - name: Verify canonical creation vs link vs update vs rejection per crawl (PostgreSQL)
         env:
           HIP_ALLOW_CANONICAL_DB_DRILL: "1"
         run: python -m scripts.ops.incremental_canonical_integration_check

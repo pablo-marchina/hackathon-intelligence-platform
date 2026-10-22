@@ -83,7 +83,7 @@ def health() -> dict[str, str]:
 
 # Liveness intentionally does not depend on external infrastructure. Readiness
 # is stricter: do not send requests to an instance with a missing/outdated schema.
-EXPECTED_DB_REVISION = "0012_syndication_continuation"
+EXPECTED_DB_REVISION = "0013_canonical_yield"
 
 
 @app.get("/ready", tags=["system"])
