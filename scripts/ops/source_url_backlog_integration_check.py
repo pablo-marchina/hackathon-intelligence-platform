@@ -61,6 +61,12 @@ def verify() -> None:
             assert not backlog.succeed(BacklogClaim(first.id, first.url, str(uuid4()), first.kind))
             assert backlog.succeed(first)
             assert not backlog.succeed(first)
+            # A successful seed remains DONE until the configured revisit window.
+            # Advance the test record's clock to simulate that window expiring.
+            conn.execute(text("""
+                UPDATE source_url_backlog SET next_fetch_at=clock_timestamp()-INTERVAL '1 second'
+                WHERE id=:id
+            """), {"id": first.id})
             backlog.add(sources[0], url, kind="SEED")
             retry = backlog.claim(sources[0])
             assert retry is not None and retry.token != first.token
