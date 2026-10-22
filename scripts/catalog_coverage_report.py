@@ -28,6 +28,10 @@ def render_markdown(snapshot: dict[str, object]) -> str:
     rates = field_completeness['percentages']
     assert isinstance(rates, dict)
     backlog = pipeline['backlog']
+    funnel = snapshot['conversion_funnel']
+    assert isinstance(funnel, dict)
+    def pct(value: object) -> str:
+        return f'{float(value):.1f}%' if value is not None else 'N/A (no denominator)'
     assert isinstance(backlog, dict)
     def percent(field: str) -> str:
         value = rates[field]
@@ -56,6 +60,22 @@ def render_markdown(snapshot: dict[str, object]) -> str:
         f"- URLs ready for crawl: **{backlog['backlog_ready_now']}**",
         f"- URLs exhausted: **{backlog['backlog_exhausted']}**",
         f"- URLs with expired claims: **{backlog['backlog_expired_claims']}**", '',
+        '## Source ingestion funnel (live cohorts; no cross-unit conversion)', '',
+        f"- Source-scoped discovered URL tasks: **{funnel['discovered_url_tasks']}**",
+        f"- Discovered URL tasks currently DONE: **{funnel['fetched_discovered_url_tasks']}** ({pct(funnel['fetch_percent'])} of discovered tasks)",
+        f"- Active event references: **{funnel['active_references']}**",
+        f"- References with durable payloads: **{funnel['staged_references']}** ({pct(funnel['staging_percent'])} of active refs)",
+        f"- Legacy or unstaged references: **{funnel['legacy_unstaged_references']}**",
+        f"- References awaiting normalization: **{funnel['pending_references']}**",
+        f"- Accepted normalized references: **{funnel['accepted_references']}** ({pct(funnel['acceptance_percent'])} of staged refs)",
+        f"- Rejected normalized references: **{funnel['rejected_references']}**",
+        f"- Failed pending references: **{funnel['failed_pending_references']}**",
+        f"- Accepted references linked to active, non-merged hackathons: **{funnel['linked_searchable_references']}**",
+        f"- Accepted references without active canonical link: **{funnel['accepted_unlinked_references']}**",
+        f"- DISTINCT hackathons from those links: **{funnel['unique_searchable_hackathons']}**",
+        '',
+        '> URL tasks and event references are DIFFERENT units; their counts are not a URL-to-event conversion rate.',
+        '> Legacy event references without staged payloads remain counted as unstaged; links can overlap across sources.', '',
         '## Field completeness (unique active hackathons)', '',
         f"- Known format: **{percent('known_format')}**",
         f"- Registration URL: **{percent('with_registration_url')}**",
@@ -70,6 +90,10 @@ def render_markdown(snapshot: dict[str, object]) -> str:
         f"- Prizes: **{percent('with_prizes')}**",
         f"- Eligibility rules: **{percent('with_eligibility_rules')}**", '',
         '> Per-source event counts overlap and must not be summed.', '',
+        '## Per-source event handoff', '',
+        '| Source | Discovered tasks | Fetched tasks | References | Staged | Accepted | Rejected | Linked | Distinct hackathons |',
+        '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+        *[f"| {str(item['name']).replace('|', chr(92) + '|').replace(chr(10), ' ')} | {item['discovered_urls']} | {item['fetched_discovered_urls']} | {item['funnel']['active_references']} | {item['funnel']['staged_references']} | {item['funnel']['accepted_references']} | {item['funnel']['rejected_references']} | {item['funnel']['linked_searchable_references']} | {item['funnel']['unique_searchable_hackathons']} |" for item in snapshot['sources']], '',
         '| Source | Permission | Active | Recent success | Event references | Canonicals attributed | New refs (rolling) | New attributed canonicals (rolling) | URLs ready | URLs exhausted |',
         '| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |',
     ]

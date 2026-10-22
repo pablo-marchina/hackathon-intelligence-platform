@@ -16,9 +16,21 @@ type Coverage={
   growth:{calendar_timezone:string;calendar_days:number;new_active_canonicals:number;daily:Array<{date:string;new_active_canonicals:number}>};
   field_completeness:{counts:Record<string,number>;percentages:Record<string,number|null>};
   pipeline:{staged_payloads:number;awaiting_normalization:number;normalized_current_version:number;normalization_errors:number;backlog:Record<string,number>};
-  sources:Array<{source_id:string;name:string;permission_status:string|null;active:boolean;recent_success:boolean;source_refs:number;attributed_unique_active:number;backlog_pending:number;backlog_retry:number;backlog_claimed:number;backlog_done:number;backlog_exhausted:number;backlog_ready_now:number;backlog_expired_claims:number;new_source_refs_recent:number;new_attributed_canonicals_recent:number}>;
+  conversion_funnel:{
+    discovered_url_tasks:number;fetched_discovered_url_tasks:number;fetch_percent:number|null;
+    active_references:number;staged_references:number;legacy_unstaged_references:number;accepted_unlinked_references:number;pending_references:number;
+    accepted_references:number;rejected_references:number;failed_pending_references:number;
+    linked_searchable_references:number;unique_searchable_hackathons:number;
+    staging_percent:number|null;acceptance_percent:number|null;linkage_percent:number|null;
+    distinct_hackathons_percent:number|null;
+  };
+  sources:Array<{source_id:string;name:string;permission_status:string|null;active:boolean;recent_success:boolean;source_refs:number;attributed_unique_active:number;backlog_pending:number;backlog_retry:number;backlog_claimed:number;backlog_done:number;backlog_exhausted:number;backlog_ready_now:number;backlog_expired_claims:number;new_source_refs_recent:number;new_attributed_canonicals_recent:number;discovered_urls:number;fetched_discovered_urls:number;discovery_fetch_percent:number|null;funnel:{active_references:number;staged_references:number;accepted_references:number;rejected_references:number;linked_searchable_references:number;unique_searchable_hackathons:number;staging_percent:number|null;acceptance_percent:number|null}}>;
 };
+type SourceInsight={source_id:string;name:string;eligible_for_controlled_collection:boolean;permission_status:string|null;active:boolean;new_references_in_window:number;ready_urls_now:number;exhausted_urls:number;runs_in_window:{run_count:number;succeeded:number;partial:number;failed:number;cancelled:number;running:number;fetched_pages:number;parsed_records:number;reported_failures:number};current_rejection_reasons:Record<string,number>;triage_score:number|null;suggested_action:string};
+type SourceInsights={as_of:string;recent_window_days:number;sources:SourceInsight[];recent_runs:Array<{id:string;source_id:string;status:string;started_at:string;finished_at:string|null;fetched_count:number;parsed_count:number;failed_count:number}>;methodology:Record<string,string>};
 type Tab='coverage'|'sources'|'reviews'|'quality'|'audit';
+
+function percentOrNA(value:number|null):string{return value===null?'N/A':`${value}%`;}
 
 function readableDate(value:string|null|undefined):string{
   if(!value)return 'Never';
@@ -51,6 +63,7 @@ export function AdminDashboard(){
   const [tab,setTab]=useState<Tab>('coverage');
   const [sources,setSources]=useState<Source[]>([]);
   const [coverage,setCoverage]=useState<Coverage|null>(null);
+  const [insights,setInsights]=useState<SourceInsights|null>(null);
   const [reviews,setReviews]=useState<Review[]>([]);
   const [quality,setQuality]=useState<Quality[]>([]);
   const [audit,setAudit]=useState<Audit[]>([]);
@@ -60,14 +73,15 @@ export function AdminDashboard(){
 
   const refresh=useCallback(async()=>{
     // Parallel reads are safe: every API request carries the same user session.
-    const [nextCoverage,nextSources,nextReviews,nextQuality,nextAudit]=await Promise.all([
+    const [nextCoverage,nextInsights,nextSources,nextReviews,nextQuality,nextAudit]=await Promise.all([
+      adminRequest<SourceInsights>('/source-insights?recent_days=7&run_limit=25'),
       adminRequest<Coverage>('/coverage'),
       adminRequest<Source[]>('/source-health'),
       adminRequest<Review[]>('/review-queue?limit=100'),
       adminRequest<Quality[]>('/quality?limit=100'),
       adminRequest<Audit[]>('/audit?limit=50'),
     ]);
-    setCoverage(nextCoverage);setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);
+    setCoverage(nextCoverage);setInsights(nextInsights);setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);
   },[]);
 
   useEffect(()=>{
@@ -142,9 +156,47 @@ export function AdminDashboard(){
           <div><strong>{coverage.pipeline.normalization_errors}</strong><span>Normalization errors requiring attention</span></div>
           <div><strong>{coverage.pipeline.backlog.backlog_exhausted}</strong><span>URLs with exhausted retries</span></div>
         </div>
+        <section aria-label="Source ingestion funnel">
+          <h3>Ingestion funnel · source-cohort snapshot</h3>
+          <p className="muted">URLs are source-scoped tasks; references are different units. Percentages never divide events by URLs. Historic references without staged payloads remain in the staging denominator. Rejected records are not successful normalizations.</p>
+          <div className="admin-stats">
+            <div><strong>{coverage.conversion_funnel.discovered_url_tasks}</strong><span>Discovered URL tasks</span></div>
+            <div><strong>{coverage.conversion_funnel.fetched_discovered_url_tasks}</strong><span>Discovered URL tasks DONE ({percentOrNA(coverage.conversion_funnel.fetch_percent)})</span></div>
+            <div><strong>{coverage.conversion_funnel.active_references}</strong><span>Active source event references</span></div>
+            <div><strong>{coverage.conversion_funnel.staged_references}</strong><span>Durable payloads ({percentOrNA(coverage.conversion_funnel.staging_percent)} of refs)</span></div>
+            <div><strong>{coverage.conversion_funnel.accepted_references}</strong><span>Successfully normalized ({percentOrNA(coverage.conversion_funnel.acceptance_percent)} of staged)</span></div>
+            <div><strong>{coverage.conversion_funnel.rejected_references}</strong><span>Processed but rejected</span></div>
+            <div><strong>{coverage.conversion_funnel.accepted_unlinked_references}</strong><span>Normalized but without active canonical link</span></div>
+            <div><strong>{coverage.conversion_funnel.pending_references}</strong><span>Waiting for normalization</span></div>
+            <div><strong>{coverage.conversion_funnel.linked_searchable_references}</strong><span>Accepted refs linked to active canonicals</span></div>
+            <div><strong>{coverage.conversion_funnel.unique_searchable_hackathons}</strong><span>Distinct active hackathons from accepted refs</span></div>
+          </div>
+          <p className="muted">Distinct hackathons are counted across sources and cannot be calculated by adding each source's totals. This subset does not include legacy catalog entries without durable payloads.</p>
+        </section>
         <p className="muted">Growth counts canonical rows created in the database, including historical backfills; it does not imply newly announced events. Per-source counts overlap.</p>
         <details><summary>Daily catalog growth (UTC)</summary><ul>{coverage.growth.daily.map(day=><li key={day.date}>{day.date}: {day.new_active_canonicals} new active rows</li>)}</ul></details>
         <p className="muted">{coverage.catalog.unknown_registration_close} events have no known registration deadline. Unknown is not equivalent to open. Per-source attribution overlaps.</p>
+        {insights&&<section aria-label="Historical crawl health">
+          <h3>Historical crawl health and source triage</h3>
+          <p className="muted">{insights.methodology.triage_score} The scores are read-only recommendations, not permissions or automatic collection priority. New references are not unique newly discovered hackathons.</p>
+          <p className="muted">{insights.methodology.current_rejection_reasons}</p>
+          <div className="admin-list">
+            {insights.sources.map(item=><article className="event-card admin-row" key={item.source_id}>
+              <div>
+                <strong>{item.name}</strong>
+                <p className="muted">{item.suggested_action.replaceAll('_',' ')} · {item.permission_status??'UNKNOWN'}</p>
+                <p className="muted">Runs: {item.runs_in_window.run_count} ({item.runs_in_window.succeeded} successful, {item.runs_in_window.failed} failed, {item.runs_in_window.partial} partial) · {item.runs_in_window.parsed_records} parsed records reported</p>
+                <p className="muted">New source refs: {item.new_references_in_window} · Ready URLs: {item.ready_urls_now} · Exhausted URLs: {item.exhausted_urls}</p>
+                <p className="muted">Current staged payload issues: {Object.entries(item.current_rejection_reasons).map(([reason,count])=>`${reason.replaceAll('_',' ')}: ${count}`).join(' · ')||'None reported'}</p>
+              </div>
+              <div><strong>{item.triage_score===null?'N/A':item.triage_score}</strong><span className="muted">Triage score (advisory)</span></div>
+            </article>)}
+          </div>
+          <details><summary>Recent crawl runs (historical evidence)</summary>
+            <p className="muted">{insights.methodology.recent_runs}</p>
+            <ul>{insights.recent_runs.map(run=><li key={run.id}>{readableDate(run.started_at)} · {run.status} · {run.source_id} · fetched {run.fetched_count}, parsed {run.parsed_count}, failures {run.failed_count}</li>)}</ul>
+          </details>
+        </section>}
         <section aria-label="Catalog field completeness">
           <h3>Catalog field completeness</h3>
           <p className="muted">Percentages apply to unique, active hackathons. Unknown values are not inferred; an empty catalog is N/A.</p>
@@ -168,7 +220,9 @@ export function AdminDashboard(){
         </section>
         {coverage.sources.map(item=><article className="event-card admin-row" key={item.source_id}>
           <div><strong>{item.name}</strong><p className="muted">{item.permission_status??'UNKNOWN'} · {item.active?'Active':'Paused'} · {item.recent_success?'Recent successful run':'No recent successful run'}</p></div>
-          <div><strong>{item.attributed_unique_active}</strong><span className="muted"> attributed canonicals · {item.source_refs} refs · {item.new_source_refs_recent} new refs · {item.new_attributed_canonicals_recent} new catalog entries attributed · {item.backlog_ready_now} URLs ready · {item.backlog_exhausted} exhausted</span></div>
+          <div><strong>{item.attributed_unique_active}</strong><span className="muted"> attributed canonicals · {item.source_refs} refs · {item.new_source_refs_recent} new refs · {item.new_attributed_canonicals_recent} new catalog entries attributed · {item.backlog_ready_now} URLs ready · {item.backlog_exhausted} exhausted</span>
+            <p className="muted">Ingestion: {item.discovered_urls} discovered URL tasks · {item.fetched_discovered_urls} DONE · {item.funnel.staged_references} staged refs · {item.funnel.accepted_references} accepted · {item.funnel.rejected_references} rejected · {item.funnel.unique_searchable_hackathons} distinct linked hackathons</p>
+          </div>
         </article>)}
       </>}
     </div>}

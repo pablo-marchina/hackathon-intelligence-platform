@@ -66,6 +66,20 @@ class FakeConnection:
             return Rows({key: 0 for key in PIPELINE} if self.empty else PIPELINE)
         if 'FROM hackathons h' in sql and 'known_format' in sql:
             return Rows({key: 0 for key in COMPLETENESS} if self.empty else COMPLETENESS)
+        if 'GROUPING(r.source_id)' in sql and 'FROM source_event_refs r' in sql:
+            if self.empty:
+                return Rows([{'is_global': 1, 'source_id': None}])
+            return Rows([
+                {'is_global': 1, 'source_id': None, 'active_references': 13, 'staged_references': 5,
+                 'pending_references': 1, 'accepted_references': 3, 'rejected_references': 1,
+                 'failed_pending_references': 1, 'linked_searchable_references': 3, 'unique_searchable_hackathons': 2},
+                {'is_global': 0, 'source_id': 'a', 'active_references': 8, 'staged_references': 3,
+                 'pending_references': 0, 'accepted_references': 2, 'rejected_references': 1,
+                 'linked_searchable_references': 2, 'unique_searchable_hackathons': 2},
+                {'is_global': 0, 'source_id': 'b', 'active_references': 5, 'staged_references': 2,
+                 'pending_references': 1, 'accepted_references': 1, 'failed_pending_references': 1,
+                 'linked_searchable_references': 1, 'unique_searchable_hackathons': 1},
+            ])
         if 'new_active_canonicals' in sql and 'FROM hackathons h' in sql:
             return Rows([] if self.empty else [{'day': NOW.date(), 'new_active_canonicals': 2}])
         if 'FROM sources s' in sql:
@@ -73,11 +87,14 @@ class FakeConnection:
                 return Rows([])
             return Rows([
                 {'source_id': 'a', 'name': 'A', 'domain': 'a.example', 'permission_status': 'ALLOWED', 'active': True,
-                 'last_success_at': NOW - timedelta(hours=1), 'source_refs': 8, 'attributed_unique_active': 3, **BACKLOG},
+                 'last_success_at': NOW - timedelta(hours=1), 'source_refs': 8, 'attributed_unique_active': 3,
+                 'discovered_urls': 12, 'fetched_discovered_urls': 8, **BACKLOG},
                 {'source_id': 'b', 'name': 'B', 'domain': 'b.example', 'permission_status': 'REVIEW_REQUIRED', 'active': True,
-                 'last_success_at': None, 'source_refs': 5, 'attributed_unique_active': 2, **{k:0 for k in BACKLOG}},
+                 'last_success_at': None, 'source_refs': 5, 'attributed_unique_active': 2,
+                 'discovered_urls': 0, 'fetched_discovered_urls': 0, **{k:0 for k in BACKLOG}},
                 {'source_id': 'c', 'name': 'C', 'domain': 'c.example', 'permission_status': 'ALLOWED', 'active': False,
-                 'last_success_at': NOW - timedelta(days=10), 'source_refs': 0, 'attributed_unique_active': 0, **{k:0 for k in BACKLOG}},
+                 'last_success_at': NOW - timedelta(days=10), 'source_refs': 0, 'attributed_unique_active': 0,
+                 'discovered_urls': 0, 'fetched_discovered_urls': 0, **{k:0 for k in BACKLOG}},
             ])
         raise AssertionError('Unexpected SQL')
 

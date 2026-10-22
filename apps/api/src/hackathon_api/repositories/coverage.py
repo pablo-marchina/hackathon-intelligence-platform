@@ -73,6 +73,8 @@ class CoverageRepository:
                  GROUP BY r.source_id
             ), queue AS (
                 SELECT b.source_id,
+                       COUNT(*) FILTER (WHERE kind = 'DISCOVERED') AS discovered_urls,
+                       COUNT(*) FILTER (WHERE kind = 'DISCOVERED' AND state = 'DONE') AS fetched_discovered_urls,
                        COUNT(*) FILTER (WHERE state = 'PENDING') AS pending,
                        COUNT(*) FILTER (WHERE state = 'RETRY') AS retry,
                        COUNT(*) FILTER (WHERE state = 'CLAIMED') AS claimed,
@@ -91,6 +93,8 @@ class CoverageRepository:
                    COALESCE(r.attributed_unique_active, 0) AS attributed_unique_active,
                    COALESCE(r.new_source_refs_recent, 0) AS new_source_refs_recent,
                    COALESCE(r.new_attributed_canonicals_recent, 0) AS new_attributed_canonicals_recent,
+                   COALESCE(q.discovered_urls, 0) AS discovered_urls,
+                   COALESCE(q.fetched_discovered_urls, 0) AS fetched_discovered_urls,
                    COALESCE(q.pending, 0) AS backlog_pending,
                    COALESCE(q.retry, 0) AS backlog_retry,
                    COALESCE(q.claimed, 0) AS backlog_claimed,
@@ -151,6 +155,42 @@ class CoverageRepository:
               FROM hackathons h
              WHERE h.is_active AND h.merged_into_id IS NULL
         '''), {'recent_since': recent_since}).mappings().one()
+        # Grouping sets give both per-source and GLOBAL DISTINCT totals in one
+        # source-reference query. These stages share a reference cohort; legacy
+        # references without durable payloads are kept in the denominator.
+        # Rejected records have processed_hash=content_hash too, so success
+        # explicitly requires last_error IS NULL.
+        funnel_rows = self.connection.execute(text('''
+            SELECT GROUPING(r.source_id) AS is_global,
+                   CASE WHEN GROUPING(r.source_id) = 1 THEN NULL
+                        ELSE r.source_id::text END AS source_id,
+                   COUNT(*) AS active_references,
+                   COUNT(*) FILTER (WHERE p.source_event_ref_id IS NOT NULL)
+                       AS staged_references,
+                   COUNT(*) FILTER (WHERE p.source_event_ref_id IS NOT NULL
+                       AND p.processed_hash IS DISTINCT FROM p.content_hash)
+                       AS pending_references,
+                   COUNT(*) FILTER (WHERE p.processed_hash = p.content_hash
+                       AND p.last_error IS NULL) AS accepted_references,
+                   COUNT(*) FILTER (WHERE p.processed_hash = p.content_hash
+                       AND p.last_error IS NOT NULL) AS rejected_references,
+                   COUNT(*) FILTER (WHERE p.last_error IS NOT NULL
+                       AND p.processed_hash IS DISTINCT FROM p.content_hash)
+                       AS failed_pending_references,
+                   COUNT(*) FILTER (WHERE p.processed_hash = p.content_hash
+                       AND p.last_error IS NULL AND h.id IS NOT NULL)
+                       AS linked_searchable_references,
+                   COUNT(DISTINCT h.id) FILTER (WHERE p.processed_hash = p.content_hash
+                       AND p.last_error IS NULL) AS unique_searchable_hackathons
+              FROM source_event_refs r
+              LEFT JOIN source_event_payloads p
+                ON p.source_event_ref_id = r.id AND p.source_id = r.source_id
+              LEFT JOIN hackathons h ON h.id = r.hackathon_id
+                AND h.is_active AND h.merged_into_id IS NULL
+             WHERE r.active AND r.source_id IS NOT NULL
+             GROUP BY GROUPING SETS ((r.source_id), ())
+             ORDER BY is_global DESC, source_id
+        ''')).mappings().all()
         # Count only currently active, non-merged canons. A new canonical row is
         # *not* necessarily a newly scheduled hackathon: historical backfills also
         # appear here. Never add source attribution to the global total.
@@ -171,6 +211,31 @@ class CoverageRepository:
         ]
         # These are separate sets of measurements. "Active" is not an authorization:
         # both the source's permission and its operational state matter.
+        funnel_fields = (
+            'active_references', 'staged_references', 'pending_references',
+            'accepted_references', 'rejected_references', 'failed_pending_references',
+            'linked_searchable_references', 'unique_searchable_hackathons',
+        )
+        def funnel_metrics(data: dict[str, Any]) -> dict[str, Any]:
+            counts = {key: int(data.get(key) or 0) for key in funnel_fields}
+            def rate(numerator: str, denominator: str) -> float | None:
+                total = counts[denominator]
+                return round(counts[numerator] * 100 / total, 1) if total else None
+            return {
+                **counts,
+                'legacy_unstaged_references': counts['active_references'] - counts['staged_references'],
+                'accepted_unlinked_references': counts['accepted_references'] - counts['linked_searchable_references'],
+                'staging_percent': rate('staged_references', 'active_references'),
+                'acceptance_percent': rate('accepted_references', 'staged_references'),
+                'linkage_percent': rate('linked_searchable_references', 'accepted_references'),
+                'distinct_hackathons_percent': rate('unique_searchable_hackathons', 'linked_searchable_references'),
+            }
+        funnel_by_source = {
+            str(entry['source_id']): funnel_metrics(dict(entry))
+            for entry in funnel_rows if not entry['is_global'] and entry['source_id'] is not None
+        }
+        global_funnel = next((funnel_metrics(dict(entry)) for entry in funnel_rows if entry['is_global']),
+                             funnel_metrics({}))
         rows = []
         for entry in source_rows:
             row = dict(entry)
@@ -180,8 +245,13 @@ class CoverageRepository:
             row['source_refs'] = int(row['source_refs'])
             row['new_source_refs_recent'] = int(row.get('new_source_refs_recent') or 0)
             row['new_attributed_canonicals_recent'] = int(row.get('new_attributed_canonicals_recent') or 0)
-            for field in BACKLOG_FIELDS:
-                row[field] = int(row[field])
+            for field in BACKLOG_FIELDS + ('discovered_urls', 'fetched_discovered_urls'):
+                row[field] = int(row.get(field) or 0)
+            row['funnel'] = funnel_by_source.get(str(row['source_id']), funnel_metrics({}))
+            row['discovery_fetch_percent'] = (
+                round(row['fetched_discovered_urls'] * 100 / row['discovered_urls'], 1)
+                if row['discovered_urls'] else None
+            )
             rows.append(row)
         catalog = {key: int(value) for key, value in dict(catalog_row).items()}
         completeness = {key: int(value) for key, value in dict(completeness_row).items()}
@@ -213,6 +283,16 @@ class CoverageRepository:
             },
             'field_completeness': {'counts': completeness, 'percentages': completeness_rates},
             'pipeline': {**pipeline, 'backlog': backlog_totals},
+            'conversion_funnel': {
+                'discovered_url_tasks': sum(row['discovered_urls'] for row in rows),
+                'fetched_discovered_url_tasks': sum(row['fetched_discovered_urls'] for row in rows),
+                'fetch_percent': (
+                    round(100 * sum(row['fetched_discovered_urls'] for row in rows)
+                          / sum(row['discovered_urls'] for row in rows), 1)
+                    if sum(row['discovered_urls'] for row in rows) else None
+                ),
+                **global_funnel,
+            },
             'sources': rows,
             'methodology': {
                 'unique_active': 'Active, non-merged hackathons; NOT the sum of source counts.',
@@ -225,6 +305,8 @@ class CoverageRepository:
                 'new_active_canonicals': 'Active, unmerged canonical rows created in the UTC calendar window. includes imports and backfills; not necessarily future or newly scheduled events. Historical counts may decrease after merge/deactivation.',
                 'new_source_refs_recent': 'Currently active source references first recorded in the rolling interval; overlaps between sources and may point to older events.',
                 'new_attributed_canonicals_recent': 'Active canonicals created in the rolling interval and attributed to a source; overlaps across sources.',
+                'conversion_funnel': 'URL tasks are source-scoped; event references are separate units, not a direct URL-to-event conversion rate. The reference stages track active refs with an authorized durable payload. Rejected records are not successful normalizations. Unique searchable hackathons are DISTINCT across sources among successfully normalized linked references, not the total catalog.',
+                'conversion_rates': 'Only nested same-unit cohorts have percentage rates. NULL means no denominator; historical refs without payloads count as unstaged. URL task fetch percentage is not a hackathon discovery success rate.',
                 'growth': 'Zero days are explicit. The final day is partial through as_of; no forecasting or inference.',
                 'scope': 'Current connected database only; historical W2 event totals are not substituted.',
             },

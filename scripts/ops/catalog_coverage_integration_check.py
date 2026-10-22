@@ -12,6 +12,7 @@ from uuid import uuid4
 from sqlalchemy import create_engine, text
 
 from hackathon_api.repositories.coverage import CoverageRepository
+from hackathon_api.repositories.source_insights import SourceInsightsRepository
 
 
 def verify() -> None:
@@ -83,6 +84,37 @@ def verify() -> None:
                     '''), {'source_id': source_ids[0], 'url': url,
                            'domain': f'{unique_id}-one.invalid', 'state': state,
                            'due_at': instant - timedelta(minutes=1)})
+                # Historical diagnostics use the existing crawl_runs table, not a
+                # synthetic materialized counter. Fixtures are transaction-scoped.
+                before_insights = SourceInsightsRepository(connection).snapshot(as_of=instant)
+                before_runs = {r['source_id']: r['runs_in_window']['run_count']
+                               for r in before_insights['sources']}
+                connection.execute(text('''
+                    INSERT INTO crawl_runs (source_id, status, started_at, finished_at,
+                                            discovered_count, fetched_count, parsed_count)
+                    VALUES (CAST(:sid AS uuid), 'SUCCEEDED', :started, :finished, 5, 3, 2)
+                '''), {'sid': source_ids[0], 'started': instant - timedelta(seconds=20),
+                       'finished': instant - timedelta(seconds=10)})
+                insights = SourceInsightsRepository(connection).snapshot(as_of=instant)
+                by_id = {r['source_id']: r for r in insights['sources']}
+                assert by_id[source_ids[0]]['runs_in_window']['run_count'] == before_runs.get(source_ids[0], 0) + 1
+                assert by_id[source_ids[0]]['runs_in_window']['fetched_pages'] >= 3
+                assert by_id[source_ids[0]]['eligible_for_controlled_collection'] is True
+                assert by_id[source_ids[0]]['triage_score'] is not None
+                # An unauthorised source is always excluded, even with ample
+                # backlog and past runs; diagnostics must never grant permissions.
+                connection.execute(text('''
+                    UPDATE sources SET permission_status='REVIEW_REQUIRED'
+                    WHERE id=CAST(:sid AS uuid)
+                '''), {'sid': source_ids[0]})
+                forbidden = SourceInsightsRepository(connection).snapshot(as_of=instant)
+                forbidden_item = next(r for r in forbidden['sources'] if r['source_id'] == source_ids[0])
+                assert forbidden_item['triage_score'] is None
+                assert forbidden_item['suggested_action'] == 'REVIEW_PERMISSIONS_OR_PAUSE'
+                connection.execute(text('''
+                    UPDATE sources SET permission_status='ALLOWED'
+                    WHERE id=CAST(:sid AS uuid)
+                '''), {'sid': source_ids[0]})
                 snapshot = CoverageRepository(connection).snapshot(as_of=instant)
                 assert snapshot['catalog']['unique_active'] == baseline['catalog']['unique_active'] + 2
                 assert snapshot['growth']['new_active_canonicals'] == baseline['growth']['new_active_canonicals'] + 2
@@ -90,6 +122,21 @@ def verify() -> None:
                 assert snapshot['catalog']['confirmed_registration_window'] == baseline['catalog']['confirmed_registration_window'] + 1
                 assert snapshot['catalog']['unknown_registration_close'] == baseline['catalog']['unknown_registration_close'] + 1
                 assert snapshot['source_counts']['registered_in_database'] == baseline['source_counts']['registered_in_database'] + 2
+                # These are reference cohorts; the shared canonical is counted once
+                # globally even though both sources have references to it.
+                f, old = snapshot['conversion_funnel'], baseline['conversion_funnel']
+                assert f['active_references'] == old['active_references'] + 3
+                assert f['staged_references'] == old['staged_references'] + 2
+                assert f['accepted_references'] == old['accepted_references'] + 1
+                assert f['pending_references'] == old['pending_references'] + 1
+                assert f['failed_pending_references'] == old['failed_pending_references'] + 1
+                assert f['linked_searchable_references'] == old['linked_searchable_references'] + 1
+                assert f['unique_searchable_hackathons'] == old['unique_searchable_hackathons'] + 1
+                assert f['discovered_url_tasks'] == old['discovered_url_tasks'] + 2
+                by_source = {row['source_id']: row for row in snapshot['sources']}
+                assert by_source[source_ids[0]]['funnel']['accepted_references'] == 1
+                assert by_source[source_ids[1]]['funnel']['accepted_references'] == 0
+                assert by_source[source_ids[1]]['funnel']['failed_pending_references'] == 1
                 assert snapshot['pipeline']['staged_payloads'] == baseline['pipeline']['staged_payloads'] + 2
                 assert snapshot['pipeline']['awaiting_normalization'] == baseline['pipeline']['awaiting_normalization'] + 1
                 assert snapshot['pipeline']['normalization_errors'] == baseline['pipeline']['normalization_errors'] + 1
@@ -110,7 +157,7 @@ def verify() -> None:
                 # Each source attributes the shared canonical; the global new count is 2, not 3.
                 first = next(item for item in snapshot['sources'] if item['source_id'] == source_ids[0])
                 assert first['backlog_ready_now'] == 1 and first['backlog_exhausted'] == 1
-                print('Catalog coverage PostgreSQL: deduped events, pipeline, backlog, completeness PASS')
+                print('Catalog coverage PostgreSQL: deduped events, pipeline, backlog, completeness, source insights PASS')
             finally:
                 transaction.rollback()
     finally:

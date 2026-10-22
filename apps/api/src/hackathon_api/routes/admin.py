@@ -82,6 +82,21 @@ def coverage(
     return CoverageRepository(connection).snapshot(recent_days=recent_days)
 
 
+@router.get("/source-insights")
+def source_insights(
+    principal: ViewerDep,
+    connection: ConnectionDep,
+    recent_days: int = Query(default=7, ge=1, le=90),
+    run_limit: int = Query(default=40, ge=1, le=200),
+) -> dict[str, Any]:
+    """Historical crawl health and redacted source triage (read-only)."""
+    from hackathon_api.repositories.source_insights import SourceInsightsRepository
+
+    return SourceInsightsRepository(connection).snapshot(
+        recent_days=recent_days, run_limit=run_limit,
+    )
+
+
 @router.get("/review-queue")
 def review_queue(
     principal: ViewerDep,
