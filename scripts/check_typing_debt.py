@@ -4,6 +4,7 @@ This is intentionally NOT a claim that the codebase is type-clean. Errors
 present in the reviewed baseline may remain, but new signatures or increased
 counts fail CI. Run against the same source roots as the original gate.
 """
+
 from __future__ import annotations
 
 import json
