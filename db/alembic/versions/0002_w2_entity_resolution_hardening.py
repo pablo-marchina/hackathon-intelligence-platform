@@ -70,6 +70,9 @@ def _split_sql(script: str) -> list[str]:
 
 def upgrade() -> None:
     bind = op.get_bind()
+    # Alembic defaults to VARCHAR(32), but this and subsequent revision IDs are longer.
+    # Widen before the Alembic runtime records this revision (also repairs W1 databases).
+    bind.exec_driver_sql("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
     # Alembic defaults to VARCHAR(32), while this and later revision IDs are
     # longer; widen before Alembic records completion of this migration.
     bind.exec_driver_sql("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
