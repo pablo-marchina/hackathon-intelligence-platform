@@ -235,7 +235,7 @@ class AlertRepository:
         provider_message_id: str | None = None,
         provider_response: dict[str, Any] | None = None,
         error_message: str | None = None,
-        retry_policy: RetryPolicy = RetryPolicy(),
+        retry_policy: RetryPolicy | None = None,
     ) -> str:
         attempt, max_attempts = self.connection.execute(
             text(
@@ -245,6 +245,7 @@ class AlertRepository:
             {"id": delivery_id},
         ).one()
         next_count = int(attempt) + 1
+        retry_policy = retry_policy or RetryPolicy()
         policy = RetryPolicy(
             max_attempts=min(retry_policy.max_attempts, int(max_attempts)),
             base_delay_seconds=retry_policy.base_delay_seconds,
