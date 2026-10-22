@@ -70,6 +70,9 @@ def _split_sql(script: str) -> list[str]:
 
 def upgrade() -> None:
     bind = op.get_bind()
+    # Alembic defaults to VARCHAR(32), while this and later revision IDs are
+    # longer; widen before Alembic records completion of this migration.
+    bind.exec_driver_sql("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
     for statement in _split_sql(SQL_PATH.read_text(encoding="utf-8")):
         # psycopg uses %-style placeholders even for DDL: escape literal
         # PostgreSQL PL/pgSQL %ROWTYPE and RAISE format markers.
