@@ -6,10 +6,16 @@ not evidence that registration is currently open.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
 
 from sqlalchemy import Connection, text
+
+
+BACKLOG_FIELDS = (
+    'backlog_pending', 'backlog_retry', 'backlog_claimed', 'backlog_done',
+    'backlog_exhausted', 'backlog_ready_now', 'backlog_expired_claims',
+)
 
 
 class CoverageRepository:
@@ -22,7 +28,12 @@ class CoverageRepository:
         instant = as_of or datetime.now(UTC)
         if instant.tzinfo is None:
             raise ValueError('as_of must be timezone-aware')
+        # Growth is measured on *calendar days* in UTC; recency for operational
+        # status continues to mean a rolling window of 24-hour periods.
+        instant = instant.astimezone(UTC)
         recent_since = instant - timedelta(days=recent_days)
+        first_day = instant.date() - timedelta(days=recent_days - 1)
+        growth_start = datetime.combine(first_day, time.min, tzinfo=UTC)
         catalog_row = self.connection.execute(text('''
             SELECT COUNT(*) FILTER (WHERE h.is_active AND h.merged_into_id IS NULL) AS unique_active,
                    COUNT(*) FILTER (WHERE h.is_active AND h.merged_into_id IS NULL
@@ -45,18 +56,119 @@ class CoverageRepository:
                        AS inactive_or_retired
               FROM hackathons h
         '''), {'as_of': instant}).mappings().one()
+        # Aggregate each independently: joining queue items or payloads to refs
+        # would multiply rows and overstate both coverage and backlog.
         source_rows = self.connection.execute(text('''
+            WITH refs AS (
+                SELECT r.source_id, COUNT(*) AS source_refs,
+                       COUNT(DISTINCT h.id) AS attributed_unique_active,
+                       COUNT(*) FILTER (WHERE r.first_seen_at >= :recent_since
+                           AND r.first_seen_at <= :as_of) AS new_source_refs_recent,
+                       COUNT(DISTINCT h.id) FILTER (WHERE h.created_at >= :recent_since
+                           AND h.created_at <= :as_of) AS new_attributed_canonicals_recent
+                  FROM source_event_refs r
+                  LEFT JOIN hackathons h ON h.id = r.hackathon_id
+                      AND h.is_active AND h.merged_into_id IS NULL
+                 WHERE r.active
+                 GROUP BY r.source_id
+            ), queue AS (
+                SELECT b.source_id,
+                       COUNT(*) FILTER (WHERE state = 'PENDING') AS pending,
+                       COUNT(*) FILTER (WHERE state = 'RETRY') AS retry,
+                       COUNT(*) FILTER (WHERE state = 'CLAIMED') AS claimed,
+                       COUNT(*) FILTER (WHERE state = 'DONE') AS done,
+                       COUNT(*) FILTER (WHERE state = 'EXHAUSTED') AS exhausted,
+                       COUNT(*) FILTER (WHERE state IN ('PENDING','RETRY')
+                           AND next_fetch_at <= :as_of) AS ready_now,
+                       COUNT(*) FILTER (WHERE state = 'CLAIMED'
+                           AND claim_until <= :as_of) AS expired_claims
+                  FROM source_url_backlog b
+                 GROUP BY b.source_id
+            )
             SELECT s.id::text AS source_id, s.name, s.domain, s.permission_status,
                    s.active, s.last_success_at,
-                   COUNT(DISTINCT r.id) AS source_refs,
-                   COUNT(DISTINCT h.id) AS attributed_unique_active
+                   COALESCE(r.source_refs, 0) AS source_refs,
+                   COALESCE(r.attributed_unique_active, 0) AS attributed_unique_active,
+                   COALESCE(r.new_source_refs_recent, 0) AS new_source_refs_recent,
+                   COALESCE(r.new_attributed_canonicals_recent, 0) AS new_attributed_canonicals_recent,
+                   COALESCE(q.pending, 0) AS backlog_pending,
+                   COALESCE(q.retry, 0) AS backlog_retry,
+                   COALESCE(q.claimed, 0) AS backlog_claimed,
+                   COALESCE(q.done, 0) AS backlog_done,
+                   COALESCE(q.exhausted, 0) AS backlog_exhausted,
+                   COALESCE(q.ready_now, 0) AS backlog_ready_now,
+                   COALESCE(q.expired_claims, 0) AS backlog_expired_claims
               FROM sources s
-              LEFT JOIN source_event_refs r ON r.source_id = s.id AND r.active = true
-              LEFT JOIN hackathons h ON h.id = r.hackathon_id
-                  AND h.is_active = true AND h.merged_into_id IS NULL
-             GROUP BY s.id, s.name, s.domain, s.permission_status, s.active, s.last_success_at
+              LEFT JOIN refs r ON r.source_id = s.id
+              LEFT JOIN queue q ON q.source_id = s.id
              ORDER BY attributed_unique_active DESC, s.name ASC
-        ''')).mappings().all()
+        '''), {'as_of': instant, 'recent_since': recent_since}).mappings().all()
+        pipeline_row = self.connection.execute(text('''
+            SELECT COUNT(*) AS staged_payloads,
+                   COUNT(*) FILTER (WHERE processed_hash IS DISTINCT FROM content_hash)
+                       AS awaiting_normalization,
+                   COUNT(*) FILTER (WHERE processed_hash = content_hash)
+                       AS normalized_current_version,
+                   COUNT(*) FILTER (WHERE processed_hash IS DISTINCT FROM content_hash
+                       AND last_error IS NOT NULL) AS normalization_errors
+              FROM source_event_payloads
+        ''')).mappings().one()
+        completeness_row = self.connection.execute(text('''
+            SELECT COUNT(*) FILTER (WHERE h.format <> 'UNKNOWN') AS known_format,
+                   COUNT(*) FILTER (WHERE h.registration_url IS NOT NULL) AS with_registration_url,
+                   COUNT(*) FILTER (WHERE h.registration_close_at IS NOT NULL)
+                       AS with_registration_deadline,
+                   COUNT(*) FILTER (WHERE h.is_free IS NOT NULL
+                       OR h.participation_fee IS NOT NULL) AS known_participation_cost,
+                   COUNT(*) FILTER (WHERE h.eligible_worldwide IS NOT NULL)
+                       AS known_worldwide_eligibility,
+                   COUNT(*) FILTER (WHERE h.short_description IS NOT NULL
+                       OR h.full_description IS NOT NULL) AS with_description,
+                   COUNT(*) FILTER (WHERE h.last_verified_at >= :recent_since)
+                       AS verified_recently,
+                   COUNT(*) FILTER (WHERE EXISTS (
+                       SELECT 1 FROM hackathon_organizations ho
+                       WHERE ho.hackathon_id=h.id AND ho.role IN ('ORGANIZER', 'CO_ORGANIZER', 'HOST')
+                   )) AS with_organizer,
+                   COUNT(*) FILTER (WHERE EXISTS (
+                       SELECT 1 FROM hackathon_organizations ho
+                       WHERE ho.hackathon_id=h.id AND ho.role='SPONSOR'
+                   )) AS with_sponsor,
+                   COUNT(*) FILTER (WHERE EXISTS (
+                       SELECT 1 FROM hackathon_tracks ht WHERE ht.hackathon_id=h.id
+                   )) AS with_tracks,
+                   COUNT(*) FILTER (WHERE EXISTS (
+                       SELECT 1 FROM hackathon_technologies ht WHERE ht.hackathon_id=h.id
+                   )) AS with_technologies,
+                   COUNT(*) FILTER (WHERE EXISTS (
+                       SELECT 1 FROM prize_pools pp WHERE pp.hackathon_id=h.id
+                   ) OR EXISTS (
+                       SELECT 1 FROM prizes p WHERE p.hackathon_id=h.id
+                   )) AS with_prizes,
+                   COUNT(*) FILTER (WHERE EXISTS (
+                       SELECT 1 FROM eligibility_rules er WHERE er.hackathon_id=h.id
+                   )) AS with_eligibility_rules
+              FROM hackathons h
+             WHERE h.is_active AND h.merged_into_id IS NULL
+        '''), {'recent_since': recent_since}).mappings().one()
+        # Count only currently active, non-merged canons. A new canonical row is
+        # *not* necessarily a newly scheduled hackathon: historical backfills also
+        # appear here. Never add source attribution to the global total.
+        daily_growth_rows = self.connection.execute(text('''
+            SELECT (h.created_at AT TIME ZONE 'UTC')::date AS day,
+                   COUNT(*) AS new_active_canonicals
+              FROM hackathons h
+             WHERE h.is_active AND h.merged_into_id IS NULL
+               AND h.created_at >= :growth_start AND h.created_at <= :as_of
+             GROUP BY (h.created_at AT TIME ZONE 'UTC')::date
+             ORDER BY day
+        '''), {'growth_start': growth_start, 'as_of': instant}).mappings().all()
+        observed_days = {str(row['day']): int(row['new_active_canonicals']) for row in daily_growth_rows}
+        growth_days = [
+            {'date': (first_day + timedelta(days=day)).isoformat(),
+             'new_active_canonicals': observed_days.get((first_day + timedelta(days=day)).isoformat(), 0)}
+            for day in range(recent_days)
+        ]
         # These are separate sets of measurements. "Active" is not an authorization:
         # both the source's permission and its operational state matter.
         rows = []
@@ -66,8 +178,21 @@ class CoverageRepository:
             row['recent_success'] = bool(last and last >= recent_since)
             row['attributed_unique_active'] = int(row['attributed_unique_active'])
             row['source_refs'] = int(row['source_refs'])
+            row['new_source_refs_recent'] = int(row.get('new_source_refs_recent') or 0)
+            row['new_attributed_canonicals_recent'] = int(row.get('new_attributed_canonicals_recent') or 0)
+            for field in BACKLOG_FIELDS:
+                row[field] = int(row[field])
             rows.append(row)
         catalog = {key: int(value) for key, value in dict(catalog_row).items()}
+        completeness = {key: int(value) for key, value in dict(completeness_row).items()}
+        denominator = catalog['unique_active']
+        # Empty catalog is N/A, not "0% of hackathons are complete".
+        completeness_rates = {
+            key: round(count * 100 / denominator, 1) if denominator else None
+            for key, count in completeness.items()
+        }
+        pipeline = {key: int(value) for key, value in dict(pipeline_row).items()}
+        backlog_totals = {key: sum(row[key] for row in rows) for key in BACKLOG_FIELDS}
         return {
             'as_of': instant.isoformat(),
             'recent_window_days': recent_days,
@@ -80,12 +205,27 @@ class CoverageRepository:
                 'recent_success': sum(row['recent_success'] for row in rows),
             },
             'catalog': catalog,
+            'growth': {
+                'calendar_timezone': 'UTC',
+                'calendar_days': recent_days,
+                'new_active_canonicals': sum(row['new_active_canonicals'] for row in growth_days),
+                'daily': growth_days,
+            },
+            'field_completeness': {'counts': completeness, 'percentages': completeness_rates},
+            'pipeline': {**pipeline, 'backlog': backlog_totals},
             'sources': rows,
             'methodology': {
                 'unique_active': 'Active, non-merged hackathons; NOT the sum of source counts.',
                 'confirmed_registration_window': 'Both registration_open_at and registration_close_at are required; unknown is not open.',
                 'recent_success': 'sources.last_success_at within the requested time window; not a guarantee of fresh events.',
                 'attributed_unique_active': 'Distinct active canonical IDs referenced by each source; counts can overlap.',
+                'field_completeness': 'Per unique active canonical; NULL percentage means no events. Unknown values are not inferred.',
+                'pipeline': 'Staged payloads count source records, not unique hackathons. Backlog counts URL tasks by source.',
+                'backlog_ready_now': 'Due PENDING/RETRY only; expired CLAIMED leases reported separately.',
+                'new_active_canonicals': 'Active, unmerged canonical rows created in the UTC calendar window. includes imports and backfills; not necessarily future or newly scheduled events. Historical counts may decrease after merge/deactivation.',
+                'new_source_refs_recent': 'Currently active source references first recorded in the rolling interval; overlaps between sources and may point to older events.',
+                'new_attributed_canonicals_recent': 'Active canonicals created in the rolling interval and attributed to a source; overlaps across sources.',
+                'growth': 'Zero days are explicit. The final day is partial through as_of; no forecasting or inference.',
                 'scope': 'Current connected database only; historical W2 event totals are not substituted.',
             },
         }

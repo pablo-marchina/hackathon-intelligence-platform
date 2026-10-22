@@ -64,6 +64,10 @@ jobs:
         env:
           HIP_ALLOW_CANONICAL_DB_DRILL: "1"
         run: python -m scripts.ops.incremental_canonical_integration_check
+      - name: Source-scoped RSS/sitemap URL queue (PostgreSQL)
+        env:
+          HIP_ALLOW_BACKLOG_DB_DRILL: "1"
+        run: python -m scripts.ops.source_url_backlog_integration_check
       - run: python scripts/ops/api_readiness_integration_check.py
       - run: python scripts/ops/admin_integration_check.py
       - run: python scripts/ops/source_maintenance_integration_check.py
@@ -83,6 +87,11 @@ jobs:
           HIP_ALLOW_ALERT_DB_DRILL: "1"
           SOURCE_SCHEDULER_ENABLED: "false"
         run: python scripts/ops/alert_outbox_integration_check.py
+      - name: E2E RSS -> durable backlog -> canonical -> catalog search (fake HTTP)
+        env:
+          HIP_ALLOW_SYNDICATION_E2E: "1"
+          SOURCE_SCHEDULER_ENABLED: "false"
+        run: python -m scripts.ops.syndication_catalog_e2e_check
 
   celery-redis-integration:
     runs-on: ubuntu-latest

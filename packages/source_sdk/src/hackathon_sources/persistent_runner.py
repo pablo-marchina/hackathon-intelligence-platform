@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 from sqlalchemy import Connection
 
 from .adapter import SourceAdapter
-from .models import FetchResult, SourceEventRecord
+from .models import FetchResult, IngestionMode, SourceEventRecord
 from .repositories import (
     CrawlRepository,
     FrontierRepository,
@@ -19,6 +19,7 @@ from .repositories import (
     SourcePayloadRepository,
 )
 from .registry import SourceRegistryRepository
+from .backlog import SourceUrlBacklog, BacklogClaim
 
 
 class SourcePausedError(RuntimeError):
@@ -42,6 +43,7 @@ class PersistentSourceRunResult:
     records: list[SourceEventRecord] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
     paused: bool = False
+    backlog_counts: dict[str, int] = field(default_factory=dict)
 
     @property
     def status(self) -> str:
@@ -69,6 +71,7 @@ class PersistentSourceRunResult:
             "unique_event_count": len(unique_refs),
             "persisted_documents": self.persisted_documents,
             "persisted_event_refs": self.persisted_event_refs,
+            "backlog_by_state": self.backlog_counts,
         }
 
 
@@ -117,6 +120,22 @@ async def run_source_persisted(
     raw_repo = RawDocumentRepository(connection)
     ref_repo = SourceEventRefRepository(connection)
 
+    syndicated = adapter.definition.ingestion_mode in (IngestionMode.RSS, IngestionMode.SITEMAP)
+    backlog_repo = SourceUrlBacklog(connection) if syndicated else None
+    allowed_hosts = {
+        adapter.definition.domain.lower(),
+        *(h.lower() for h in adapter.definition.allowed_hosts),
+    }
+
+    def same_source(url: str) -> bool:
+        try:
+            parts = urlsplit(url)
+            return (parts.scheme in ("http", "https") and parts.hostname is not None
+                    and parts.hostname.lower() in allowed_hosts
+                    and parts.username is None and parts.password is None)
+        except ValueError:
+            return False
+
     crawl_run_id = crawl_repo.start_run(source_id)
     connection.commit()
     output = PersistentSourceRunResult(source_key=adapter.definition.key, crawl_run_id=crawl_run_id)
@@ -131,8 +150,19 @@ async def run_source_persisted(
         connection.commit()
         return output
     seen: set[str] = set()
+    if backlog_repo is not None:
+        # Seeds are the only automatically refreshed URLs. Feed discoveries survive
+        # run boundaries, including when max_pages is exhausted mid-feed.
+        for url in queue:
+            if not same_source(url):
+                raise ValueError("source seed outside explicitly authorized host")
+            backlog_repo.add(source_id, url, kind="SEED", priority=adapter.definition.priority,
+                             metadata={"source_key": adapter.definition.key})
+        connection.commit()
+        queue = []
 
-    while queue and output.fetched_pages < max_pages:
+    attempted = 0
+    while (backlog_repo is not None or queue) and attempted < max_pages:
         if should_continue is not None and not should_continue():
             output.paused = True
             break
@@ -145,10 +175,27 @@ async def run_source_persisted(
         if lease_token is not None and not source_registry.has_current_lease(source_id, lease_token):
             output.paused = True
             break
-        url = queue.pop(0)
-        if url in seen:
-            continue
-        seen.add(url)
+        claim: BacklogClaim | None = None
+        if backlog_repo is not None:
+            claim = backlog_repo.claim(source_id)
+            connection.commit()  # Persist the reservation before issuing HTTP.
+            if claim is None:
+                break
+            url = claim.url
+            # Previously staged URLs are never implicitly trusted. Host policy
+            # can change between discovery and a later run.
+            if not same_source(url):
+                backlog_repo.fail(claim, reason="source host no longer authorized")
+                connection.commit()
+                output.errors.append("queued URL host no longer authorized")
+                attempted += 1
+                continue
+        else:
+            url = queue.pop(0)
+            if url in seen:
+                continue
+            seen.add(url)
+        attempted += 1
 
         frontier_id = frontier_repo.enqueue(
             url=url,
@@ -182,6 +229,8 @@ async def run_source_persisted(
                 frontier_repo.mark_result(
                     frontier_id, state="FAILED", terminal_reason="source paused or lease lost",
                 )
+                if claim is not None:
+                    backlog_repo.fail(claim, reason="source paused or lease lost", immediate=True)
                 connection.commit()
                 break
             elapsed_ms = int((time.monotonic() - started_monotonic) * 1000)
@@ -205,8 +254,12 @@ async def run_source_persisted(
                     frontier_repo.mark_result(
                         frontier_id, state="FAILED", terminal_reason="source paused or lease lost",
                     )
+                    if claim is not None:
+                        backlog_repo.fail(claim, reason="source paused or lease lost", immediate=True)
                     connection.commit()
                     break
+                if claim is not None:
+                    backlog_repo.fail(claim, reason=f"HTTP {fetched.status_code}")
                 frontier_repo.mark_result(
                     frontier_id,
                     state="FAILED",
@@ -230,7 +283,21 @@ async def run_source_persisted(
                 structured_data=_structured_payload(fetched),
             )
             records = await adapter.parse_events(fetched)
-            discovered = await adapter.parse_listing(fetched)
+            next_offset = 0
+            listing_hash = None
+            has_more = False
+            if claim is not None and hasattr(adapter, "parse_listing_page"):
+                from .hashing import sha256_bytes
+                digest = sha256_bytes(fetched.body)
+                # A changed listing invalidates the old ordinal cursor.
+                offset = claim.listing_offset if claim.listing_hash == digest else 0
+                listing = await adapter.parse_listing_page(fetched, offset=offset)
+                discovered = listing.links
+                next_offset = listing.next_offset
+                has_more = listing.has_more
+                listing_hash = digest if has_more else None
+            else:
+                discovered = await adapter.parse_listing(fetched)
             # Parsing can yield to another coroutine. Recheck the lease and
             # policy BEFORE committing document/ref writes from this page.
             if not permitted_after_network() or not source_registry.authorized_for_commit(
@@ -241,18 +308,13 @@ async def run_source_persisted(
                 frontier_repo.mark_result(
                     frontier_id, state="FAILED", terminal_reason="source paused or lease lost",
                 )
+                if claim is not None:
+                    backlog_repo.fail(claim, reason="source paused or lease lost", immediate=True)
                 connection.commit()
                 break
 
             # Keep the source/lease row locks until the page transaction commits.
             # No await occurs between this fence and the commit below.
-            output.fetched_pages += 1
-            output.persisted_documents += 1
-            if unchanged:
-                output.unchanged_pages += 1
-            else:
-                output.changed_pages += 1
-            output.records.extend(records)
             payload_repo = SourcePayloadRepository(connection)
             for record in records:
                 if record.source_key != adapter.definition.key:
@@ -269,9 +331,7 @@ async def run_source_persisted(
                     ref_id=ref_id, source_id=source_id, raw_document_id=raw_document_id,
                     source_key=record.source_key, payload=record.model_dump(mode="json"),
                 )
-                output.persisted_event_refs += 1
 
-            output.discovered_links += len(discovered)
             for item in discovered:
                 candidate = str(item.url)
                 host = (urlsplit(candidate).hostname or "").lower()
@@ -279,12 +339,36 @@ async def run_source_persisted(
                     adapter.definition.domain.lower(),
                     *(host.lower() for host in adapter.definition.allowed_hosts),
                 }
-                if host in allowed_hosts and candidate not in seen and candidate not in queue:
-                    queue.append(candidate)
+                if host in allowed_hosts and same_source(candidate):
+                    if backlog_repo is not None:
+                        backlog_repo.add(
+                            source_id, candidate, kind="DISCOVERED", priority=item.priority,
+                            metadata={"discovery_method": item.discovery_method,
+                                      "parent_url": str(item.parent_url) if item.parent_url else None},
+                        )
+                    elif candidate not in seen and candidate not in queue:
+                        queue.append(candidate)
 
+            if claim is not None and not backlog_repo.succeed(
+                claim, next_offset=next_offset, listing_hash=listing_hash, has_more=has_more
+            ):
+                # Never persist fetched evidence under an expired/stolen URL claim.
+                connection.rollback()
+                output.errors.append("source backlog claim expired or replaced")
+                break
             frontier_repo.mark_result(frontier_id, state="FETCHED")
             connection.commit()
+            output.fetched_pages += 1
+            output.persisted_documents += 1
+            output.unchanged_pages += int(unchanged)
+            output.changed_pages += int(not unchanged)
+            output.persisted_event_refs += len(records)
+            output.records.extend(records)
+            output.discovered_links += len(discovered)
         except Exception as exc:
+            connection.rollback()  # Discard partial documents and staged child URLs.
+            if claim is not None:
+                backlog_repo.fail(claim, reason=f"{type(exc).__name__}: {exc}")
             elapsed_ms = int((time.monotonic() - started_monotonic) * 1000)
             raw_repo.record_fetch_error(
                 frontier_id=frontier_id,
@@ -299,6 +383,8 @@ async def run_source_persisted(
             output.errors.append(f"{url}: {type(exc).__name__}: {exc}")
             connection.commit()
 
+    if backlog_repo is not None:
+        output.backlog_counts = backlog_repo.stats(source_id)
     crawl_repo.finish_run(crawl_run_id, status=output.status, stats=output.stats())
     connection.commit()
     return output

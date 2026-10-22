@@ -1,3 +1,5 @@
+> **Atualização local (Iteração 20):** o ZIP desta entrega inclui migração `0011` e 413 testes locais; esta cópia não foi enviada ao GitHub. Evite publicar por cima de uma branch remota divergente, pois os checkpoints 16–19 podem não ter sido sincronizados.
+
 # Publicação no GitHub — Iteração 15
 
 Este pacote foi preparado em 19/10/2026 como um repositório Git local, **não publicado remotamente**. O repositório novo deve ser **privado**, pois a W6 ainda não foi aprovada para produção.

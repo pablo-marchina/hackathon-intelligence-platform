@@ -1,5 +1,13 @@
 # Hackathon Intelligence Platform
 
+> **Checkpoint Iteração 23 (21/10/2026):** série diária UTC de hackathons canônicos inseridos no banco, contagens de novas referências e canonicals atribuídos por fonte, disponíveis em `/admin/coverage?recent_days=7`, no painel e no CLI. Os resultados abrangem também importações históricas: não representam necessariamente eventos recém-anunciados ou novas descobertas externas. **431 testes locais aprovados**; integração real PostgreSQL e frontend build pendentes. Veja `docs/execution/ITERATION_23_2026-10-21.md`. **Não liberado para produção.**
+
+> **Checkpoint Iteração 21 (21/10/2026):** paginação durável de RSS/sitemaps sem perder URLs além do limite por XML; cursor/hash transacionais, ordem da fila que favorece URLs de detalhes, refresco de seeds com intervalo e novo exercício E2E em PostgreSQL descartável no CI. **422 testes locais aprovados**; teste E2E com PostgreSQL e coleta externa ainda não executados nesta máquina. Migração `0012_syndication_continuation` requerida antes de `/ready` e do runner persistente. `docs/execution/ITERATION_21_2026-10-21.md`. **Não liberado para produção**.
+
+
+> **Checkpoint Iteração 20 (19/10/2026):** fila PostgreSQL de URLs por fonte para RSS/Atom/sitemaps, retomada entre execuções, claims protegidos e limites XML ampliados. **413 testes Python locais aprovados**; PostgreSQL real, frontend e coleta externa pendentes. A migração `0011_source_url_backlog` é necessária antes de executar o runner persistente ou `/ready`. Consulte `docs/execution/ITERATION_20_2026-10-19.md`. **Não está pronta para produção**.
+
+
 Production-oriented monorepo for discovering, ingesting, reconciling, searching, and recommending hackathons globally.
 
 > **Checkpoint local (19/10/2026): Iteração 19.** O SDK inclui descoberta de páginas via RSS/Atom/sitemap para **fontes explicitamente autorizadas**, usando JSON-LD em páginas no mesmo host. Não houve autorização de novas fontes ou execução de coletas externas; a cobertura histórica de 250 eventos permanece sem atualização. A Iteração 19 não foi publicada no GitHub nem aprovada para produção. Veja [`docs/execution/ITERATION_19_2026-10-19.md`](docs/execution/ITERATION_19_2026-10-19.md).
@@ -31,6 +39,8 @@ O coletor persistente agora grava `source_event_payloads` de forma transacional 
 - `docs/execution/ITERATION_17_2026-10-19.md`: implementações, testes locais e gates ainda pendentes.
 
 **Importante:** 250 hackathons é o resultado histórico da fase W2, não o catálogo atual validado em produção. A coleta periódica permanece desligada por padrão.
+
+> **Iteração 22 (21/10/2026):** relatório operacional de cobertura ampliado com backlog de descoberta, estágio de normalização e completude dos campos usados nos filtros. Os testes locais não equivalem a uma coleta real. Veja `docs/execution/ITERATION_22_2026-10-21.md`.
 
 ## Repository layout
 

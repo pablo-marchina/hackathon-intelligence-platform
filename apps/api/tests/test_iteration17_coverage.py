@@ -19,6 +19,25 @@ COUNTS = {
 }
 
 
+COMPLETENESS = {
+    'known_format': 2, 'with_registration_url': 1,
+    'with_registration_deadline': 1, 'known_participation_cost': 2,
+    'known_worldwide_eligibility': 1, 'with_description': 2,
+    'verified_recently': 1, 'with_organizer': 2, 'with_sponsor': 1,
+    'with_tracks': 1, 'with_technologies': 2,
+    'with_prizes': 1, 'with_eligibility_rules': 0,
+}
+PIPELINE = {
+    'staged_payloads': 5, 'awaiting_normalization': 2,
+    'normalized_current_version': 3, 'normalization_errors': 1,
+}
+BACKLOG = {
+    'backlog_pending': 4, 'backlog_retry': 1, 'backlog_claimed': 1,
+    'backlog_done': 10, 'backlog_exhausted': 2,
+    'backlog_ready_now': 3, 'backlog_expired_claims': 1,
+}
+
+
 class Rows:
     def __init__(self, payload):
         self.payload = payload
@@ -34,22 +53,31 @@ class Rows:
 
 
 class FakeConnection:
-    def __init__(self):
+    def __init__(self, *, empty=False):
         self.queries = []
+        self.empty = empty
 
     def execute(self, query, params=None):
         sql = str(query)
         self.queries.append((sql, params))
-        if 'FROM hackathons h' in sql:
-            return Rows(COUNTS)
+        if 'FROM hackathons h' in sql and 'unique_active' in sql:
+            return Rows({key: 0 for key in COUNTS} if self.empty else COUNTS)
+        if 'FROM source_event_payloads' in sql:
+            return Rows({key: 0 for key in PIPELINE} if self.empty else PIPELINE)
+        if 'FROM hackathons h' in sql and 'known_format' in sql:
+            return Rows({key: 0 for key in COMPLETENESS} if self.empty else COMPLETENESS)
+        if 'new_active_canonicals' in sql and 'FROM hackathons h' in sql:
+            return Rows([] if self.empty else [{'day': NOW.date(), 'new_active_canonicals': 2}])
         if 'FROM sources s' in sql:
+            if self.empty:
+                return Rows([])
             return Rows([
                 {'source_id': 'a', 'name': 'A', 'domain': 'a.example', 'permission_status': 'ALLOWED', 'active': True,
-                 'last_success_at': NOW - timedelta(hours=1), 'source_refs': 8, 'attributed_unique_active': 3},
+                 'last_success_at': NOW - timedelta(hours=1), 'source_refs': 8, 'attributed_unique_active': 3, **BACKLOG},
                 {'source_id': 'b', 'name': 'B', 'domain': 'b.example', 'permission_status': 'REVIEW_REQUIRED', 'active': True,
-                 'last_success_at': None, 'source_refs': 5, 'attributed_unique_active': 2},
+                 'last_success_at': None, 'source_refs': 5, 'attributed_unique_active': 2, **{k:0 for k in BACKLOG}},
                 {'source_id': 'c', 'name': 'C', 'domain': 'c.example', 'permission_status': 'ALLOWED', 'active': False,
-                 'last_success_at': NOW - timedelta(days=10), 'source_refs': 0, 'attributed_unique_active': 0},
+                 'last_success_at': NOW - timedelta(days=10), 'source_refs': 0, 'attributed_unique_active': 0, **{k:0 for k in BACKLOG}},
             ])
         raise AssertionError('Unexpected SQL')
 
@@ -66,6 +94,13 @@ def test_snapshot_separates_global_count_from_overlapping_source_attribution():
     assert report['catalog']['confirmed_registration_window'] == 1
     assert report['catalog']['unknown_registration_close'] == 2
     assert report['sources'][0]['recent_success'] is True
+    assert report['pipeline']['awaiting_normalization'] == 2
+    assert report['pipeline']['normalization_errors'] == 1
+    assert report['pipeline']['backlog']['backlog_pending'] == 4
+    assert report['pipeline']['backlog']['backlog_ready_now'] == 3
+    assert report['field_completeness']['percentages']['known_format'] == 66.7
+    assert report['field_completeness']['percentages']['with_registration_url'] == 33.3
+    assert report['field_completeness']['percentages']['with_sponsor'] == 33.3
     assert all('password' not in sql.lower() for sql, _ in db.queries)
 
 
@@ -86,6 +121,9 @@ def test_sql_counts_only_verified_registration_windows():
     assert 'registration_close_at IS NOT NULL' in catalog_sql
     assert 'merged_into_id IS NULL' in catalog_sql
     assert 'COUNT(DISTINCT h.id)' in db.queries[1][0]
+    assert 'FROM source_url_backlog b' in db.queries[1][0]
+    assert 'processed_hash IS DISTINCT FROM content_hash' in db.queries[2][0]
+    assert 'h.is_active AND h.merged_into_id IS NULL' in db.queries[3][0]
 
 
 def test_coverage_endpoint_is_protected_and_returns_live_snapshot():
@@ -112,3 +150,24 @@ def test_cli_markdown_labels_counts_as_live_not_history():
     assert 'Unique active hackathons: **3**' in text
     assert 'historical baseline' in text
     assert 'counts overlap' in text or 'counts overlap' in text.casefold()
+
+
+def test_empty_catalog_completeness_is_unknown_not_zero_percent():
+    report = CoverageRepository(FakeConnection(empty=True)).snapshot(as_of=NOW)
+    assert report['catalog']['unique_active'] == 0
+    assert report['field_completeness']['counts']['known_format'] == 0
+    assert report['field_completeness']['percentages']['known_format'] is None
+    assert report['pipeline']['backlog']['backlog_pending'] == 0
+    assert report['sources'] == []
+
+
+def test_source_backlog_is_counted_per_source_not_per_canonical():
+    report = CoverageRepository(FakeConnection()).snapshot(as_of=NOW)
+    assert report['catalog']['unique_active'] == 3
+    assert report['pipeline']['backlog']['backlog_pending'] == 4
+    assert sum(row['attributed_unique_active'] for row in report['sources']) == 5
+    assert report['sources'][0]['backlog_exhausted'] == 2
+    assert report['sources'][0]['backlog_expired_claims'] == 1
+    assert report['pipeline']['backlog']['backlog_expired_claims'] == 1
+    # Backlog-ready excludes claimed tasks even if their leases expired.
+    assert report['pipeline']['backlog']['backlog_ready_now'] == 3

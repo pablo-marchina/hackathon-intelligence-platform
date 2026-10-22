@@ -7,6 +7,7 @@ fetch scope, even if the feed advertises them.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree as ET
 
@@ -16,8 +17,15 @@ from .models import DiscoveredUrl, FetchResult, IngestionMode
 from .structured_html import StructuredHtmlEventAdapter
 
 MAX_FEED_BYTES = 2 * 1024 * 1024
-MAX_FEED_LINKS = 250
-MAX_CHILD_SITEMAPS = 20
+MAX_FEED_LINKS = 2500
+MAX_CHILD_SITEMAPS = 250
+
+
+@dataclass(frozen=True)
+class ListingPage:
+    links: list[DiscoveredUrl]
+    next_offset: int
+    has_more: bool
 
 
 def _element_name(tag: str) -> str:
@@ -48,31 +56,45 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
     """
 
     async def parse_listing(self, result: FetchResult) -> list[DiscoveredUrl]:
+        """Compatibility method for nonpersistent runners (first bounded page)."""
+        return (await self.parse_listing_page(result)).links
+
+    async def parse_listing_page(
+        self, result: FetchResult, *, offset: int = 0
+    ) -> ListingPage:
+        """Return one page; persistent runner checkpoints next_offset on commit.
+
+        Offset counts all raw XML entries, including invalid/out-of-scope links,
+        so filtering cannot make a continuation loop forever.
+        """
+        if offset < 0:
+            raise ValueError("negative listing offset")
+        empty = ListingPage([], 0, False)
         if self.definition.ingestion_mode not in (IngestionMode.RSS, IngestionMode.SITEMAP):
-            return []
+            return empty
         content_type = (result.content_type or '').lower()
         is_xml = any(t in content_type for t in ('xml', 'rss', 'atom'))
         if not is_xml and not result.body.lstrip().startswith(b'<?xml'):
-            return []
+            return empty
         if len(result.body) > MAX_FEED_BYTES:
-            return []
+            return empty
         # stdlib ElementTree does not resolve external entities, but reject all
         # DTDs/entities explicitly. We do not need them for feeds and sitemaps.
         body_casefold = result.body.upper()
         if b'<!DOCTYPE' in body_casefold or b'<!ENTITY' in body_casefold:
-            return []
+            return empty
         try:
             root = ET.fromstring(result.body)
         except ET.ParseError:
-            return []
+            return empty
 
         kind = _element_name(root.tag).lower()
         if kind not in {'rss', 'rdf', 'feed', 'urlset', 'sitemapindex'}:
-            return []
+            return empty
         if kind in {'rss', 'rdf', 'feed'} and self.definition.ingestion_mode != IngestionMode.RSS:
-            return []
+            return empty
         if kind in {'urlset', 'sitemapindex'} and self.definition.ingestion_mode != IngestionMode.SITEMAP:
-            return []
+            return empty
 
         hosts = {self.definition.domain.lower(), *(h.lower() for h in self.definition.allowed_hosts)}
         result_links: list[DiscoveredUrl] = []
@@ -86,7 +108,9 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
             child_tag = 'sitemap' if kind == 'sitemapindex' else 'url'
             elements = (node for node in root if _element_name(node.tag) == child_tag)
 
-        for item in elements:
+        items = list(elements)  # bounded by MAX_FEED_BYTES before XML parsing
+        end = min(len(items), offset + max_links)
+        for item in items[offset:end]:
             url: str | None = None
             title: str | None = None
             for node in item:
@@ -118,6 +142,4 @@ class SyndicatedEventAdapter(StructuredHtmlEventAdapter):
                 ))
             except ValidationError:
                 continue
-            if len(result_links) >= max_links:
-                break
-        return result_links
+        return ListingPage(result_links, end, end < len(items))

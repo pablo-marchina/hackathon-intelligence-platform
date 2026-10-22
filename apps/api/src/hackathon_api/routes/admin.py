@@ -71,11 +71,15 @@ def admin_identity(
 
 
 @router.get("/coverage")
-def coverage(principal: ViewerDep, connection: ConnectionDep) -> dict[str, Any]:
+def coverage(
+    principal: ViewerDep,
+    connection: ConnectionDep,
+    recent_days: int = Query(default=7, ge=1, le=90),
+) -> dict[str, Any]:
     """Database-backed coverage; never confuse source configuration with events found."""
     from hackathon_api.repositories.coverage import CoverageRepository
 
-    return CoverageRepository(connection).snapshot()
+    return CoverageRepository(connection).snapshot(recent_days=recent_days)
 
 
 @router.get("/review-queue")

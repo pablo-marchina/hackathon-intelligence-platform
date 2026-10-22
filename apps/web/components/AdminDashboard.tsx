@@ -9,7 +9,15 @@ type Source={id:string;name:string;domain:string;health:string;priority:number;a
 type Review={id:string;queue_type:string;entity_type:string;entity_id:string;severity:string;state:'OPEN'|'IN_REVIEW'|'RESOLVED'|'DISMISSED';payload:unknown;created_at:string;assigned_to_user_id:string|null};
 type Quality={scope_type:string;scope_id:string;overall_score:number|null;measured_at:string};
 type Audit={id:string;action:string;actor_kind:string;actor_user_id:string|null;entity_type:string;entity_id:string;reason:string;created_at:string;request_id:string|null};
-type Coverage={as_of:string;recent_window_days:number;source_counts:{registered_in_database:number;active_in_database:number;approved_and_active:number;recent_success:number};catalog:{unique_active:number;upcoming_by_date:number;ongoing_by_date:number;confirmed_registration_window:number;unknown_registration_close:number;with_official_url:number;with_start_end:number;with_primary_location:number;inactive_or_retired:number};sources:Array<{source_id:string;name:string;permission_status:string|null;active:boolean;recent_success:boolean;source_refs:number;attributed_unique_active:number}>};
+type Coverage={
+  as_of:string;recent_window_days:number;
+  source_counts:{registered_in_database:number;active_in_database:number;approved_and_active:number;recent_success:number};
+  catalog:{unique_active:number;upcoming_by_date:number;ongoing_by_date:number;confirmed_registration_window:number;unknown_registration_close:number;with_official_url:number;with_start_end:number;with_primary_location:number;inactive_or_retired:number};
+  growth:{calendar_timezone:string;calendar_days:number;new_active_canonicals:number;daily:Array<{date:string;new_active_canonicals:number}>};
+  field_completeness:{counts:Record<string,number>;percentages:Record<string,number|null>};
+  pipeline:{staged_payloads:number;awaiting_normalization:number;normalized_current_version:number;normalization_errors:number;backlog:Record<string,number>};
+  sources:Array<{source_id:string;name:string;permission_status:string|null;active:boolean;recent_success:boolean;source_refs:number;attributed_unique_active:number;backlog_pending:number;backlog_retry:number;backlog_claimed:number;backlog_done:number;backlog_exhausted:number;backlog_ready_now:number;backlog_expired_claims:number;new_source_refs_recent:number;new_attributed_canonicals_recent:number}>;
+};
 type Tab='coverage'|'sources'|'reviews'|'quality'|'audit';
 
 function readableDate(value:string|null|undefined):string{
@@ -125,14 +133,42 @@ export function AdminDashboard(){
         <p className="muted">Database snapshot at {readableDate(coverage.as_of)}. Counts are not historical W2 totals.</p>
         <div className="admin-stats">
           <div><strong>{coverage.catalog.unique_active}</strong><span>Unique active hackathons</span></div>
+          <div><strong>{coverage.growth.new_active_canonicals}</strong><span>New catalog entries (last {coverage.growth.calendar_days} UTC days)</span></div>
           <div><strong>{coverage.catalog.upcoming_by_date}</strong><span>Upcoming by date</span></div>
           <div><strong>{coverage.catalog.confirmed_registration_window}</strong><span>Confirmed registration windows</span></div>
           <div><strong>{coverage.source_counts.recent_success}</strong><span>Sources successful in last {coverage.recent_window_days} days</span></div>
+          <div><strong>{coverage.pipeline.backlog.backlog_ready_now}</strong><span>Queued URLs ready for fetching</span></div>
+          <div><strong>{coverage.pipeline.awaiting_normalization}</strong><span>Source records awaiting normalization</span></div>
+          <div><strong>{coverage.pipeline.normalization_errors}</strong><span>Normalization errors requiring attention</span></div>
+          <div><strong>{coverage.pipeline.backlog.backlog_exhausted}</strong><span>URLs with exhausted retries</span></div>
         </div>
+        <p className="muted">Growth counts canonical rows created in the database, including historical backfills; it does not imply newly announced events. Per-source counts overlap.</p>
+        <details><summary>Daily catalog growth (UTC)</summary><ul>{coverage.growth.daily.map(day=><li key={day.date}>{day.date}: {day.new_active_canonicals} new active rows</li>)}</ul></details>
         <p className="muted">{coverage.catalog.unknown_registration_close} events have no known registration deadline. Unknown is not equivalent to open. Per-source attribution overlaps.</p>
+        <section aria-label="Catalog field completeness">
+          <h3>Catalog field completeness</h3>
+          <p className="muted">Percentages apply to unique, active hackathons. Unknown values are not inferred; an empty catalog is N/A.</p>
+          <ul>
+            {([
+              ['known_format','Event format'],
+              ['with_registration_url','Registration URL'],
+              ['with_registration_deadline','Registration deadline'],
+              ['known_participation_cost','Participation cost'],
+              ['known_worldwide_eligibility','Worldwide eligibility'],
+              ['with_description','Description'],
+              ['verified_recently','Recently verified'],
+              ['with_organizer','Organizer'],
+              ['with_sponsor','Sponsors'],
+              ['with_tracks','Themes/tracks'],
+              ['with_technologies','Technologies'],
+              ['with_prizes','Prizes'],
+              ['with_eligibility_rules','Eligibility rules'],
+            ] as const).map(([key,label])=><li key={key}>{label}: <strong>{coverage.field_completeness.percentages[key]===null?'N/A':`${coverage.field_completeness.percentages[key]}%`}</strong> <span className="muted">({coverage.field_completeness.counts[key]} events)</span></li>)}
+          </ul>
+        </section>
         {coverage.sources.map(item=><article className="event-card admin-row" key={item.source_id}>
           <div><strong>{item.name}</strong><p className="muted">{item.permission_status??'UNKNOWN'} · {item.active?'Active':'Paused'} · {item.recent_success?'Recent successful run':'No recent successful run'}</p></div>
-          <div><strong>{item.attributed_unique_active}</strong><span className="muted"> attributed canonicals · {item.source_refs} refs</span></div>
+          <div><strong>{item.attributed_unique_active}</strong><span className="muted"> attributed canonicals · {item.source_refs} refs · {item.new_source_refs_recent} new refs · {item.new_attributed_canonicals_recent} new catalog entries attributed · {item.backlog_ready_now} URLs ready · {item.backlog_exhausted} exhausted</span></div>
         </article>)}
       </>}
     </div>}

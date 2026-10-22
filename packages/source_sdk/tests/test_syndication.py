@@ -146,7 +146,7 @@ def test_xml_response_cap_and_no_html_listing_spoofing():
 
 def test_caps_and_disallowed_schemes_and_credentials():
     url = 'https://university.example/feed.xml'
-    items = ''.join(f'<item><link>https://university.example/e/{n}</link></item>' for n in range(400))
+    items = ''.join(f'<item><link>https://university.example/e/{n}</link></item>' for n in range(MAX_FEED_LINKS + 50))
     items += '<item><link>javascript:alert(1)</link></item>'
     items += '<item><link>https://user:password@university.example/event</link></item>'
     links = asyncio.run(build_adapter(source()).parse_listing(response(url, '<rss><channel>'+items+'</channel></rss>', 'application/rss+xml')))
@@ -175,10 +175,10 @@ def test_robots_for_feed_details_not_seed_and_never_bypass_sitemap():
 
 def test_max_child_sitemaps_are_bounded():
     url = 'https://university.example/sitemap.xml'
-    entries = ''.join(f'<sitemap><loc>https://university.example/map-{n}.xml</loc></sitemap>' for n in range(200))
+    entries = ''.join(f'<sitemap><loc>https://university.example/map-{n}.xml</loc></sitemap>' for n in range(300))
     text = '<sitemapindex>'+entries+'</sitemapindex>'
     links = asyncio.run(build_adapter(source(IngestionMode.SITEMAP)).parse_listing(response(url, text, 'application/xml')))
-    assert len(links) == 20
+    assert len(links) == 250
 
 
 def test_feed_title_is_preserved_after_link():
