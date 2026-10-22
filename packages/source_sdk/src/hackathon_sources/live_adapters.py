@@ -245,6 +245,8 @@ class AgendaTechBrasilAdapter(ApiSeedAdapter):
             website = _valid_http_url(event.get("url"))
             if not isinstance(name, str) or not name.strip():
                 continue
+            # A public calendar listing is valid evidence even when the
+            # organizer never supplied an external website.
             month = _MONTHS_PT.get(month_name)
             raw_days = event.get("data", [])
             days: list[int] = []
