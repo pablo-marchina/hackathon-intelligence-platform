@@ -174,7 +174,7 @@ def parse_natural_language_query(query: str) -> NaturalLanguageParseResponse:
 
     return NaturalLanguageParseResponse(
         original_query=query,
-        filters=HackathonFilters(**data),
+        filters=HackathonFilters.model_validate(data),
         interpreted=interpreted,
         unsupported_constraints=unsupported,
         remaining_text=remaining or None,
