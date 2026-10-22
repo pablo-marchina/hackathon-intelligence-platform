@@ -8,7 +8,12 @@ from fastapi.responses import RedirectResponse
 from hackathon_api.advanced_filters import filter_field_catalog
 from hackathon_api.db import connection_dependency, get_engine
 from hackathon_api.repositories.hackathons import HackathonRepository
-from hackathon_api.schemas import AdvancedHackathonFilters, HackathonDetail, HackathonFilters, HackathonPage
+from hackathon_api.schemas import (
+    AdvancedHackathonFilters,
+    HackathonDetail,
+    HackathonFilters,
+    HackathonPage,
+)
 from sqlalchemy import Connection
 
 router = APIRouter(prefix="/hackathons", tags=["hackathons"])
