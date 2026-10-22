@@ -22,7 +22,7 @@ jobs:
           ruff check --fix apps packages scripts db/alembic/versions || true
           ruff format apps packages scripts db/alembic/versions
           ruff check --output-format concise apps packages scripts db/alembic/versions > /tmp/remaining-ruff.txt || true
-          tail -20 /tmp/remaining-ruff.txt
+          cat /tmp/remaining-ruff.txt
       - name: Commit style-only normalization to checkpoint branch
         run: |
           git config user.name 'github-actions[bot]'
@@ -32,3 +32,11 @@ jobs:
             git commit -m 'style(python): Ruff safe fixes and formatter across monorepo'
             git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
           fi
+      - name: Archive checkpoint for offline verification
+        run: |
+          tar --exclude=.git --exclude='*.egg-info' --exclude='__pycache__' --exclude='.ruff_cache' --exclude='.pytest_cache' -czf /tmp/hip32-formatted-source.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hip32-formatted-source
+          path: /tmp/hip32-formatted-source.tar.gz
+          if-no-files-found: error
