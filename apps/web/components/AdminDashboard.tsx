@@ -174,7 +174,7 @@ export function AdminDashboard(){
             <div><strong>{coverage.conversion_funnel.linked_searchable_references}</strong><span>Accepted refs linked to active canonicals</span></div>
             <div><strong>{coverage.conversion_funnel.unique_searchable_hackathons}</strong><span>Distinct active hackathons from accepted refs</span></div>
           </div>
-          <p className="muted">Distinct hackathons are counted across sources and cannot be calculated by adding each source's totals. This subset does not include legacy catalog entries without durable payloads.</p>
+          <p className="muted">Distinct hackathons are counted across sources and cannot be calculated by adding each source&apos;s totals. This subset does not include legacy catalog entries without durable payloads.</p>
         </section>
         <p className="muted">Growth counts canonical rows created in the database, including historical backfills; it does not imply newly announced events. Per-source counts overlap.</p>
         <details><summary>Daily catalog growth (UTC)</summary><ul>{coverage.growth.daily.map(day=><li key={day.date}>{day.date}: {day.new_active_canonicals} new active rows</li>)}</ul></details>
