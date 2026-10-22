@@ -1,4 +1,5 @@
 """Offline contracts for curated attributes projected from canonical evidence."""
+
 from __future__ import annotations
 
 import pytest
@@ -30,10 +31,12 @@ def test_attribute_keys_are_discovered_recursively_without_db_calls() -> None:
         "and": [
             {"field": "format", "op": "eq", "value": "ONLINE"},
             {"not": {"field": "attrs.language", "op": "eq", "value": "en"}},
-            {"or": [
-                {"field": "attrs.capacity", "op": "gte", "value": 500},
-                {"field": "attrs.language", "op": "is_unknown"},
-            ]},
+            {
+                "or": [
+                    {"field": "attrs.capacity", "op": "gte", "value": 500},
+                    {"field": "attrs.language", "op": "is_unknown"},
+                ]
+            },
         ]
     }
     assert expression_attribute_keys(expression) == {"language", "capacity"}
@@ -70,14 +73,17 @@ def test_approved_types_disallow_unsupported_operators_and_values() -> None:
             compile_expression(expr, {}, FIELDS)
 
 
-@pytest.mark.parametrize("key", [
-    "attrs.language); DROP TABLE hackathons;--",
-    "attrs.__dict__",
-    "attrs.ABC",
-    "attrs.a" + "a" * 100,
-    "attributes.capacity",
-    "attrs.key.with.dot",
-])
+@pytest.mark.parametrize(
+    "key",
+    [
+        "attrs.language); DROP TABLE hackathons;--",
+        "attrs.__dict__",
+        "attrs.ABC",
+        "attrs.a" + "a" * 100,
+        "attributes.capacity",
+        "attrs.key.with.dot",
+    ],
+)
 def test_malicious_or_invalid_attribute_identifiers_rejected(key: str) -> None:
     with pytest.raises(ValueError):
         validate_expression({"field": key, "op": "is_known"})
@@ -119,7 +125,12 @@ def test_dynamic_database_registry_is_inactive_by_default() -> None:
         def all(self):
             return [
                 {"key": "language", "data_type": "text", "description": "Language", "unit": None},
-                {"key": "capacity", "data_type": "number", "description": "Attendees", "unit": "attendees"},
+                {
+                    "key": "capacity",
+                    "data_type": "number",
+                    "description": "Attendees",
+                    "unit": "attendees",
+                },
             ]
 
     class Connection:
