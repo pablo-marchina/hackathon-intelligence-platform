@@ -93,7 +93,10 @@ def _verify_one(
     fetcher = FakeFetcher(pages)
     first = asyncio.run(
         run_once(
-            engine, source, max_pages=max_pages, max_versions=MAX_EVENTS,
+            engine,
+            source,
+            max_pages=max_pages,
+            max_versions=MAX_EVENTS,
             fetcher_factory=lambda: fetcher,
         )
     )
@@ -106,8 +109,9 @@ def _verify_one(
     assert fetcher.requests == [str(u) for u in source.seed_urls]
 
     with engine.connect() as conn:
-        refs = conn.execute(
-            text("""
+        refs = (
+            conn.execute(
+                text("""
                 SELECT r.source_event_id,r.hackathon_id,h.name,h.official_url
                   FROM source_event_refs r
                   JOIN sources s ON s.id=r.source_id
@@ -116,11 +120,16 @@ def _verify_one(
                    AND r.source_event_id IS NOT NULL
                  ORDER BY r.source_event_id
             """),
-            {"domain": source.domain, "family": source.source_family},
-        ).mappings().all()
+                {"domain": source.domain, "family": source.source_family},
+            )
+            .mappings()
+            .all()
+        )
         names = {row["name"] for row in refs if row["name"] in expected_names}
         assert names == expected_names, (names, first)
-        assert len({row["hackathon_id"] for row in refs if row["name"] in names}) == expected_created
+        assert (
+            len({row["hackathon_id"] for row in refs if row["name"] in names}) == expected_created
+        )
         assert len(refs) == expected_created + expected_rejected
         if source_key == "hackclub_programs":
             # The official status is source evidence, never invented
@@ -155,15 +164,16 @@ def verify() -> None:
     url = _disposable_url()
     tag = uuid4().hex[:10]
     sources = {
-        item.key: item
-        for item in load_source_definitions(ROOT / "db/seeds/sources_v0_1.json")
+        item.key: item for item in load_source_definitions(ROOT / "db/seeds/sources_v0_1.json")
     }
     programs = sources["hackclub_programs"]
     pages: dict[str, object] = {}
     for i, status in enumerate(("upcoming", "ongoing", "ended")):
         name = (
-            f"CI AI Hackathon {tag}" if status == "upcoming"
-            else f"CI Climate Datathon {tag}" if status == "ongoing"
+            f"CI AI Hackathon {tag}"
+            if status == "upcoming"
+            else f"CI Climate Datathon {tag}"
+            if status == "ongoing"
             else f"CI Regular Workshop {tag}"
         )
         pages[str(programs.seed_urls[i])] = {
@@ -232,14 +242,22 @@ def verify() -> None:
     engine = create_engine(url, pool_pre_ping=True)
     try:
         _verify_one(
-            engine, "hackclub_programs", pages,
-            expected_created=2, expected_rejected=1, max_pages=3,
+            engine,
+            "hackclub_programs",
+            pages,
+            expected_created=2,
+            expected_rejected=1,
+            max_pages=3,
             expected_names={f"CI AI Hackathon {tag}", f"CI Climate Datathon {tag}"},
             tag=tag,
         )
         _verify_one(
-            engine, "agenda_tech_brasil", agenda_pages,
-            expected_created=2, expected_rejected=1, max_pages=1,
+            engine,
+            "agenda_tech_brasil",
+            agenda_pages,
+            expected_created=2,
+            expected_rejected=1,
+            max_pages=1,
             expected_names={historical, no_website},
             tag=tag,
         )
