@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+from hackathon_api.advanced_filters import compile_expression
 from hackathon_api.schemas import (
     CanonicalChangeSummary,
     EligibilitySummary,
@@ -210,6 +211,8 @@ def build_hackathon_query(filters: HackathonFilters, *, target_id: str | None = 
         where.append(
             "(h.eligible_worldwide=true OR EXISTS (SELECT 1 FROM eligibility_countries ec WHERE ec.hackathon_id=h.id AND ec.country_code=:eligible_country AND ec.allowed=true))"
         )
+    if filters.expression is not None:
+        where.append(compile_expression(filters.expression, params))
     freshness = "CASE WHEN h.last_verified_at IS NULL THEN 0.0 ELSE GREATEST(0.0,1.0-LEAST(EXTRACT(EPOCH FROM (now()-h.last_verified_at))/86400.0,30.0)/30.0) END"
     rank = (
         f"ROUND((ts_rank_cd(sd.document,websearch_to_tsquery('simple',:q))+COALESCE(h.quality_score,0)/100.0*0.10+({freshness})*0.05)::numeric,6)"
