@@ -12,8 +12,8 @@ atributos futuros**.
 
 - `GET /v1/hackathons/filter-fields` — catálogo tipado de campos e operadores.
 - `POST /v1/hackathons/query` — busca com o mesmo `HackathonFilters` da
-  API GET existente, acrescido de `expression`.
-- `GET /v1/hackathons` — permanece compatível. O cursor da nova rota vincula
+  API GET existente, acrescido de `expression` por meio de um modelo POST próprio.
+- `/advanced-search` — construtor visual inicial que lê o catálogo da API, oferece\n  AND/OR e negação por condição e mostra os resultados com paginação.\n- `GET /v1/hackathons` — permanece compatível. O cursor da nova rota vincula
   também a expressão, impedindo reutilizá-lo com outra busca.
 
 Exemplo, inscrição aberta, modalidade remota ou híbrida, brasileiros
@@ -84,6 +84,6 @@ não ativa novas fontes nem altera o conteúdo do catálogo de eventos.
 1. Criar catálogo de atributos extras tipados no banco (com proveniência).
 2. Projetar esses atributos no índice e registrar operadores dinamicamente.
 3. Expor facetas, contagens e geração automática de controles de filtro.
-4. Integrar o construtor visual na página `/search`.
+4. Evoluir o construtor visual `/advanced-search` para grupos aninhados e\n   integração consistente com os filtros clássicos da página `/search`.
 5. Expandir coletores autorizados, extração de detalhes e deduplicação.
 6. Medir ganho em eventos únicos e completude com as ferramentas existentes.
