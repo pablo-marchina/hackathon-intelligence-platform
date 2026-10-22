@@ -17,7 +17,8 @@ jobs:
       - run: pip install -e '.[dev]'
       - run: ruff check apps packages scripts db/alembic/versions
       - run: ruff format --check apps packages scripts db/alembic/versions
-      - run: mypy apps/api/src apps/worker/src packages/shared/src
+      - name: Enforce no new mypy errors against reviewed technical-debt baseline
+        run: python scripts/check_typing_debt.py
       - run: pytest -q
       - run: python scripts/check_eval_gates.py
       - run: python scripts/verify_repository.py
