@@ -55,6 +55,9 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+# Ruff formatter cannot safely wrap long literal SQL, URLs or report prose.
+# Retain all other error, correctness, and import checks.
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"
