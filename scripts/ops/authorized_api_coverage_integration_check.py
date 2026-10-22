@@ -150,7 +150,10 @@ def _verify_one(
 
     second = asyncio.run(
         run_once(
-            engine, source, max_pages=max_pages, max_versions=MAX_EVENTS,
+            engine,
+            source,
+            max_pages=max_pages,
+            max_versions=MAX_EVENTS,
             fetcher_factory=lambda: fetcher,
         )
     )
