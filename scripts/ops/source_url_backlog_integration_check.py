@@ -98,7 +98,23 @@ def verify() -> None:
             paginated = backlog.claim(sources[0])
             assert paginated is not None and paginated.pagination_depth == 14
             assert backlog.succeed(paginated)
-        print("Source URL backlog SQL: isolation, fencing, retries, recovery, RSS depth PASS")
+            # A sitemap-index child retains its traversal depth after the
+            # reservation transaction is committed and another worker claims.
+            backlog.add(sources[0], f"https://{tag}.example/nested.xml",
+                        kind="DISCOVERED", metadata={"sitemap_depth": 7})
+            # Rediscovery via a shorter path takes precedence over a deep
+            # back-edge. A duplicate lacking depth must not erase that depth.
+            backlog.add(sources[0], f"https://{tag}.example/nested.xml",
+                        kind="DISCOVERED", metadata={"sitemap_depth": 3})
+            backlog.add(sources[0], f"https://{tag}.example/nested.xml",
+                        kind="DISCOVERED", metadata={"parent_url": url})
+        with engine.begin() as conn:
+            backlog = SourceUrlBacklog(conn)
+            sitemap = backlog.claim(sources[0])
+            assert sitemap is not None and sitemap.sitemap_depth == 3
+            assert sitemap.pagination_depth == 0
+            assert backlog.succeed(sitemap)
+        print("Source URL backlog SQL: isolation, fencing, retries, recovery, RSS/sitemap depth PASS")
     finally:
         try:
             with engine.begin() as conn:

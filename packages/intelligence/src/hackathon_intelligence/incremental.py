@@ -133,13 +133,16 @@ class CanonicalProcessor:
     dates can reconcile independent sources. Conflicts remain as evidence.
     """
 
-    def __init__(self, connection: Connection) -> None:
+    def __init__(self, connection: Connection, *, source_key: str | None = None) -> None:
         self.connection = connection
+        self.source_key = source_key
+        self.last_outcome: str | None = None
 
     def _execute(self, statement: str, params: dict[str, Any] | None = None):
         return self.connection.execute(text(statement), params or {})
 
     def process_one(self) -> str | None:
+        self.last_outcome = None
         row = self._execute("""
             SELECT p.source_event_ref_id::text AS ref_id, p.source_id::text AS source_id,
                    p.source_key, p.raw_document_id::text AS raw_document_id,
@@ -150,12 +153,13 @@ class CanonicalProcessor:
               JOIN sources s ON s.id = p.source_id
              WHERE p.processed_hash IS DISTINCT FROM p.content_hash
                AND p.last_error IS NULL
+               AND (CAST(:source_key AS text) IS NULL OR p.source_key = CAST(:source_key AS text))
                AND s.active AND s.permission_status = 'ALLOWED'
                AND s.discovery_enabled AND s.detail_extraction_enabled
                AND s.ingestion_mode NOT IN ('BLOCKED','DISCOVERY_ONLY','MANUAL')
              ORDER BY p.observed_at ASC
              LIMIT 1 FOR UPDATE OF p SKIP LOCKED
-        """).mappings().first()
+        """, {"source_key": self.source_key}).mappings().first()
         if row is None:
             return None
         ref_id, source_id = row["ref_id"], row["source_id"]
@@ -312,6 +316,7 @@ class CanonicalProcessor:
         """, {"ref": row["ref_id"], "source": row["source_id"],
               "run": row["crawl_run_id"], "digest": row["content_hash"],
               "outcome": outcome, "event": hackathon_id})
+        self.last_outcome = outcome
 
     def _apply_field(self, event_id: str, field: str, value: Any) -> None:
         # Allowlist: relationship arrays, source-specific statuses and unverified

@@ -88,7 +88,7 @@ class MemoryBacklog:
         token = f'token-{row[0]}'
         row[2], row[3] = 'CLAIMED', token
         self.history.append(key)
-        return BacklogClaim(row[0], key[1], token, row[1], row[4], row[5], row[6].get('pagination_depth', 0))
+        return BacklogClaim(row[0], key[1], token, row[1], row[4], row[5], row[6].get('pagination_depth', 0), row[6].get('sitemap_depth', 0))
     def succeed(self, claim, *, next_offset=0, listing_hash=None, has_more=False):
         row = next((r for r in self.entries.values() if r[0] == claim.id), None)
         if not row or row[2] != 'CLAIMED' or row[3] != claim.token:
@@ -334,3 +334,125 @@ def test_iteration27_pagination_hop_budget_survives_restart():
     assert result.fetched_pages == 1
     assert (sid, page3) not in MemoryBacklog.entries
     assert fetcher.visited == [root, page2]
+
+
+def _sitemap_source():
+    return SourceDefinition(
+        key='campus', name='Campus sitemap', domain='campus.example',
+        source_family='university', source_type='official_calendar',
+        ingestion_mode=IngestionMode.SITEMAP,
+        permission_status=PermissionStatus.ALLOWED, detail_extraction_enabled=True,
+        seed_urls=['https://campus.example/feed.xml'],
+    )
+
+
+def test_iteration30_nested_sitemap_depth_survives_runner_restart():
+    """A sitemap index may contain another index; depth lives in the queue."""
+    root = 'https://campus.example/feed.xml'
+    nested = 'https://campus.example/nested.xml'
+    leaf = 'https://campus.example/leaf.xml'
+    detail = 'https://campus.example/events/one'
+    def sitemap_index(url, child):
+        return response(url, '<sitemapindex><sitemap><loc>' + child +
+                        '</loc></sitemap></sitemapindex>', 'application/xml')
+    pages = {
+        root: sitemap_index(root, nested),
+        nested: sitemap_index(nested, leaf),
+        leaf: response(leaf, f'<urlset><url><loc>{detail}</loc></url></urlset>',
+                       'application/xml'),
+        detail: response(detail, '<script type="application/ld+json">' + json.dumps({
+            '@type': 'Event', 'name': 'Verified Hackathon',
+            'startDate': '2027-08-01T08:00:00Z', 'url': detail,
+        }) + '</script>', 'text/html'),
+    }
+    fetcher = Fetcher(pages)
+    conn = Connection()
+    sid = '00000000-0000-4000-8000-000000000001'
+    for url, expected_depth in ((root, 0), (nested, 1), (leaf, 2)):
+        run = asyncio.run(runner.run_source_persisted(
+            SyndicatedEventAdapter(_sitemap_source()), fetcher, conn, max_pages=1))
+        assert run.fetched_pages == 1 and fetcher.visited[-1] == url
+        assert MemoryBacklog.entries[(sid, url)][6].get('sitemap_depth', 0) == expected_depth
+    complete = asyncio.run(runner.run_source_persisted(
+        SyndicatedEventAdapter(_sitemap_source()), fetcher, conn, max_pages=1))
+    assert complete.persisted_event_refs == 1
+    assert fetcher.visited == [root, nested, leaf, detail]
+
+
+def test_iteration30_sitemap_depth_cap_blocks_recursive_indexes_across_runs():
+    from hackathon_sources.syndication import MAX_SITEMAP_INDEX_DEPTH
+    root = 'https://campus.example/feed.xml'
+    nested = 'https://campus.example/nested.xml'
+    forbidden_child = 'https://campus.example/too-deep.xml'
+    fetcher = Fetcher({
+        root: response(root, f'<sitemapindex><sitemap><loc>{nested}</loc></sitemap></sitemapindex>',
+                       'application/xml'),
+        nested: response(nested, f'<sitemapindex><sitemap><loc>{forbidden_child}</loc></sitemap></sitemapindex>',
+                         'application/xml'),
+    })
+    conn = Connection()
+    sid = '00000000-0000-4000-8000-000000000001'
+    asyncio.run(runner.run_source_persisted(
+        SyndicatedEventAdapter(_sitemap_source()), fetcher, conn, max_pages=1))
+    MemoryBacklog.entries[(sid, nested)][6]['sitemap_depth'] = MAX_SITEMAP_INDEX_DEPTH
+    run = asyncio.run(runner.run_source_persisted(
+        SyndicatedEventAdapter(_sitemap_source()), fetcher, conn, max_pages=5))
+    assert run.fetched_pages == 1
+    assert (sid, forbidden_child) not in MemoryBacklog.entries
+    assert fetcher.visited == [root, nested]
+
+
+def test_iteration30_invalid_seed_closes_crawl_without_http(monkeypatch):
+    """Invalid startup configuration must not leave a RUNNING crawl behind."""
+    finished = []
+    monkeypatch.setattr(Crawl, 'finish_run', lambda self, rid, status, stats:
+                        finished.append((rid, status, stats)))
+    src = _sitemap_source().model_copy(update={
+        'seed_urls': ['https://campus.example/feed.xml', 'https://external.example/secret']
+    })
+    fetcher = Fetcher({})
+    conn = Connection()
+    run = asyncio.run(runner.run_source_persisted(
+        SyndicatedEventAdapter(src), fetcher, conn, max_pages=2))
+    assert run.status == 'FAILED'
+    assert len(finished) == 1 and finished[0][1] == 'FAILED'
+    assert not fetcher.visited
+    assert conn.rollbacks == 1
+    assert not MemoryBacklog.entries
+
+
+@pytest.mark.parametrize('meta', [
+    {'sitemap_depth': True},
+    {'sitemap_depth': -1},
+    {'sitemap_depth': '3'},
+    {'pagination_depth': 1.5},
+])
+def test_iteration30_invalid_depth_metadata_rejected_before_sql(meta):
+    class NeverCalled:
+        def execute(self, *_args, **_kwargs):
+            raise AssertionError('should not touch PostgreSQL')
+    with pytest.raises(ValueError, match='invalid backlog traversal depth'):
+        SourceUrlBacklog(NeverCalled()).add(
+            '00000000-0000-4000-8000-000000000001',
+            'https://campus.example/child.xml', kind='DISCOVERED', metadata=meta)
+
+
+@pytest.mark.parametrize('kind,expected', [('SEED', 0), ('DISCOVERED', 7)])
+def test_iteration30_seed_depth_is_always_zero_when_claimed(kind, expected):
+    class Result:
+        def __init__(self, row=None): self.row = row
+        def mappings(self): return self
+        def first(self): return self.row
+    class FakeDatabase:
+        def execute(self, sql, *_args):
+            if 'RETURNING b.id' not in str(sql):
+                return Result()
+            return Result({
+                'id': 12, 'url': 'https://campus.example/child.xml',
+                'kind': kind, 'listing_offset': 0, 'listing_hash': None,
+                'metadata': {'sitemap_depth': 7, 'pagination_depth': 1},
+            })
+    claim = SourceUrlBacklog(FakeDatabase()).claim(
+        '00000000-0000-4000-8000-000000000001')
+    assert claim and claim.sitemap_depth == expected
+    assert claim.pagination_depth == 1

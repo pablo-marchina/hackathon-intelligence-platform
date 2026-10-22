@@ -30,6 +30,7 @@ class BacklogClaim:
     listing_offset: int = 0
     listing_hash: str | None = None
     pagination_depth: int = 0
+    sitemap_depth: int = 0
 
 
 class SourceUrlBacklog:
@@ -40,6 +41,12 @@ class SourceUrlBacklog:
             priority: int = 0, metadata: dict | None = None) -> None:
         if kind not in {"SEED", "DISCOVERED"}:
             raise ValueError("unrecognized URL kind")
+        metadata = dict(metadata or {})
+        for depth_key in ("sitemap_depth", "pagination_depth"):
+            if depth_key in metadata and (
+                type(metadata[depth_key]) is not int or metadata[depth_key] < 0
+            ):
+                raise ValueError("invalid backlog traversal depth")
         canonical = canonicalize_url(url)
         parts = urlsplit(canonical)
         if (
@@ -58,7 +65,16 @@ class SourceUrlBacklog:
             ) ON CONFLICT(source_id, canonical_url) DO UPDATE SET
                 last_seen_at = clock_timestamp(),
                 priority = GREATEST(source_url_backlog.priority, EXCLUDED.priority),
-                metadata = source_url_backlog.metadata || EXCLUDED.metadata,
+                -- Preserve the shallowest proven path to a nested sitemap.
+                -- A back-edge or duplicate discovered from a deeper index must
+                -- never exhaust a previously shorter traversal route.
+                metadata = (source_url_backlog.metadata || EXCLUDED.metadata) ||
+                    CASE WHEN source_url_backlog.metadata ? 'sitemap_depth' THEN
+                        jsonb_build_object('sitemap_depth', LEAST(
+                            (source_url_backlog.metadata->>'sitemap_depth')::integer,
+                            COALESCE((EXCLUDED.metadata->>'sitemap_depth')::integer,
+                                     (source_url_backlog.metadata->>'sitemap_depth')::integer)
+                        )) ELSE '{}'::jsonb END,
                 kind = CASE WHEN source_url_backlog.kind = 'SEED' THEN 'SEED' ELSE EXCLUDED.kind END,
                 state = CASE
                     WHEN source_url_backlog.state = 'CLAIMED' THEN 'CLAIMED'
@@ -78,7 +94,7 @@ class SourceUrlBacklog:
                     ELSE source_url_backlog.attempts END
         """), {"source_id": source_id, "url": url, "canonical_url": canonical,
                "domain": parts.hostname, "kind": kind, "priority": priority,
-               "metadata": json.dumps(metadata or {})})
+               "metadata": json.dumps(metadata)})
 
     def claim(self, source_id: str) -> BacklogClaim | None:
         # Retire expired claims that have exhausted their retry budget. Never
@@ -118,10 +134,14 @@ class SourceUrlBacklog:
             return None
         metadata = row["metadata"] if isinstance(row["metadata"], dict) else {}
         depth = metadata.get("pagination_depth", 0)
+        sitemap_depth = metadata.get("sitemap_depth", 0)
         if type(depth) is not int or depth < 0:
             depth = 0
+        if type(sitemap_depth) is not int or sitemap_depth < 0:
+            sitemap_depth = 0
         return BacklogClaim(int(row["id"]), str(row["url"]), token, str(row["kind"]),
-                            int(row["listing_offset"]), row["listing_hash"], depth)
+                            int(row["listing_offset"]), row["listing_hash"], depth,
+                            0 if row["kind"] == "SEED" else sitemap_depth)
 
     def succeed(
         self, claim: BacklogClaim, *, next_offset: int = 0,

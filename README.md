@@ -1,5 +1,11 @@
 # Hackathon Intelligence Platform
 
+> **Iteração 31 (22/10/2026):** relatórios de aceitação PostgreSQL sintéticos e verificáveis por origem; 526 testes locais aprovados. Um smoke SQL passou em branch Neon isolada, mas migrações e pipeline completos ainda precisam de CI. Sem coleta externa nova, sem aprovação de produção. Ver `docs/execution/ITERATION_31_2026-10-22.md`.
+
+> **Checkpoint local mais recente (22/10/2026): Iteração 30** — contenção de índices de sitemaps aninhados com profundidade durável máxima de 8, preservação do caminho mais curto e correção do encerramento de `crawl_runs` quando a configuração inicial de seeds falha. **517 testes Python locais passaram**, avaliações W6 aprovadas e esquema SQL estático verificado (78 tabelas/5 extensões). PostgreSQL real, CI remoto, coleta externa e build Next.js ainda **não executados**. Consulte `docs/execution/ITERATION_30_2026-10-22.md`. **Não aprovado para produção.**
+
+> **Checkpoint local mais recente (22/10/2026): Iteração 29**, com execução controlada de coleta + normalização + métricas por crawl; **508 testes locais aprovados**. A integração com PostgreSQL real, CI remoto e novas coletas ainda não foi validada. Veja `docs/execution/ITERATION_29_2026-10-22.md`. **Não aprovado para produção.**
+
 > **Checkpoint Iteração 28 (21/10/2026):** sitemaps, RSS e Atom maiores que 2 MiB são analisados incrementalmente, com limite de 12 MiB de XML, 8 MiB de entrada, profundidade e complexidade protegidas por `defusedxml`. A continuação por cursor e autorização por fonte permanecem. **486 testes Python passaram localmente**; PostgreSQL real, crawls externos e build Next.js seguem pendentes. Confira `docs/execution/ITERATION_28_2026-10-21.md`. Não aprovado para produção.
 
 > **Checkpoint Iteração 27 (21/10/2026):** ampliação da coleta autorizada por RSS/Atom com paginação `rel="next"`, sitemaps XML compactados (`.xml.gz`), limite de descompressão e limite durável de 100 saltos de paginação. O teste de catálogo no CI agora cobre duas páginas de RSS; sem PostgreSQL real local, esse gate continua **pendente de execução**. A coleta externa e o build Next.js **não** foram executados. Consulte `docs/execution/ITERATION_27_2026-10-21.md`. A plataforma **não está aprovada para produção**.

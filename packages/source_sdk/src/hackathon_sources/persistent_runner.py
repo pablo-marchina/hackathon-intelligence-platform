@@ -20,7 +20,7 @@ from .repositories import (
 )
 from .registry import SourceRegistryRepository
 from .backlog import SourceUrlBacklog, BacklogClaim
-from .syndication import MAX_FEED_PAGE_HOPS
+from .syndication import MAX_FEED_PAGE_HOPS, MAX_SITEMAP_INDEX_DEPTH
 
 
 class SourcePausedError(RuntimeError):
@@ -143,24 +143,25 @@ async def run_source_persisted(
 
     try:
         queue = [str(item.url) async for item in adapter.discover()]
+        if backlog_repo is not None:
+            # Reject every unauthorized seed before staging any URL. A bad seed
+            # must finish the crawl as FAILED, not strand a RUNNING row.
+            if any(not same_source(url) for url in queue):
+                raise ValueError("source seed outside explicitly authorized host")
+            for url in queue:
+                backlog_repo.add(source_id, url, kind="SEED",
+                                 priority=adapter.definition.priority,
+                                 metadata={"source_key": adapter.definition.key})
+            connection.commit()
+            queue = []
     except Exception as exc:
-        # Discovery errors must not strand a RUNNING crawl forever. The caller
-        # still gets a persisted failure for monitoring and backoff.
+        # Roll back partially staged seeds before recording the failure.
+        connection.rollback()
         output.errors.append(f"discovery: {type(exc).__name__}: {exc}")
         crawl_repo.finish_run(crawl_run_id, status=output.status, stats=output.stats())
         connection.commit()
         return output
     seen: set[str] = set()
-    if backlog_repo is not None:
-        # Seeds are the only automatically refreshed URLs. Feed discoveries survive
-        # run boundaries, including when max_pages is exhausted mid-feed.
-        for url in queue:
-            if not same_source(url):
-                raise ValueError("source seed outside explicitly authorized host")
-            backlog_repo.add(source_id, url, kind="SEED", priority=adapter.definition.priority,
-                             metadata={"source_key": adapter.definition.key})
-        connection.commit()
-        queue = []
 
     attempted = 0
     while (backlog_repo is not None or queue) and attempted < max_pages:
@@ -354,6 +355,14 @@ async def run_source_persisted(
                             if depth > MAX_FEED_PAGE_HOPS:
                                 continue
                             metadata["pagination_depth"] = depth
+                        elif item.discovery_method == "sitemap_index":
+                            # Sitemap indexes can point to other indexes, even in
+                            # a unique-URL chain. Persist depth on each child so a
+                            # later worker cannot restart traversal at depth zero.
+                            depth = (claim.sitemap_depth if claim else 0) + 1
+                            if depth > MAX_SITEMAP_INDEX_DEPTH:
+                                continue
+                            metadata["sitemap_depth"] = depth
                         backlog_repo.add(
                             source_id, candidate, kind="DISCOVERED", priority=item.priority,
                             metadata=metadata,

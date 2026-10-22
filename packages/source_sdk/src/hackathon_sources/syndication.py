@@ -25,6 +25,7 @@ MAX_FEED_BYTES = 2 * 1024 * 1024
 MAX_FEED_LINKS = 2500
 MAX_CHILD_SITEMAPS = 250
 MAX_FEED_PAGE_HOPS = 100  # prevent unbounded next-page chains per seed
+MAX_SITEMAP_INDEX_DEPTH = 8  # nested indexes must terminate even across restarts
 # Large XML listings use a streaming parser instead of building a full tree.
 # The existing 2 MiB fast path stays unchanged for backwards compatibility.
 MAX_STREAM_XML_BYTES = 12 * 1024 * 1024

@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, text
 
 from hackathon_intelligence.incremental import CanonicalProcessor
 from hackathon_sources.repositories import SourcePayloadRepository, SourceEventRefRepository
+from scripts.ops.canonical_evidence import multisource_receipt, write_ci_receipt
 
 
 def verify() -> None:
@@ -147,6 +148,8 @@ def verify() -> None:
                 yield_after_rejection = CanonicalYieldRepository(connection).snapshot()
                 assert yield_after_rejection["totals"]["rejected"] >= 1
                 assert yield_after_rejection["totals"]["created"] >= 2
+                write_ci_receipt(multisource_receipt(yield_after_rejection, sources),
+                                 name="multisource_canonical_yield")
                 fee = connection.execute(text("""
                     SELECT participation_fee::text FROM hackathons WHERE id=CAST(:id AS uuid)
                 """), {"id": ids["a-2027"]}).scalar_one()

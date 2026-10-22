@@ -43,6 +43,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://hackathon:hackathon@localhost:5432/hackathon
       HIP_ALLOW_ADMIN_DB_DRILL: "1"
       HIP_ALLOW_SOURCE_DB_DRILL: "1"
+      HIP_CI_EVIDENCE_DIR: /tmp/hip-evidence
       APP_ENV: test
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +82,17 @@ jobs:
           HIP_ALLOW_MATCH_DB_DRILL: "1"
           SOURCE_SCHEDULER_ENABLED: "false"
         run: python -m scripts.ops.saved_search_match_integration_check
+      - name: Controlled single-source ingestion with fake HTTP and real PostgreSQL
+        env:
+          HIP_ALLOW_CONTROLLED_INGESTION_DRILL: "1"
+        run: python -m scripts.ops.controlled_ingestion_integration_check
+      - name: Upload synthetic PostgreSQL E2E receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hip-synthetic-postgresql-e2e
+          path: /tmp/hip-evidence/*.json
+          if-no-files-found: warn
       - name: End-to-end alert outbox with database and fake SMTP
         env:
           ALERT_DISPATCH_ENABLED: "true"
