@@ -209,4 +209,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install -e . pip-audit
-      - run: pip-audit --strict --skip-editable
+      - name: Audit installed third-party dependencies (exclude local editable app)
+        run: |
+          python -m pip freeze --exclude-editable > /tmp/hip-audit-pinned.txt
+          pip-audit --strict --no-deps -r /tmp/hip-audit-pinned.txt
