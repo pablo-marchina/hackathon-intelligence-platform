@@ -6,9 +6,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from hackathon_api.advanced_filters import filter_field_catalog
-from hackathon_api.db import connection_dependency
+from hackathon_api.db import connection_dependency, get_engine
 from hackathon_api.repositories.hackathons import HackathonRepository
-from hackathon_api.schemas import HackathonDetail, HackathonFilters, HackathonPage
+from hackathon_api.schemas import AdvancedHackathonFilters, HackathonDetail, HackathonFilters, HackathonPage
 from sqlalchemy import Connection
 
 router = APIRouter(prefix="/hackathons", tags=["hackathons"])
@@ -84,13 +84,11 @@ def get_filter_fields() -> dict[str, object]:
 
 
 @router.post("/query", response_model=HackathonPage)
-def query_hackathons(
-    filters: HackathonFilters,
-    connection: Annotated[Connection, Depends(connection_dependency)],
-) -> HackathonPage:
-    """Compose AND, OR and NOT with the existing classic filters."""
+def query_hackathons(filters: AdvancedHackathonFilters) -> HackathonPage:
+    """Validate expressions before opening the database connection."""
     try:
-        return HackathonRepository(connection).search(filters)
+        with get_engine().begin() as connection:
+            return HackathonRepository(connection).search(filters)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
