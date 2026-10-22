@@ -266,7 +266,7 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
             re.I,
         )
         event_label = re.compile(
-            r"\\b(?:hackathons?|buildathons?|datathons?|game\\s+jams?|ideathons?)\\b",
+            r"\b(?:hackathons?|buildathons?|datathons?|game\s+jams?|ideathons?)\b",
             re.I,
         )
         for anchor in soup.find_all("a", href=True, limit=MAX_HTML_ANCHORS):
@@ -285,7 +285,7 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
                     or url.port not in {None, 80, 443}
                     or len(candidate) > 2048
                     or unwanted.search(url.path)
-                    or re.search(r"\\.(?:png|jpe?g|gif|webp|svg|pdf|css|js|zip)$", url.path, re.I)
+                    or re.search(r"\.(?:png|jpe?g|gif|webp|svg|pdf|css|js|zip)$", url.path, re.I)
                     or candidate in seen
                 ):
                     continue
@@ -297,7 +297,7 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
             is_pagination = (
                 url.path.rstrip("/") == current.path.rstrip("/")
                 and bool(re.search(r"(?:^|&)(?:page|offset|cursor)=", query))
-                and bool(re.fullmatch(r"(?:next|older|mais|próxim[ao]|\\d+|[›»→]+)", label))
+                and bool(re.fullmatch(r"(?:next|older|mais|próxim[ao]|\d+|[›»→]+)", label))
             )
             is_detail = bool(detail_path.search(url.path) or event_label.search(text))
             if not (is_detail or is_pagination):
