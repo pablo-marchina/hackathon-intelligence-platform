@@ -12,7 +12,8 @@
     "priority": 100,
     "trust_score": 0.8,
     "seed_urls": [
-      "https://devpost.com/hackathons"
+      "https://devpost.com/hackathons",
+      "https://devpost.com/hackathons?order_by=deadline"
     ],
     "notes": "Automation/scraping restricted by current terms; keep discovery/partner path only until authorized."
   },
@@ -27,7 +28,11 @@
     "detail_extraction_enabled": false,
     "priority": 98,
     "seed_urls": [
-      "https://mlh.io/seasons/2026/events"
+      "https://mlh.io/seasons/2026/events",
+      "https://www.mlh.com/seasons/2026/events"
+    ],
+    "allowed_hosts": [
+      "www.mlh.com"
     ]
   },
   {
@@ -41,7 +46,8 @@
     "detail_extraction_enabled": false,
     "priority": 95,
     "seed_urls": [
-      "https://devfolio.co/hackathons"
+      "https://devfolio.co/hackathons",
+      "https://devfolio.co/search?primary_filter=hackathons&type=application_open"
     ]
   },
   {
@@ -55,7 +61,8 @@
     "detail_extraction_enabled": false,
     "priority": 94,
     "seed_urls": [
-      "https://www.hackerearth.com/challenges/hackathon/"
+      "https://www.hackerearth.com/challenges/hackathon/",
+      "https://www.hackerearth.com/challenges/"
     ]
   },
   {
@@ -83,7 +90,8 @@
     "detail_extraction_enabled": false,
     "priority": 92,
     "seed_urls": [
-      "https://taikai.network/en/hackathons"
+      "https://taikai.network/en/hackathons",
+      "https://taikai.network/br/hackathons?sort_by=date&page=1"
     ]
   },
   {
@@ -125,7 +133,8 @@
     "detail_extraction_enabled": false,
     "priority": 90,
     "seed_urls": [
-      "https://dorahacks.io/hackathon"
+      "https://dorahacks.io/hackathon",
+      "https://dorahacks.io/hackathon?status=ongoing"
     ]
   },
   {
@@ -138,7 +147,7 @@
     "permission_status": "REVIEW_REQUIRED",
     "detail_extraction_enabled": false,
     "priority": 90,
-    "trust_score": 1.0,
+    "trust_score": 1,
     "seed_urls": [
       "https://www.spaceappschallenge.org/"
     ]
@@ -265,7 +274,7 @@
     "permission_status": "REVIEW_REQUIRED",
     "detail_extraction_enabled": false,
     "priority": 84,
-    "trust_score": 1.0,
+    "trust_score": 1,
     "seed_urls": [
       "https://www.gov.br/"
     ]
@@ -324,7 +333,7 @@
     "discovery_enabled": true,
     "detail_extraction_enabled": true,
     "priority": 88,
-    "trust_score": 1.0,
+    "trust_score": 1,
     "refresh_interval_seconds": 10800,
     "rate_limit_per_minute": 12,
     "concurrency_limit": 1,
@@ -358,5 +367,80 @@
       "https://events.hackclub.com/api/events/upcoming"
     ],
     "notes": "Official JSON API documented by events.hackclub.com; classifier filters hackathon-like community events."
+  },
+  {
+    "key": "hackathonradar",
+    "name": "HackathonRadar",
+    "domain": "www.hackathonradar.com",
+    "source_family": "hackathonradar",
+    "source_type": "hackathon_aggregator",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 93,
+    "seed_urls": [
+      "https://www.hackathonradar.com/database?page=1&limit=50"
+    ],
+    "notes": "Aggregator; must verify dataset/API licensing, robots and permission prior to automated fetch. Crawl original organizers where independently authorized; do not replicate proprietary catalog."
+  },
+  {
+    "key": "wemakedevs",
+    "name": "WeMakeDevs",
+    "domain": "www.wemakedevs.org",
+    "source_family": "wemakedevs",
+    "source_type": "hackathon_organizer",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 89,
+    "seed_urls": [
+      "https://www.wemakedevs.org/hackathons"
+    ],
+    "notes": "Official organizer listing (the homepage #hackathons fragment is not a separate crawlable page); review terms and extraction before approval."
+  },
+  {
+    "key": "hackatrack",
+    "name": "HackaTrack",
+    "domain": "www.hackatrack.net",
+    "source_family": "hackatrack",
+    "source_type": "hackathon_directory",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 82,
+    "seed_urls": [
+      "https://www.hackatrack.net/"
+    ],
+    "notes": "Directory candidate; permission, accessibility and event-page structure require verification."
+  },
+  {
+    "key": "hackathonsnear",
+    "name": "Hackathons Near Me",
+    "domain": "hackathonsnear.me",
+    "source_family": "hackathonsnear",
+    "source_type": "hackathon_directory",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 82,
+    "seed_urls": [
+      "https://hackathonsnear.me/"
+    ],
+    "notes": "Directory candidate; access may be rate-limited (HTTP 429). Do not bypass restrictions."
+  },
+  {
+    "key": "lablab_ai",
+    "name": "lablab.ai AI Hackathons",
+    "domain": "lablab.ai",
+    "source_family": "lablab_ai",
+    "source_type": "hackathon_organizer",
+    "ingestion_mode": "STATIC_HTML",
+    "permission_status": "REVIEW_REQUIRED",
+    "detail_extraction_enabled": false,
+    "priority": 90,
+    "seed_urls": [
+      "https://lablab.ai/ai-hackathons"
+    ],
+    "notes": "Official AI hackathon listing. Verify terms, robots, pagination and event data structure before approval."
   }
 ]
