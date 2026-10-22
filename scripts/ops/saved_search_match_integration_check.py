@@ -213,7 +213,9 @@ def verify() -> None:
                     {"id": stale_id},
                 )
             claims: list[tuple[str, str]] = []
-            dispatch_due_emails(engine=engine, publish=lambda d, t, claims=claims: claims.append((d, t)))
+            dispatch_due_emails(
+                engine=engine, publish=lambda d, t, claims=claims: claims.append((d, t))
+            )
             assert len(claims) == 1, claims
             result = deliver_pending_email(claims[0][0], claims[0][1], engine=engine, sender=smtp)
             assert result["status"] == "DISABLED", result
