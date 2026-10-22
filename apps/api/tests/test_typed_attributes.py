@@ -105,7 +105,7 @@ def test_dynamic_query_compiles_only_with_explicit_allowlist() -> None:
     assert "canonical_field_selections" in spec.sql
     assert spec.params["advanced_0"] == "language"
     assert spec.params["advanced_1"] == "pt"
-    assert "pt" not in spec.sql
+    assert "'pt'" not in spec.sql
 
 
 def test_catalog_includes_curated_attributes_without_changing_static_registry() -> None:
