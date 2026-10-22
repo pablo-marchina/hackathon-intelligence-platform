@@ -45,7 +45,6 @@ def evaluate_extraction_golden(path: Path) -> ExtractionBenchmarkResult:
         else:
             raise ValueError(f"unknown extraction shape: {row['shape']}")
         expected = row["expected"]
-        row_exact = True
         for field, exp in expected.items():
             assertions += 1
             actual = _normalize(getattr(event, field, None)) if event is not None else None
@@ -54,7 +53,6 @@ def evaluate_extraction_golden(path: Path) -> ExtractionBenchmarkResult:
                 if exp is not None:
                     tp += 1
             else:
-                row_exact = False
                 if actual is not None:
                     fp += 1
                 if exp is not None:
