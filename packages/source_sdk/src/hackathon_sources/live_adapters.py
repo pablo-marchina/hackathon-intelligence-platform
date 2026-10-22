@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
+import unicodedata
+from datetime import date
 from collections.abc import AsyncIterator, Iterable
 from typing import Any
 
@@ -118,6 +121,11 @@ class HackClubProgramsAdapter(ApiSeedAdapter):
                         "slug": row.get("slug"),
                         "status": row.get("status"),
                         "announced_at": row.get("announcedAt"),
+                        "description": (
+                            row.get("description", "")[:2000]
+                            if isinstance(row.get("description"), str)
+                            else None
+                        ),
                         "in_person": row.get("inPerson"),
                     },
                 )
@@ -178,21 +186,41 @@ _MONTHS_PT = {
 }
 
 
-def _agenda_events(payload: dict[str, Any]) -> Iterable[tuple[int, str, dict[str, Any]]]:
-    for year_block in payload.get("eventos", []):
-        if not isinstance(year_block, dict) or year_block.get("arquivado") is True:
+def _agenda_events(payload: dict[str, Any]) -> Iterable[tuple[int, str, dict[str, Any], bool]]:
+    """Include archival editions: archived != prohibited or irrelevant.
+
+    The canonical classifier will still reject non-hackathon events. Preserve
+    archived status as source metadata instead of treating it as invisibility.
+    """
+    years = payload.get("eventos")
+    if not isinstance(years, list):
+        return
+    for year_block in years:
+        if not isinstance(year_block, dict):
             continue
         try:
             year = int(year_block["ano"])
         except (KeyError, TypeError, ValueError):
             continue
-        for month_block in year_block.get("meses", []):
-            if not isinstance(month_block, dict) or month_block.get("arquivado") is True:
+        if year < 1990 or year > 2100:
+            continue
+        months = year_block.get("meses")
+        if not isinstance(months, list):
+            continue
+        for month_block in months:
+            if not isinstance(month_block, dict):
                 continue
-            month_name = str(month_block.get("mes", "")).lower()
-            for event in month_block.get("eventos", []):
+            month_name = str(month_block.get("mes", "")).strip().lower()
+            events = month_block.get("eventos")
+            if not isinstance(events, list):
+                continue
+            archived = (
+                year_block.get("arquivado") is True
+                or month_block.get("arquivado") is True
+            )
+            for event in events:
                 if isinstance(event, dict):
-                    yield year, month_name, event
+                    yield year, month_name, event, archived
 
 
 class AgendaTechBrasilAdapter(ApiSeedAdapter):
@@ -212,20 +240,49 @@ class AgendaTechBrasilAdapter(ApiSeedAdapter):
             return []
 
         records: list[SourceEventRecord] = []
-        for year, month_name, event in _agenda_events(payload):
+        for year, month_name, event, archived in _agenda_events(payload):
             name = event.get("nome")
             website = _valid_http_url(event.get("url"))
-            if not name or not website:
+            if not isinstance(name, str) or not name.strip():
                 continue
             month = _MONTHS_PT.get(month_name)
-            days = [str(day).zfill(2) for day in event.get("data", []) if str(day).strip()]
-            starts = f"{year:04d}-{month:02d}-{days[0]}" if month and days else None
-            ends = f"{year:04d}-{month:02d}-{days[-1]}" if month and days else starts
+            raw_days = event.get("data", [])
+            days: list[int] = []
+            if month and isinstance(raw_days, list):
+                for day in raw_days[:40]:
+                    if isinstance(day, bool) or not isinstance(day, (int, str)):
+                        continue
+                    try:
+                        day_number = int(day)
+                        date(year, month, day_number)
+                    except (TypeError, ValueError):
+                        continue
+                    if day_number not in days:
+                        days.append(day_number)
+            days.sort()
+            starts = (
+                date(year, month, days[0]).isoformat() if month and days else None
+            )
+            ends = (
+                date(year, month, days[-1]).isoformat() if month and days else starts
+            )
+            # The public calendar does not publish immutable event IDs.
+            # Stable across edits to days within a month, yet edition-scoped;
+            # identical dates on a shared API endpoint must not collapse events.
+            identity_fields = [
+                year,
+                month,
+                unicodedata.normalize("NFKC", name).strip().casefold(),
+                website,
+            ]
+            identifier = hashlib.sha256(
+                json.dumps(identity_fields, ensure_ascii=False).encode()
+            ).hexdigest()[:24]
             records.append(
                 SourceEventRecord(
                     source_key=self.definition.key,
-                    source_event_id=None,
-                    name=str(name),
+                    source_event_id=f"agenda-tech-{year}-{identifier}",
+                    name=name.strip(),
                     source_url=result.final_url,
                     official_url=website,
                     starts_at_raw=starts,
@@ -235,7 +292,12 @@ class AgendaTechBrasilAdapter(ApiSeedAdapter):
                     state_region=event.get("uf") or None,
                     country="Brazil",
                     country_code="BR",
-                    metadata={"year": year, "month": month_name, "days": days},
+                    metadata={
+                        "year": year,
+                        "month": month_name,
+                        "days": [str(day).zfill(2) for day in days],
+                        "archived": archived,
+                    },
                 )
             )
         return records
