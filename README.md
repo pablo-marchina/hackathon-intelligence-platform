@@ -1,5 +1,8 @@
 # Hackathon Intelligence Platform
 
+> **Iteração 32 (22/10/2026):** CI com PostgreSQL real e busca no catálogo **PASS**; 531 testes locais; Ruff check/format sem erros. Coletas reais limitadas de duas APIs públicas autorizadas em PostgreSQL descartável: 50 canônicos Hack Club, 1 Agenda Tech Brasil; 86 rejeitados, zero vinculados/atualizados. Os números são **somente do staging descartável**. CI: 5/6 jobs aprovados; mypy ainda tem 195 erros de tipagem legados. PR #1 continua draft, main intacta, sem aprovação para produção. Ver docs/execution/ITERATION_32_2026-10-22.md.
+
+
 > **Iteração 31 (22/10/2026):** relatórios de aceitação PostgreSQL sintéticos e verificáveis por origem; 526 testes locais aprovados. Um smoke SQL passou em branch Neon isolada, mas migrações e pipeline completos ainda precisam de CI. Sem coleta externa nova, sem aprovação de produção. Ver `docs/execution/ITERATION_31_2026-10-22.md`.
 
 > **Checkpoint local mais recente (22/10/2026): Iteração 30** — contenção de índices de sitemaps aninhados com profundidade durável máxima de 8, preservação do caminho mais curto e correção do encerramento de `crawl_runs` quando a configuração inicial de seeds falha. **517 testes Python locais passaram**, avaliações W6 aprovadas e esquema SQL estático verificado (78 tabelas/5 extensões). PostgreSQL real, CI remoto, coleta externa e build Next.js ainda **não executados**. Consulte `docs/execution/ITERATION_30_2026-10-22.md`. **Não aprovado para produção.**
