@@ -1,7 +1,7 @@
 """Policy-gated extraction of factual schema.org Event data from HTML pages.
 
-This adapter never navigates to event URLs. Only sources independently approved for
-fetching HTML may use it; links emitted as evidence do not authorize crawling.
+Only independently approved sources may discover and fetch same-host event pages.
+External organizer and registration links are evidence, not crawl authorization.
 """
 
 from __future__ import annotations
@@ -273,8 +273,8 @@ class StructuredHtmlEventAdapter(SeedUrlAdapter):
             raw = anchor.get("href")
             if not isinstance(raw, str) or len(raw) > 2048:
                 continue
-            candidate = urldefrag(urljoin(result.final_url, raw)).url
             try:
+                candidate = urldefrag(urljoin(result.final_url, raw)).url
                 url = urlsplit(candidate)
                 if (
                     url.scheme not in {"http", "https"}
