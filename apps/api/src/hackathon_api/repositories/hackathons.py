@@ -6,7 +6,24 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from hackathon_api.schemas import *
+from hackathon_api.schemas import (
+    CanonicalChangeSummary,
+    EligibilitySummary,
+    ExternalLinkSummary,
+    HackathonDetail,
+    HackathonFilters,
+    HackathonListItem,
+    HackathonPage,
+    JudgingCriterionSummary,
+    LocationSummary,
+    OrganizationSummary,
+    PhaseSummary,
+    PrizeSummary,
+    RequirementSummary,
+    ResourceSummary,
+    SourceEvidenceSummary,
+    TaxonomyItem,
+)
 from sqlalchemy import Connection, text
 
 
