@@ -85,7 +85,13 @@ def _match_saved_search(
     # Prepared params are supplied by SQLAlchemy; no saved-search SQL interpolation.
     # Lock only the canonical hackathon; joined/optional rows are not locked.
     # The public query is unchanged for normal matching and browsing.
-    sql = spec.sql + (" FOR SHARE OF h" if lock_target else "")
+    # The catalog SELECT projects sortable timestamp sentinels of PostgreSQL
+    # 'infinity'. Psycopg cannot turn those into Python datetimes; matching
+    # needs existence only, not the catalog's projected columns.
+    _, sep, remainder = spec.sql.partition(" FROM hackathons h ")
+    if not sep:
+        raise RuntimeError("unexpected catalog query structure")
+    sql = "SELECT 1" + sep + remainder + (" FOR SHARE OF h" if lock_target else "")
     return conn.execute(text(sql), spec.params).first() is not None
 
 
