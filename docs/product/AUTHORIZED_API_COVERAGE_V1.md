@@ -57,6 +57,21 @@ pytest -q packages/source_sdk/tests/test_authorized_api_coverage.py
 python -m pytest -q
 ```
 
+An opt-in CI PostgreSQL drill also exercises three status-partitioned API
+pages and an archived calendar containing both eligible and generic records.
+It asserts canonical `CREATED`/`REJECTED` counts, separate source references,
+selected status evidence, and idempotent replay, with entirely synthetic
+payloads:
+
+```bash
+APP_ENV=test HIP_ALLOW_COVERAGE_API_DB_DRILL=1 \\
+DATABASE_URL="<disposable local test PostgreSQL>" \\
+python -m scripts.ops.authorized_api_coverage_integration_check
+```
+
+This drill deliberately refuses non-local or non-test databases and runs only
+under an explicit opt-in flag. Fixture counts are **never** production metrics.
+
 The normal controlled run remains subject to the registry + database
 permissions, operator pause, rate limits and explicit staging/development
 apply gates. A dry run:
