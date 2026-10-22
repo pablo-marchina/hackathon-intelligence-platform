@@ -29,6 +29,7 @@ dependencies = [
 dev = [
   "pytest>=8,<9",
   "pytest-cov>=6,<8",
+  "pytest-asyncio>=1,<2",
   "httpx>=0.28,<0.29",
   "ruff>=0.12,<1",
   "mypy>=1.17,<2",
