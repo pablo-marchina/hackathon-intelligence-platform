@@ -19,7 +19,7 @@ jobs:
       - run: ruff format --check apps packages scripts db/alembic/versions
       - name: Enforce no new mypy errors against reviewed technical-debt baseline
         run: python scripts/check_typing_debt.py
-      - run: pytest -q
+      - run: python -m pytest -q
       - run: python scripts/check_eval_gates.py
       - run: python scripts/verify_repository.py
       - run: python scripts/source_coverage_report.py --format json > /tmp/source-coverage.json
