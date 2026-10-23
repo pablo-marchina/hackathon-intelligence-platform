@@ -119,8 +119,7 @@ def test_adapter_follows_published_airtable_labels_and_keeps_public_fields() -> 
     assert a.metadata["public_ysws_program"] is True
     # HCB is financial metadata, not a verified prize pool or registration fee.
     accepted = [
-        prepare_event(record.model_dump(mode="json"), source_key=SOURCE)
-        for record in records
+        prepare_event(record.model_dump(mode="json"), source_key=SOURCE) for record in records
     ]
     assert accepted[0] is not None
     assert accepted[1] is not None
@@ -134,7 +133,10 @@ def test_adapter_follows_published_airtable_labels_and_keeps_public_fields() -> 
 
 def test_invalid_schema_does_not_create_false_events() -> None:
     adapter = build_adapter(definition())
-    assert asyncio.run(adapter.parse_events(response({"success": False, "data": fixture()["data"]}))) == []
+    assert (
+        asyncio.run(adapter.parse_events(response({"success": False, "data": fixture()["data"]})))
+        == []
+    )
     assert asyncio.run(adapter.parse_events(response({"data": fixture()["data"]}))) == []
     assert asyncio.run(adapter.parse_events(response({"success": True, "data": {}}))) == []
     invalid = fixture()
@@ -176,6 +178,9 @@ def test_malformed_optional_fields_do_not_poison_whole_source() -> None:
 
 def test_overlarge_list_must_fail_not_silently_report_success() -> None:
     adapter = build_adapter(definition())
-    payload = {"success": True, "data": [{"id": str(i), "Name": "AI Hackathon"} for i in range(5001)]}
+    payload = {
+        "success": True,
+        "data": [{"id": str(i), "Name": "AI Hackathon"} for i in range(5001)],
+    }
     with pytest.raises(ValueError, match="bounded record budget"):
         asyncio.run(adapter.parse_events(response(payload)))
