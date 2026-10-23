@@ -70,8 +70,7 @@ def verify() -> None:
     name = f"CI Multi-Source Hackathon {tag}"
     external_url = f"https://event-{tag}.invalid/hackathon"
     sources = {
-        item.key: item
-        for item in load_source_definitions(ROOT / "db/seeds/sources_v0_1.json")
+        item.key: item for item in load_source_definitions(ROOT / "db/seeds/sources_v0_1.json")
     }
     directory = sources["hackclub_hackathons"]
     programs = sources["hackclub_programs"]
@@ -105,13 +104,18 @@ def verify() -> None:
                     "status": "upcoming",
                     "description": "Teams build projects at this hackathon.",
                 }
-            ] if status == "upcoming" else [],
+            ]
+            if status == "upcoming"
+            else [],
         }
     fetcher = ClosedFetcher(pages)
 
     async def runner(engine, source, *, max_pages, max_versions):
         return await run_once(
-            engine, source, max_pages=max_pages, max_versions=max_versions,
+            engine,
+            source,
+            max_pages=max_pages,
+            max_versions=max_versions,
             fetcher_factory=lambda: fetcher,
         )
 
@@ -131,25 +135,33 @@ def verify() -> None:
         assert len(fetcher.requests) == 4
         assert set(fetcher.requests) == set(pages)
         with engine.connect() as conn:
-            rows = conn.execute(
-                text("""
+            rows = (
+                conn.execute(
+                    text("""
                     SELECT r.hackathon_id::text
                       FROM source_event_refs r
                       JOIN sources s ON s.id=r.source_id
                      WHERE r.source_event_id IN (:dir_ref,:program_ref)
                        AND s.source_family IN ('hackclub_hackathons','hackclub_programs')
                 """),
-                {"dir_ref": f"directory-{tag}", "program_ref": f"program-{tag}"},
-            ).scalars().all()
+                    {"dir_ref": f"directory-{tag}", "program_ref": f"program-{tag}"},
+                )
+                .scalars()
+                .all()
+            )
             assert len(rows) == 2 and rows[0] == rows[1], rows
-            canonical = conn.execute(
-                text("""
+            canonical = (
+                conn.execute(
+                    text("""
                     SELECT source_count,name
                       FROM hackathons
                      WHERE id=CAST(:id AS uuid)
                 """),
-                {"id": rows[0]},
-            ).mappings().one()
+                    {"id": rows[0]},
+                )
+                .mappings()
+                .one()
+            )
             assert canonical["name"] == name
             assert canonical["source_count"] >= 2
 
