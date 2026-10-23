@@ -100,9 +100,9 @@ def test_deltas_are_not_mislabeled_as_global_exclusive_yield() -> None:
     report = campaign.compare(before, after, {"status": "SUCCEEDED", "sources": []})
     assert report["net_deltas"]["catalog"]["unique_active"] == 2
     assert report["net_deltas"]["field_counts"]["known_format"] == 2
-    assert report["per_source"]["approved"]["net_deltas"]["attribution"][
-        "exclusive_canonicals"
-    ] == -1
+    assert (
+        report["per_source"]["approved"]["net_deltas"]["attribution"]["exclusive_canonicals"] == -1
+    )
     assert report["net_unique_target_met"] is True
     assert report["status"] == "MEASURED"
     assert report["evidence_kind"] == "OBSERVED_DATABASE_BEFORE_AFTER_NOT_CAUSAL"
@@ -127,11 +127,13 @@ def test_campaign_status_is_not_just_runner_success(
         fixture(4 + delta),
         {
             "status": status,
-            "sources": [{
-                "source": "approved",
-                "budget_hit_with_pending_urls": backlog,
-                "backlog_by_state": {"EXHAUSTED": 0},
-            }],
+            "sources": [
+                {
+                    "source": "approved",
+                    "budget_hit_with_pending_urls": backlog,
+                    "backlog_by_state": {"EXHAUSTED": 0},
+                }
+            ],
         },
         min_net_unique=target,
     )
@@ -145,10 +147,12 @@ def test_exhausted_pages_are_not_conflated_with_drained_backlog() -> None:
         fixture(),
         {
             "status": "SUCCEEDED",
-            "sources": [{
-                "budget_hit_with_pending_urls": False,
-                "backlog_by_state": {"EXHAUSTED": 2},
-            }],
+            "sources": [
+                {
+                    "budget_hit_with_pending_urls": False,
+                    "backlog_by_state": {"EXHAUSTED": 2},
+                }
+            ],
         },
     )
     assert report["has_incomplete_or_exhausted_backlog"] is True
@@ -185,7 +189,11 @@ def test_exception_before_batch_prevents_any_network_calls(monkeypatch) -> None:
         asyncio.run(
             campaign.run_campaign(
                 SimpleNamespace(),
-                [SimpleNamespace(key="approved", priority=50, seed_urls=["https://approved.example"])],
+                [
+                    SimpleNamespace(
+                        key="approved", priority=50, seed_urls=["https://approved.example"]
+                    )
+                ],
                 pages=1,
                 versions=1,
                 runner=network,
