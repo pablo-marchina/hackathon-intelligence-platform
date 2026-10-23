@@ -8,6 +8,7 @@ from .live_adapters import (
     HackClubCommunityEventsAdapter,
     HackClubHackathonsAdapter,
     HackClubProgramsAdapter,
+    HackClubYswsProgramsAdapter,
 )
 from .models import IngestionMode, PermissionStatus, SourceDefinition
 from .seed_adapter import SeedUrlAdapter
@@ -20,6 +21,7 @@ _LIVE_ADAPTERS: dict[str, type[SourceAdapter]] = {
     "agenda_tech_brasil": AgendaTechBrasilAdapter,
     "hackclub_hackathons": HackClubHackathonsAdapter,
     "hackclub_programs": HackClubProgramsAdapter,
+    "hackclub_ysws_programs": HackClubYswsProgramsAdapter,
     "hackclub_community_events": HackClubCommunityEventsAdapter,
 }
 

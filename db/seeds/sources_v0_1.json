@@ -475,5 +475,29 @@
       "https://lablab.ai/ai-hackathons"
     ],
     "notes": "Official AI hackathon listing. Verify terms, robots, pagination and event data structure before approval."
+  },
+  {
+    "key": "hackclub_ysws_programs",
+    "name": "Hack Club YSWS Programs (official public API)",
+    "domain": "events-api.hackclub.dev",
+    "source_family": "hackclub_ysws_programs",
+    "source_type": "official_public_programs_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 73,
+    "trust_score": 0.95,
+    "refresh_interval_seconds": 21600,
+    "rate_limit_per_minute": 4,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "events-api.hackclub.dev"
+    ],
+    "seed_urls": [
+      "https://events-api.hackclub.dev/api/programs"
+    ],
+    "durable_api_pages": false,
+    "notes": "Official Hack Club github.com/hackclub/events-api README documents public unauthenticated read-only GET /api/programs, status partitions, 5-minute caching and 100 requests per 15 minutes. Conservative 4 rpm/one request each refresh. General YSWS programs are NOT assumed to be hackathons: event-kind classifier rejects non-hackathon records. No unlisted/private program access; no organizer-site fetch. No list pagination documented; absence of pagination must not imply global completeness."
   }
 ]

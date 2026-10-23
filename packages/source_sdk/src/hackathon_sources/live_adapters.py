@@ -7,6 +7,7 @@ import unicodedata
 from collections.abc import AsyncIterator, Iterable
 from datetime import date
 from typing import Any
+from urllib.parse import urlsplit
 
 from pydantic import HttpUrl
 
@@ -19,10 +20,22 @@ def _json(result: FetchResult) -> Any:
 
 
 def _valid_http_url(value: Any) -> str | None:
-    if not isinstance(value, str):
+    if not isinstance(value, str) or len(value) > 2048:
         return None
-    value = value.strip()
-    return value if value.startswith(("https://", "http://")) else None
+    candidate: str = value.strip()
+    try:
+        parsed = urlsplit(candidate)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
+            return None
+        HttpUrl(candidate)
+    except ValueError:
+        return None
+    return candidate
 
 
 class ApiSeedAdapter(SourceAdapter):
@@ -129,6 +142,65 @@ class HackClubProgramsAdapter(ApiSeedAdapter):
                             else None
                         ),
                         "in_person": row.get("inPerson"),
+                    },
+                )
+            )
+        return records
+
+
+class HackClubYswsProgramsAdapter(ApiSeedAdapter):
+    """Official publicly documented read-only Hack Club YSWS Programs API.
+
+    This endpoint contains programs, NOT a vetted hackathon directory. The
+    canonical event-kind classifier must reject ordinary programs, workshops
+    and campaigns. Never infer prize amounts, student-only rules or signup
+    windows from a listed YSWS program.
+    """
+
+    async def parse_events(self, result: FetchResult) -> list[SourceEventRecord]:
+        payload = _json(result)
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            return []
+        rows = payload.get("data")
+        if not isinstance(rows, list):
+            return []
+        if len(rows) > 5000:
+            # Do not silently drop catalog records: a "successful" crawl
+            # of a truncated response would hide missing hackathons.
+            raise ValueError("YSWS API response exceeds the bounded record budget")
+        records: list[SourceEventRecord] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            identifier = row.get("id")
+            name = row.get("Name")
+            if not isinstance(identifier, str) or not identifier.strip():
+                continue
+            if not isinstance(name, str) or not name.strip():
+                continue
+            # Official published fields use Airtable label case and spelling.
+            # Invalid/missing dates are unknown, not a guessed deadline.
+            start = row.get("Start Date")
+            end = row.get("End Date")
+            url = _valid_http_url(row.get("Website URL"))
+            records.append(
+                SourceEventRecord(
+                    source_key=self.definition.key,
+                    source_event_id=identifier.strip()[:200],
+                    name=name.strip()[:300],
+                    source_url=HttpUrl(result.final_url),
+                    official_url=HttpUrl(url) if url else None,
+                    starts_at_raw=start if isinstance(start, str) else None,
+                    ends_at_raw=end if isinstance(end, str) else None,
+                    metadata={
+                        "icon_url": _valid_http_url(row.get("Icon – CDN Link")),
+                        "hcb_url": _valid_http_url(row.get("HCB")),
+                        "source_created_at": (
+                            row.get("createdTime")
+                            if isinstance(row.get("createdTime"), str)
+                            else None
+                        ),
+                        "public_ysws_program": True,
                     },
                 )
             )
