@@ -135,6 +135,61 @@ class HackClubProgramsAdapter(ApiSeedAdapter):
         return records
 
 
+class HackClubYswsProgramsAdapter(ApiSeedAdapter):
+    """Official publicly documented read-only Hack Club YSWS Programs API.
+
+    This endpoint contains programs, NOT a vetted hackathon directory. The
+    canonical event-kind classifier must reject ordinary programs, workshops
+    and campaigns. Never infer prize amounts, student-only rules or signup
+    windows from a listed YSWS program.
+    """
+
+    async def parse_events(self, result: FetchResult) -> list[SourceEventRecord]:
+        payload = _json(result)
+        if not isinstance(payload, dict) or payload.get("success") is not True:
+            return []
+        rows = payload.get("data")
+        if not isinstance(rows, list):
+            return []
+        records: list[SourceEventRecord] = []
+        for row in rows[:5000]:
+            if not isinstance(row, dict):
+                continue
+            identifier = row.get("id")
+            name = row.get("Name")
+            if not isinstance(identifier, str) or not identifier.strip():
+                continue
+            if not isinstance(name, str) or not name.strip():
+                continue
+            # Official published fields use Airtable label case and spelling.
+            # Invalid/missing dates are unknown, not a guessed deadline.
+            start = row.get("Start Date")
+            end = row.get("End Date")
+            url = _valid_http_url(row.get("Website URL"))
+            records.append(
+                SourceEventRecord(
+                    source_key=self.definition.key,
+                    source_event_id=identifier.strip()[:200],
+                    name=name.strip()[:300],
+                    source_url=result.final_url,
+                    official_url=HttpUrl(url) if url else None,
+                    starts_at_raw=start if isinstance(start, str) else None,
+                    ends_at_raw=end if isinstance(end, str) else None,
+                    metadata={
+                        "icon_url": _valid_http_url(row.get("Icon – CDN Link")),
+                        "hcb_url": _valid_http_url(row.get("HCB")),
+                        "source_created_at": (
+                            row.get("createdTime")
+                            if isinstance(row.get("createdTime"), str)
+                            else None
+                        ),
+                        "public_ysws_program": True,
+                    },
+                )
+            )
+        return records
+
+
 class HackClubCommunityEventsAdapter(ApiSeedAdapter):
     """Official JSON API behind events.hackclub.com."""
 
