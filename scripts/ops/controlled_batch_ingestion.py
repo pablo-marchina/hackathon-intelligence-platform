@@ -5,6 +5,7 @@ Default invocation is PLAN_ONLY: no PostgreSQL and no network. Even with
 --apply, each source is checked against both approved seed policy and the
 DB-owned authorization/pause switch before constructing an HTTP fetcher.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -72,14 +73,16 @@ def require_batch_apply(env: dict[str, str]) -> None:
         raise ValueError("HIP_ALLOW_BATCH_INGESTION=1 is required for the multi-source batch")
 
 
-def plan(
-    sources: list[SourceDefinition], *, pages: int, versions: int
-) -> dict[str, Any]:
+def plan(sources: list[SourceDefinition], *, pages: int, versions: int) -> dict[str, Any]:
     validate_budget(sources, pages, versions)
     return {
         "status": "PLAN_ONLY",
         "sources": [
-            {"key": source.key, "priority": source.priority, "seed_url_count": len(source.seed_urls)}
+            {
+                "key": source.key,
+                "priority": source.priority,
+                "seed_url_count": len(source.seed_urls),
+            }
             for source in sources
         ],
         "max_pages_per_source": pages,
@@ -100,9 +103,7 @@ def _outcome_counts(value: object) -> dict[str, int]:
     if not isinstance(value, dict):
         return {key: 0 for key in _OUTCOMES}
     return {
-        key: int(value[key])
-        if type(value.get(key)) is int and value[key] >= 0
-        else 0
+        key: int(value[key]) if type(value.get(key)) is int and value[key] >= 0 else 0
         for key in _OUTCOMES
     }
 
@@ -207,7 +208,9 @@ async def run_batch(
 def main(argv: list[str] | None = None, *, env: dict[str, str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--source", action="append", dest="sources",
+        "--source",
+        action="append",
+        dest="sources",
         help="repeat to select exact keys; omitted means all ALLOWED registry sources",
     )
     parser.add_argument("--max-pages", type=int, default=3)
@@ -237,9 +240,7 @@ def main(argv: list[str] | None = None, *, env: dict[str, str] | None = None) ->
     )
     try:
         report = asyncio.run(
-            run_batch(
-                engine, selected, pages=args.max_pages, versions=args.max_versions
-            )
+            run_batch(engine, selected, pages=args.max_pages, versions=args.max_versions)
         )
     except Exception as exc:
         # Nothing sensitive from the SQL/network error is printed.
