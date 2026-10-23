@@ -184,7 +184,7 @@ def test_exception_before_batch_prevents_any_network_calls(monkeypatch) -> None:
         asyncio.run(
             campaign.run_campaign(
                 SimpleNamespace(),
-                [SimpleNamespace()],
+                [SimpleNamespace(key="approved", priority=50, seed_urls=["https://approved.example"])],
                 pages=1,
                 versions=1,
                 runner=network,
