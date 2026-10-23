@@ -186,6 +186,49 @@ def verify() -> None:
                 assert empty["attributed_unique_active"] == 0
                 assert empty["exclusive_percent"] is None
                 assert empty["suggested_next_step"] == "VALIDATE_WITH_CONTROLLED_COLLECTION"
+
+                # Publisher-provided award text counts as known award details,
+                # but does not become a fictional monetary prize pool.
+                observation_id = conn.execute(
+                    text("""
+                        INSERT INTO source_observations (
+                            hackathon_id, source_event_ref_id, source_id,
+                            field_path, value_json, normalized_value_json,
+                            extraction_method, observed_at
+                        ) VALUES (
+                            CAST(:event AS uuid), CAST(:ref AS uuid),
+                            CAST(:source AS uuid), 'prize_details_text',
+                            CAST(:value AS jsonb), CAST(:value AS jsonb),
+                            'JSON_LD', :observed
+                        ) RETURNING id
+                    """),
+                    {
+                        "event": events["exclusive"],
+                        "ref": refs["exclusive"],
+                        "source": source_ids["approved"],
+                        "value": '"Community award"',
+                        "observed": now,
+                    },
+                ).scalar_one()
+                conn.execute(
+                    text("""
+                        INSERT INTO canonical_field_selections (
+                            hackathon_id, field_path, selected_observation_id,
+                            policy_version, active
+                        ) VALUES (
+                            CAST(:event AS uuid), 'prize_details_text',
+                            :observation, 'ci-awards-v1', true
+                        )
+                    """),
+                    {"event": events["exclusive"], "observation": observation_id},
+                )
+                updated = SourceOpportunityRepository(conn).snapshot(as_of=now)
+                approved_after = next(
+                    row for row in updated["sources"]
+                    if row["source_id"] == source_ids["approved"]
+                )
+                assert approved_after["missing_prize_details"] == a["missing_prize_details"] - 1
+                assert updated["global"] == snapshot["global"]
                 print(
                     "PASS: distinct source contribution, overlap, gaps and permission-aware triage"
                 )
