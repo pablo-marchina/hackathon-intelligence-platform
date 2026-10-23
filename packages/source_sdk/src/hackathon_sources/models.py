@@ -44,6 +44,7 @@ class SourceDefinition(BaseModel):
     concurrency_limit: int = Field(default=1, ge=1, le=32)
     seed_urls: list[HttpUrl] = []
     allowed_hosts: list[str] = []
+    durable_api_pages: bool = False  # Explicit opt-in only for documented, approved APIs.
     notes: str | None = None
 
 

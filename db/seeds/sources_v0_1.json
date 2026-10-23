@@ -324,7 +324,8 @@
     "allowed_hosts": [
       "api.github.com"
     ],
-    "notes": "Public GitHub Contents API over community-maintained factual event metadata; preserve provenance and only ingest factual fields."
+    "notes": "Public GitHub Contents API over community-maintained factual event metadata; preserve provenance and only ingest factual fields.",
+    "durable_api_pages": true
   },
   {
     "key": "hackclub_hackathons",
@@ -347,7 +348,8 @@
     "seed_urls": [
       "https://dash.hackathons.hackclub.com/api/v1/hackathons"
     ],
-    "notes": "Official Hack Club hackathon directory JSON API; endpoint is consumed by the open-source Hack Club frontend."
+    "notes": "Official Hack Club hackathon directory JSON API; endpoint is consumed by the open-source Hack Club frontend.",
+    "durable_api_pages": true
   },
   {
     "key": "hackclub_programs",
@@ -372,7 +374,8 @@
       "https://hackclub.com/api/v1/events?status=ongoing&limit=100",
       "https://hackclub.com/api/v1/events?status=ended&limit=100"
     ],
-    "notes": "Official documented Hack Club Events API (OpenAPI v1). Bounded, distinct upcoming/ongoing/ended partitions, each limited to 100. No offset/page exists; historic coverage above 100 ended events is not guaranteed. API program records are subject to hackathon classifier; API descriptions and timestamps are factual evidence only."
+    "notes": "Official documented Hack Club Events API (OpenAPI v1). Bounded, distinct upcoming/ongoing/ended partitions, each limited to 100. No offset/page exists; historic coverage above 100 ended events is not guaranteed. API program records are subject to hackathon classifier; API descriptions and timestamps are factual evidence only.",
+    "durable_api_pages": true
   },
   {
     "key": "hackclub_community_events",
@@ -395,7 +398,8 @@
     "seed_urls": [
       "https://events.hackclub.com/api/events/upcoming"
     ],
-    "notes": "Official JSON API documented by events.hackclub.com; classifier filters hackathon-like community events."
+    "notes": "Official JSON API documented by events.hackclub.com; classifier filters hackathon-like community events.",
+    "durable_api_pages": true
   },
   {
     "key": "hackathonradar",

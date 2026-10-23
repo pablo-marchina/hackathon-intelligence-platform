@@ -140,7 +140,10 @@ def verify() -> None:
                 {"sid": source_id, "url": next_page},
             ).scalar_one()
             assert rss_next_depth == "1", rss_next_depth
-            processor = CanonicalProcessor(conn)
+            # This E2E only owns its synthetic RSS source. Other authorized
+            # source queues may have pending versions; they are not a failure
+            # of this source's canonical pipeline.
+            processor = CanonicalProcessor(conn, source_key=adapter.definition.key)
             results = [processor.process_one() for _ in range(3)]
             conn.commit()
             assert results == ["CREATED"] * 3, results

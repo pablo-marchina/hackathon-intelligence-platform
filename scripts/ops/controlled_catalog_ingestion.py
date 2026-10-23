@@ -83,6 +83,26 @@ def _unique_active(conn: Any) -> int:
     )
 
 
+def _backlog_coverage(result: Any, *, max_pages: int, tracked: bool) -> dict[str, Any]:
+    """Expose remaining source-scoped work without claiming global completeness."""
+    if not tracked:
+        return {
+            "backlog_tracked": False,
+            "backlog_by_state": None,
+            "unprocessed_backlog_urls": None,
+            "budget_hit_with_pending_urls": None,
+        }
+    stats = dict(getattr(result, "backlog_counts", {}) or {})
+    open_count = sum(int(stats.get(state, 0)) for state in ("PENDING", "RETRY", "CLAIMED"))
+    return {
+        "backlog_tracked": True,
+        "backlog_by_state": stats,
+        "unprocessed_backlog_urls": open_count,
+        "backlog_exhausted_urls": int(stats.get("EXHAUSTED", 0)),
+        "budget_hit_with_pending_urls": (result.fetched_pages >= max_pages and open_count > 0),
+    }
+
+
 def _run_outcomes(conn: Any, crawl_run_id: str) -> dict[str, int]:
     # Original crawl ID is persisted on each staged payload; this avoids
     # incorrectly attributing unrelated canonical changes to this execution.
@@ -131,6 +151,14 @@ async def run_once(
                 conn,
                 max_pages=max_pages,
             )
+        # Collection can reach a page budget while API pagination remains
+        # in the durable backlog. Report that partial coverage explicitly.
+        tracked = source.ingestion_mode in {
+            IngestionMode.RSS,
+            IngestionMode.SITEMAP,
+            IngestionMode.STATIC_HTML,
+        } or (source.ingestion_mode == IngestionMode.API and source.durable_api_pages)
+        backlog = _backlog_coverage(result, max_pages=max_pages, tracked=tracked)
         # A cancellation or failed fetch is visible; NEVER normalize after it.
         if result.status in {"FAILED", "CANCELLED"}:
             return {
@@ -140,6 +168,7 @@ async def run_once(
                 "pages_fetched": result.fetched_pages,
                 "references_persisted": result.persisted_event_refs,
                 "versions_processed": 0,
+                **backlog,
                 "catalog_before": before,
                 "catalog_after": _unique_active(conn),
                 "run_outcomes": _run_outcomes(conn, result.crawl_run_id),
@@ -169,6 +198,7 @@ async def run_once(
             "pages_fetched": result.fetched_pages,
             "references_persisted": result.persisted_event_refs,
             "versions_processed": sum(processed.values()),
+            **backlog,
             "processed_this_invocation": processed,
             "run_outcomes": outcomes,
             "catalog_before": before,
