@@ -73,12 +73,16 @@ def verify() -> None:
     assert source.durable_api_pages is True
     assert source.permission_status.value == "ALLOWED"
     assert MAX_API_PAGINATION_HOPS == 50
+    # Isolate this synthetic pagination test from the real registry family.
+    # Otherwise staged (unprocessed) refs and refreshed seeds would affect
+    # later CI jobs that exercise actual Hack Club source families.
+    tag = uuid4().hex[:12]
+    source = source.model_copy(update={"source_family": f"ci-api-pagination-{tag}"})
     seed = str(source.seed_urls[0])
     second = seed + "?page=2"
     third = seed + "?page=3"
     deep = seed + "?page=50"
     overlimit = seed + "?page=51"
-    tag = uuid4().hex[:12]
 
     def page(number: int, next_url: str | None) -> dict:
         return {
