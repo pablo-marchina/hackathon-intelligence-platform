@@ -248,9 +248,7 @@ def test_explicitly_disallowed_countries_never_count_as_positive_eligibility() -
     """A country exclusion is not an allowed-country relation."""
     for op, value in (("eq", "BR"), ("in", ["BR", "AR"])):
         params: dict = {}
-        sql = compile_expression(
-            {"field": "eligible_country", "op": op, "value": value}, params
-        )
+        sql = compile_expression({"field": "eligible_country", "op": op, "value": value}, params)
         assert "ec.allowed=true" in sql
         assert "h.eligible_worldwide=true" in sql
         assert "ec.country_code" in sql
