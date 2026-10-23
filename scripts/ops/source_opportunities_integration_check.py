@@ -12,7 +12,10 @@ from sqlalchemy.engine import make_url
 
 
 def verify() -> None:
-    if os.environ.get("APP_ENV") != "test" or os.environ.get("HIP_ALLOW_SOURCE_OPPORTUNITIES_DRILL") != "1":
+    if (
+        os.environ.get("APP_ENV") != "test"
+        or os.environ.get("HIP_ALLOW_SOURCE_OPPORTUNITIES_DRILL") != "1"
+    ):
         raise RuntimeError("explicit test-only opt-in required")
     database_url = os.environ["DATABASE_URL"]
     parsed = make_url(database_url)
@@ -167,7 +170,9 @@ def verify() -> None:
                 assert empty["attributed_unique_active"] == 0
                 assert empty["exclusive_percent"] is None
                 assert empty["suggested_next_step"] == "VALIDATE_WITH_CONTROLLED_COLLECTION"
-                print("PASS: distinct source contribution, overlap, gaps and permission-aware triage")
+                print(
+                    "PASS: distinct source contribution, overlap, gaps and permission-aware triage"
+                )
             finally:
                 transaction.rollback()
     finally:
