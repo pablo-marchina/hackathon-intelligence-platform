@@ -120,13 +120,18 @@ def _cursor_predicate(filters, rank, quality, start, deadline, params):
     return f"({start}>CAST(:cursor_start AS timestamptz) OR ({start}=CAST(:cursor_start AS timestamptz) AND {quality}<:cursor_quality) OR ({start}=CAST(:cursor_start AS timestamptz) AND {quality}=:cursor_quality AND h.id>CAST(:cursor_id AS uuid)))"
 
 
-def build_hackathon_query(
+def build_hackathon_predicates(
     filters: HackathonFilters,
     *,
     target_id: str | None = None,
     dynamic_fields: dict[str, FilterField] | None = None,
-) -> QuerySpec:
-    params = {"limit": filters.limit + 1}
+) -> tuple[list[str], list[str], dict[str, Any]]:
+    """Shared, allowlisted WHERE clauses for paginated search and exact facets.
+
+    The pagination cursor and sorting deliberately stay out of the matched
+    cohort, so bucket counts describe all events satisfying the filters.
+    """
+    params: dict[str, Any] = {}
     joins = ["LEFT JOIN locations l ON l.id=h.primary_location_id"]
     where = ["h.is_active=true"]
     if target_id is not None:
@@ -225,6 +230,19 @@ def build_hackathon_query(
     expression = getattr(filters, "expression", None)
     if expression is not None:
         where.append(compile_expression(expression, params, dynamic_fields))
+    return joins, where, params
+
+
+def build_hackathon_query(
+    filters: HackathonFilters,
+    *,
+    target_id: str | None = None,
+    dynamic_fields: dict[str, FilterField] | None = None,
+) -> QuerySpec:
+    joins, where, params = build_hackathon_predicates(
+        filters, target_id=target_id, dynamic_fields=dynamic_fields
+    )
+    params["limit"] = filters.limit + 1
     freshness = "CASE WHEN h.last_verified_at IS NULL THEN 0.0 ELSE GREATEST(0.0,1.0-LEAST(EXTRACT(EPOCH FROM (now()-h.last_verified_at))/86400.0,30.0)/30.0) END"
     rank = (
         f"ROUND((ts_rank_cd(sd.document,websearch_to_tsquery('simple',:q))+COALESCE(h.quality_score,0)/100.0*0.10+({freshness})*0.05)::numeric,6)"
