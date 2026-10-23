@@ -81,6 +81,19 @@ def coverage(
     return CoverageRepository(connection).snapshot(recent_days=recent_days)
 
 
+@router.get("/coverage/opportunities")
+def source_opportunities(
+    principal: ViewerDep,
+    connection: ConnectionDep,
+    recent_days: int = Query(default=30, ge=1, le=90),
+    limit: int = Query(default=100, ge=1, le=100),
+) -> dict[str, Any]:
+    """Compare source-exclusive canonical coverage and metadata gaps (read-only)."""
+    from hackathon_api.repositories.source_opportunities import SourceOpportunityRepository
+
+    return SourceOpportunityRepository(connection).snapshot(days=recent_days, limit=limit)
+
+
 @router.get("/canonical-yield")
 def canonical_yield(
     principal: ViewerDep,
