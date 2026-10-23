@@ -20,6 +20,7 @@ from sqlalchemy.engine import make_url
 
 from scripts.ops.controlled_batch_ingestion import run_batch
 from scripts.ops.controlled_catalog_ingestion import _url, run_once
+from scripts.ops.coverage_campaign import run_campaign
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -120,14 +121,42 @@ def verify() -> None:
             fetcher_factory=lambda: fetcher,
         )
 
+    async def batch_runner(engine, sources, *, pages, versions):
+        return await run_batch(engine, sources, pages=pages, versions=versions, runner=runner)
+
     try:
         with engine.begin() as conn:
             for source in (directory, programs):
                 SourceRegistryRepository(conn).upsert(source)
 
-        first = asyncio.run(
-            run_batch(engine, [directory, programs], pages=3, versions=10, runner=runner)
+        campaign = asyncio.run(
+            run_campaign(
+                engine,
+                [directory, programs],
+                pages=3,
+                versions=10,
+                min_net_unique=1,
+                runner=batch_runner,
+            )
         )
+        first = campaign["batch"]
+        assert campaign["status"] == "MEASURED", campaign
+        assert campaign["net_unique_target_met"] is True
+        assert campaign["net_deltas"]["catalog"]["unique_active"] == 1, campaign
+        assert campaign["net_deltas"]["global_funnel"]["unique_searchable_hackathons"] == 1
+        assert (
+            campaign["per_source"]["hackclub_hackathons"]["net_deltas"]["attribution"][
+                "attributed_unique_active"
+            ]
+            == 1
+        )
+        assert (
+            campaign["per_source"]["hackclub_programs"]["net_deltas"]["attribution"][
+                "attributed_unique_active"
+            ]
+            == 1
+        )
+        assert campaign["has_incomplete_or_exhausted_backlog"] is False
         assert first["status"] == "SUCCEEDED", first
         assert first["run_attributed_outcomes"]["CREATED"] == 1, first
         assert first["run_attributed_outcomes"]["LINKED"] == 1, first
@@ -221,9 +250,20 @@ def verify() -> None:
                 == 1
             )
 
-        repeat = asyncio.run(
-            run_batch(engine, [directory, programs], pages=3, versions=10, runner=runner)
+        repeat_campaign = asyncio.run(
+            run_campaign(
+                engine,
+                [directory, programs],
+                pages=3,
+                versions=10,
+                min_net_unique=0,
+                runner=batch_runner,
+            )
         )
+        repeat = repeat_campaign["batch"]
+        assert repeat_campaign["status"] == "MEASURED", repeat_campaign
+        assert repeat_campaign["net_deltas"]["catalog"]["unique_active"] == 0
+        assert repeat_campaign["net_deltas"]["global_funnel"]["unique_searchable_hackathons"] == 0
         assert repeat["status"] == "SUCCEEDED", repeat
         assert repeat["run_attributed_outcomes"]["CREATED"] == 0, repeat
         assert repeat["run_attributed_outcomes"]["LINKED"] == 0, repeat
