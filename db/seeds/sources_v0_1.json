@@ -499,5 +499,53 @@
     ],
     "durable_api_pages": false,
     "notes": "Official Hack Club github.com/hackclub/events-api README documents public unauthenticated read-only GET /api/programs, status partitions, 5-minute caching and 100 requests per 15 minutes. Conservative 4 rpm/one request each refresh. General YSWS programs are NOT assumed to be hackathons: event-kind classifier rejects non-hackathon records. No unlisted/private program access; no organizer-site fetch. No list pagination documented; absence of pagination must not imply global completeness."
+  },
+  {
+    "key": "dribdat_glamhack",
+    "name": "Swiss Open Cultural Data GLAMhack — public Dribdat API",
+    "domain": "hack.glam.opendata.ch",
+    "source_family": "dribdat_glamhack",
+    "source_type": "organizer_open_events_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 76,
+    "trust_score": 0.93,
+    "refresh_interval_seconds": 43200,
+    "rate_limit_per_minute": 2,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "hack.glam.opendata.ch"
+    ],
+    "seed_urls": [
+      "https://hack.glam.opendata.ch/api/events.json"
+    ],
+    "durable_api_pages": false,
+    "notes": "Self-published, explicitly open Dribdat /api/events.json data on its About page; verified 2026-10-23. Includes past GLAMhack editions (2015–2026), including museum and cultural open data hackathons. Do not follow external webpage_url or infer registration status. Review operator-owned DB gates before staging. No pagination documented."
+  },
+  {
+    "key": "dribdat_imprs_astro",
+    "name": "IMPRS Astro Hackathon — public Dribdat API",
+    "domain": "live.imprs-astro-hackathon.de",
+    "source_family": "dribdat_imprs_astro",
+    "source_type": "organizer_open_events_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 65,
+    "trust_score": 0.92,
+    "refresh_interval_seconds": 86400,
+    "rate_limit_per_minute": 1,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "live.imprs-astro-hackathon.de"
+    ],
+    "seed_urls": [
+      "https://live.imprs-astro-hackathon.de/api/events.json"
+    ],
+    "durable_api_pages": false,
+    "notes": "Self-published public /api/events.json open data link in About page; verified 2026-10-23. Includes historic IMPRS Astronomy Hackathon 2024 in Germany. Unknown registration costs/deadlines are not inferred. No pagination documented."
   }
 ]
