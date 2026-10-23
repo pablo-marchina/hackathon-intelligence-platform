@@ -73,8 +73,11 @@ Esta CLI restringe ainda mais os ambientes de execução a `staging` e
 - `batch`: relatórios por fonte, `crawl_run_id`, estados de fetch,
   `CREATED/LINKED/UPDATED/REJECTED`, backlog, páginas e limites.
 - `has_incomplete_or_exhausted_backlog`: sinaliza páginas pendentes
-  por orçamento ou esgotadas; nenhuma fonte não rastreada é inferida
-  como completamente coletada.
+  mesmo sem esgotar o orçamento, páginas limitadas por orçamento e URLs
+  que esgotaram tentativas.
+- `has_unverified_backlog_sources`: fonte sem rastreamento de URLs.
+  `--require-drained` falha também nesse caso: desconhecido não equivale
+  a fila comprovadamente vazia.
 
 Fotografias são feitas em transações PostgreSQL `REPEATABLE READ READ
 ONLY`: consultas diferentes dentro da mesma fotografia observam um
