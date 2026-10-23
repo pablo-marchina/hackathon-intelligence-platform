@@ -145,8 +145,7 @@ def verify() -> None:
                 global_counts = snapshot["global"]
                 previous = baseline["global"]
                 assert (
-                    global_counts["total_active_canonicals"]
-                    - previous["total_active_canonicals"]
+                    global_counts["total_active_canonicals"] - previous["total_active_canonicals"]
                     == 4
                 )
                 assert (
@@ -155,19 +154,14 @@ def verify() -> None:
                     == 3
                 )
                 assert (
-                    global_counts["exclusive_to_one_source"]
-                    - previous["exclusive_to_one_source"]
+                    global_counts["exclusive_to_one_source"] - previous["exclusive_to_one_source"]
                     == 2
                 )
                 assert (
-                    global_counts["shared_across_sources"]
-                    - previous["shared_across_sources"]
-                    == 1
+                    global_counts["shared_across_sources"] - previous["shared_across_sources"] == 1
                 )
                 assert (
-                    global_counts["without_active_source"]
-                    - previous["without_active_source"]
-                    == 1
+                    global_counts["without_active_source"] - previous["without_active_source"] == 1
                 )
 
                 rows = {row["source_id"]: row for row in snapshot["sources"]}
