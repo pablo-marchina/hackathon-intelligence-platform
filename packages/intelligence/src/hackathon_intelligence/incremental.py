@@ -140,6 +140,18 @@ def prepare_event(
     for key, value in direct.items():
         if value is not None and value != "":
             fields[key] = (value, value, "API", "source_event_ref.payload." + key)
+    # Eligibility is a *published statement*, not an inferred student,
+    # residency, age or team-size rule. A source can be explicit about
+    # eligibility without providing enough evidence for any typed boolean.
+    raw_eligibility = payload.get("eligibility_raw")
+    if isinstance(raw_eligibility, str) and raw_eligibility.strip():
+        eligibility_text = raw_eligibility.strip()[:2000]
+        fields["participation_requirements"] = (
+            raw_eligibility,
+            eligibility_text,
+            "API",
+            "source_event_ref.payload.eligibility_raw",
+        )
     if source_key == "hackclub_programs":
         # The official documented Events API publishes factual descriptions
         # and lifecycle statuses. These stay source-evidenced, not inferred
@@ -493,6 +505,17 @@ class CanonicalProcessor:
             self._execute(
                 "UPDATE hackathons SET participation_fee_currency=:value WHERE id=CAST(:id AS uuid)",
                 {"value": value, "id": event_id},
+            )
+        elif field == "participation_requirements" and isinstance(value, str):
+            self._execute(
+                """
+                INSERT INTO eligibility_rules (hackathon_id, eligibility_raw_text)
+                VALUES (CAST(:id AS uuid), :value)
+                ON CONFLICT (hackathon_id) DO UPDATE
+                SET eligibility_raw_text=EXCLUDED.eligibility_raw_text,
+                    updated_at=now()
+                """,
+                {"id": event_id, "value": value},
             )
 
     def _sync_location(self, event_id: str, event: EventCandidate) -> None:
