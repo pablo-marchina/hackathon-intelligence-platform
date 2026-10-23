@@ -22,9 +22,9 @@ def _json(result: FetchResult) -> Any:
 def _valid_http_url(value: Any) -> str | None:
     if not isinstance(value, str) or len(value) > 2048:
         return None
-    value = value.strip()
+    candidate: str = value.strip()
     try:
-        parsed = urlsplit(value)
+        parsed = urlsplit(candidate)
         if (
             parsed.scheme not in {"http", "https"}
             or not parsed.hostname
@@ -32,10 +32,10 @@ def _valid_http_url(value: Any) -> str | None:
             or parsed.password is not None
         ):
             return None
-        HttpUrl(value)
+        HttpUrl(candidate)
     except ValueError:
         return None
-    return value
+    return candidate
 
 
 class ApiSeedAdapter(SourceAdapter):
@@ -188,7 +188,7 @@ class HackClubYswsProgramsAdapter(ApiSeedAdapter):
                     source_key=self.definition.key,
                     source_event_id=identifier.strip()[:200],
                     name=name.strip()[:300],
-                    source_url=result.final_url,
+                    source_url=HttpUrl(result.final_url),
                     official_url=HttpUrl(url) if url else None,
                     starts_at_raw=start if isinstance(start, str) else None,
                     ends_at_raw=end if isinstance(end, str) else None,
