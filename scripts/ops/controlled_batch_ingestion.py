@@ -158,6 +158,10 @@ async def run_batch(
                     "pages_fetched": result.get("pages_fetched", 0),
                     "references_persisted": result.get("references_persisted", 0),
                     "versions_processed": result.get("versions_processed", 0),
+                    "backlog_tracked": result.get("backlog_tracked"),
+                    "backlog_by_state": result.get("backlog_by_state"),
+                    "unprocessed_backlog_urls": result.get("unprocessed_backlog_urls"),
+                    "budget_hit_with_pending_urls": result.get("budget_hit_with_pending_urls"),
                     "run_outcomes": outcome,
                     "processed_this_invocation": processed,
                     "catalog_delta_observed": result.get("catalog_delta_observed"),
@@ -189,6 +193,9 @@ async def run_batch(
         "sources_succeeded": good,
         "sources_blocked": sum(row["status"] == "BLOCKED" for row in completed),
         "sources_failed": sum(row["status"] == "FAILED" for row in completed),
+        "sources_budget_limited": sum(
+            row.get("budget_hit_with_pending_urls") is True for row in completed
+        ),
         "catalog_before": start_count,
         "catalog_after": finish_count,
         "catalog_delta_observed": (
