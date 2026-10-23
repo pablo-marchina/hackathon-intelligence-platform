@@ -161,7 +161,9 @@ def test_invalid_rows_and_unsafe_urls_do_not_poison_valid_hackathons():
             },
         ]
     )
-    records = asyncio.run(DribdatOpenEventsAdapter(approved_sources()[0]).parse_events(response(data)))
+    records = asyncio.run(
+        DribdatOpenEventsAdapter(approved_sources()[0]).parse_events(response(data))
+    )
     assert len(records) == 4
     safe = records[-1]
     assert safe.official_url is None
@@ -179,6 +181,8 @@ def test_missing_or_invalid_event_collections_are_empty(payload):
 
 def test_oversized_feed_fails_explicitly_instead_of_dropping_late_editions():
     adapter = DribdatOpenEventsAdapter(approved_sources()[0])
-    payload = {"events": [{"id": n + 1, "name": "Hackathon"} for n in range(MAX_DRIBDAT_EVENTS + 1)]}
+    payload = {
+        "events": [{"id": n + 1, "name": "Hackathon"} for n in range(MAX_DRIBDAT_EVENTS + 1)]
+    }
     with pytest.raises(ValueError, match="exceeds"):
         asyncio.run(adapter.parse_events(response(payload)))
