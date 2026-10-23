@@ -1,7 +1,7 @@
 """Policy-gated extraction of factual schema.org Event data from HTML pages.
 
-This adapter never navigates to event URLs. Only sources independently approved for
-fetching HTML may use it; links emitted as evidence do not authorize crawling.
+Only independently approved sources may discover and fetch same-host event pages.
+External organizer and registration links are evidence, not crawl authorization.
 """
 
 from __future__ import annotations
@@ -10,11 +10,12 @@ import json
 import re
 from collections.abc import Iterator
 from typing import Any
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urldefrag, urljoin, urlsplit
 
 from bs4 import BeautifulSoup
+from pydantic import HttpUrl
 
-from .models import FetchResult, SourceEventRecord
+from .models import DiscoveredUrl, FetchResult, SourceEventRecord
 from .seed_adapter import SeedUrlAdapter
 
 MAX_LD_SCRIPTS = 40
@@ -22,6 +23,9 @@ MAX_LD_SCRIPT_BYTES = 1_000_000
 MAX_LD_NODES = 500
 MAX_EVENTS_PER_PAGE = 100
 MAX_LD_DEPTH = 8
+MAX_HTML_ANCHORS = 1500
+MAX_HTML_DISCOVERIES = 100
+MAX_HTML_PAGINATION_HOPS = 50
 
 
 def _scalar(value: Any) -> str | None:
@@ -235,7 +239,88 @@ def _record(node: dict[str, Any], result: FetchResult, source_key: str) -> Sourc
 
 
 class StructuredHtmlEventAdapter(SeedUrlAdapter):
-    """Extract hackathon-like schema.org Event nodes from already permitted pages."""
+    """Extract Event JSON-LD and same-host listing links, only for permitted sources."""
+
+    async def parse_listing(self, result: FetchResult) -> list[DiscoveredUrl]:
+        """Discover bounded event/detail and genuine pagination links from HTML.
+
+        External organizer/registration links are evidence, not crawl permission.
+        The runner rechecks host, robots and the source's operator-owned approval.
+        """
+        if "html" not in (result.content_type or "").lower():
+            return []
+        soup = BeautifulSoup(result.body, "html.parser")
+        allowed = {
+            self.definition.domain.casefold(),
+            *(host.casefold() for host in self.definition.allowed_hosts),
+        }
+        current = urlsplit(result.final_url)
+        seen: set[str] = {urldefrag(result.final_url).url}
+        results: list[DiscoveredUrl] = []
+        unwanted = re.compile(
+            r"^/(?:blog|news|articles?|docs?|help|faq|login|signup|account|"
+            r"privacy|terms|jobs|careers|about|resources)(?:/|$)",
+            re.I,
+        )
+        detail_path = re.compile(
+            r"/(?:hackathons?|events?|challenges?|competitions?|ai-hackathons)/[^/?#]+",
+            re.I,
+        )
+        event_label = re.compile(
+            r"\b(?:hackathons?|buildathons?|datathons?|game\s+jams?|ideathons?)\b",
+            re.I,
+        )
+        for anchor in soup.find_all("a", href=True, limit=MAX_HTML_ANCHORS):
+            raw = anchor.get("href")
+            if not isinstance(raw, str) or len(raw) > 2048:
+                continue
+            try:
+                candidate = urldefrag(urljoin(result.final_url, raw)).url
+                url = urlsplit(candidate)
+                if (
+                    url.scheme not in {"http", "https"}
+                    or not url.hostname
+                    or url.hostname.casefold() not in allowed
+                    or url.username is not None
+                    or url.password is not None
+                    or url.port not in {None, 80, 443}
+                    or len(candidate) > 2048
+                    or unwanted.search(url.path)
+                    or re.search(r"\.(?:png|jpe?g|gif|webp|svg|pdf|css|js|zip)$", url.path, re.I)
+                    or candidate in seen
+                ):
+                    continue
+            except ValueError:
+                continue
+            text = anchor.get_text(" ", strip=True)[:250]
+            label = " ".join(text.split()).casefold()
+            query = url.query.casefold()
+            is_pagination = (
+                url.path.rstrip("/") == current.path.rstrip("/")
+                and bool(re.search(r"(?:^|&)(?:page|offset|cursor)=", query))
+                and bool(re.fullmatch(r"(?:next|older|mais|próxim[ao]|\d+|[›»→]+)", label))
+            )
+            is_detail = bool(detail_path.search(url.path) or event_label.search(text))
+            if not (is_detail or is_pagination):
+                continue
+            # An event listing query is not an event detail; discover it only via
+            # a visible pagination control to prevent unbounded filter crawling.
+            if url.path.rstrip("/") == current.path.rstrip("/") and not is_pagination:
+                continue
+            seen.add(candidate)
+            results.append(
+                DiscoveredUrl(
+                    url=HttpUrl(candidate),
+                    source_key=self.definition.key,
+                    discovery_method="html_pagination" if is_pagination else "html_event_link",
+                    parent_url=HttpUrl(result.final_url),
+                    depth=1,
+                    priority=self.definition.priority,
+                )
+            )
+            if len(results) >= MAX_HTML_DISCOVERIES:
+                break
+        return results
 
     async def parse_events(self, result: FetchResult) -> list[SourceEventRecord]:
         if "html" not in (result.content_type or "").lower():
