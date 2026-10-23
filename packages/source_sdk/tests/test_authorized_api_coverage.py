@@ -121,6 +121,8 @@ def test_status_partitioned_adapter_yields_distinct_events_and_real_hybrid_forma
             "Hackathon project building and team awards."
         )
         assert candidate.fields["source_event_status"][1] in {"upcoming", "ongoing", "ended"}
+        assert candidate.fields["participation_requirements"][1] == "Open to students"
+        assert candidate.fields["participation_requirements"][3].endswith("eligibility_raw")
         assert candidate.fields["source_event_status"][3].endswith("metadata.status")
     # Seed URLs are the only fetched URLs: organizer sites are not crawled.
     assert all(url.startswith("https://hackclub.com/api/v1/events?") for url in fetcher.calls)
