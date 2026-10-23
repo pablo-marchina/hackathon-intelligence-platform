@@ -29,7 +29,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def local_test_database() -> str:
-    if os.environ.get("APP_ENV") != "test" or os.environ.get("HIP_ALLOW_API_PAGINATION_DRILL") != "1":
+    if (
+        os.environ.get("APP_ENV") != "test"
+        or os.environ.get("HIP_ALLOW_API_PAGINATION_DRILL") != "1"
+    ):
         raise RuntimeError("explicit disposable-test opt-in required")
     url = os.environ["DATABASE_URL"]
     parsed = make_url(url)
@@ -179,16 +182,20 @@ def verify() -> None:
                 {"id": source_id, "prefix": f"CI Official Hackathon {tag}%"},
             ).scalar_one()
             assert stages == 3
-            hops = conn.execute(
-                text("""
+            hops = (
+                conn.execute(
+                    text("""
                     SELECT b.metadata->>'pagination_depth' AS depth
                       FROM source_url_backlog b
                      WHERE b.source_id=CAST(:id AS uuid)
                        AND b.kind='DISCOVERED'
                      ORDER BY b.url
                 """),
-                {"id": source_id},
-            ).scalars().all()
+                    {"id": source_id},
+                )
+                .scalars()
+                .all()
+            )
             assert sorted(hops) == ["1", "2"]
 
         # A unique API pagination chain must not evade hop limits merely
@@ -204,14 +211,17 @@ def verify() -> None:
         assert deep_result.fetched_pages == 1
         assert fetcher.requests[-1] == deep
         with engine.connect() as conn:
-            assert conn.execute(
-                text("""
+            assert (
+                conn.execute(
+                    text("""
                     SELECT COUNT(*) FROM source_url_backlog
                      WHERE source_id=CAST(:id AS uuid)
                        AND url=:url
                 """),
-                {"id": source_id, "url": overlimit},
-            ).scalar_one() == 0
+                    {"id": source_id, "url": overlimit},
+                ).scalar_one()
+                == 0
+            )
 
         print(
             "PASS: approved API pagination resumes across runs, respects pause, "
