@@ -29,6 +29,20 @@ type Coverage={
 type SourceInsight={source_id:string;name:string;eligible_for_controlled_collection:boolean;permission_status:string|null;active:boolean;new_references_in_window:number;ready_urls_now:number;exhausted_urls:number;runs_in_window:{run_count:number;succeeded:number;partial:number;failed:number;cancelled:number;running:number;fetched_pages:number;parsed_records:number;reported_failures:number};current_rejection_reasons:Record<string,number>;triage_score:number|null;suggested_action:string};
 type SourceInsights={as_of:string;recent_window_days:number;sources:SourceInsight[];recent_runs:Array<{id:string;source_id:string;status:string;started_at:string;finished_at:string|null;fetched_count:number;parsed_count:number;failed_count:number}>;methodology:Record<string,string>};
 type CanonicalYield={as_of:string;recent_window_days:number;totals:{processed_versions:number;created:number;linked:number;updated:number;rejected:number;unattributed:number};sources:Array<{source_id:string;name:string;created:number;linked:number;updated:number;rejected:number;unattributed:number}>;runs:Array<{crawl_run_id:string;source_id:string;created:number;linked:number;updated:number;rejected:number}>;methodology:Record<string,string>};
+type SourceOpportunity={
+  source_id:string;name:string;permission_status:string|null;active:boolean;
+  eligible_for_controlled_collection:boolean;suggested_next_step:string;
+  attributed_unique_active:number;exclusive_canonicals:number;shared_canonicals:number;exclusive_percent:number|null;
+  recent_created:number;recent_linked:number;recent_updated:number;recent_rejected:number;
+  missing_registration_deadline:number;missing_registration_url:number;
+  unknown_cost:number;missing_start_or_end:number;missing_organizer:number;missing_prize_details:number;
+  known_registration_deadline_percent:number|null;known_cost_percent:number|null;
+};
+type SourceOpportunities={
+  as_of:string;recent_window_days:number;
+  global:{total_active_canonicals:number;canonicals_with_active_source:number;exclusive_to_one_source:number;shared_across_sources:number;without_active_source:number};
+  sources:SourceOpportunity[];methodology:Record<string,string>;
+};
 type Tab='coverage'|'sources'|'reviews'|'quality'|'audit';
 
 function percentOrNA(value:number|null):string{return value===null?'N/A':`${value}%`;}
@@ -66,6 +80,7 @@ export function AdminDashboard(){
   const [coverage,setCoverage]=useState<Coverage|null>(null);
   const [insights,setInsights]=useState<SourceInsights|null>(null);
   const [canonicalYield,setCanonicalYield]=useState<CanonicalYield|null>(null);
+  const [opportunities,setOpportunities]=useState<SourceOpportunities|null>(null);
   const [reviews,setReviews]=useState<Review[]>([]);
   const [quality,setQuality]=useState<Quality[]>([]);
   const [audit,setAudit]=useState<Audit[]>([]);
@@ -75,7 +90,7 @@ export function AdminDashboard(){
 
   const refresh=useCallback(async()=>{
     // Parallel reads are safe: every API request carries the same user session.
-    const [nextCoverage,nextInsights,nextYield,nextSources,nextReviews,nextQuality,nextAudit]=await Promise.all([
+    const [nextCoverage,nextInsights,nextYield,nextSources,nextReviews,nextQuality,nextAudit,nextOpportunities]=await Promise.all([
       adminRequest<Coverage>('/coverage'),
       adminRequest<SourceInsights>('/source-insights?recent_days=7&run_limit=25'),
       adminRequest<CanonicalYield>('/canonical-yield?days=7'),
@@ -83,8 +98,9 @@ export function AdminDashboard(){
       adminRequest<Review[]>('/review-queue?limit=100'),
       adminRequest<Quality[]>('/quality?limit=100'),
       adminRequest<Audit[]>('/audit?limit=50'),
+      adminRequest<SourceOpportunities>('/coverage/opportunities?recent_days=30&limit=100'),
     ]);
-    setCoverage(nextCoverage);setInsights(nextInsights);setCanonicalYield(nextYield);setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);
+    setCoverage(nextCoverage);setInsights(nextInsights);setCanonicalYield(nextYield);setSources(nextSources);setReviews(nextReviews);setQuality(nextQuality);setAudit(nextAudit);setOpportunities(nextOpportunities);
   },[]);
 
   useEffect(()=>{
@@ -159,6 +175,33 @@ export function AdminDashboard(){
           <div><strong>{coverage.pipeline.normalization_errors}</strong><span>Normalization errors requiring attention</span></div>
           <div><strong>{coverage.pipeline.backlog.backlog_exhausted}</strong><span>URLs with exhausted retries</span></div>
         </div>
+        {opportunities&&<section aria-label="Source marginal coverage and data gaps">
+          <h3>Source overlap and enrichment opportunities</h3>
+          <p className="muted">Distinct current canonical events, not raw URLs. Exclusive means linked to exactly one source <em>inside this database</em>, not worldwide exclusivity. Missing fields describe the resulting event, not necessarily an omission by that source. The recommendations never approve or start collection.</p>
+          <div className="admin-stats">
+            <div><strong>{opportunities.global.canonicals_with_active_source}</strong><span>Canonicals with active source links</span></div>
+            <div><strong>{opportunities.global.exclusive_to_one_source}</strong><span>Linked to one source only</span></div>
+            <div><strong>{opportunities.global.shared_across_sources}</strong><span>Linked to multiple sources</span></div>
+            <div><strong>{opportunities.global.without_active_source}</strong><span>Active canonicals without active source links</span></div>
+          </div>
+          <div className="admin-table-scroll">
+            <table className="admin-table">
+              <thead><tr>
+                <th>Source</th><th>Attributed</th><th>Exclusive</th><th>Shared</th>
+                <th>Created (30d)</th><th>Missing deadline</th><th>Unknown fee</th><th>Missing prizes</th><th>Next step</th>
+              </tr></thead>
+              <tbody>{opportunities.sources.map(source=><tr key={source.source_id}>
+                <td>{source.name}<small className="muted">{' · '}{source.permission_status??'UNKNOWN'}</small></td>
+                <td>{source.attributed_unique_active}</td>
+                <td>{source.exclusive_canonicals} ({percentOrNA(source.exclusive_percent)})</td>
+                <td>{source.shared_canonicals}</td><td>{source.recent_created}</td>
+                <td>{source.missing_registration_deadline}</td>
+                <td>{source.unknown_cost}</td><td>{source.missing_prize_details}</td>
+                <td>{source.suggested_next_step.replaceAll('_',' ').toLowerCase()}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </section>}
         <section aria-label="Source ingestion funnel">
           <h3>Ingestion funnel · source-cohort snapshot</h3>
           <p className="muted">URLs are source-scoped tasks; references are different units. Percentages never divide events by URLs. Historic references without staged payloads remain in the staging denominator. Rejected records are not successful normalizations.</p>
