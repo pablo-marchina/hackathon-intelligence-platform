@@ -174,7 +174,7 @@ def test_migration_is_current_and_outcomes_are_atomic():
         ScriptDirectory.from_config(Config(str(root / "db/alembic.ini"))).get_current_head()
         == EXPECTED_DB_REVISION
     )
-    assert EXPECTED_DB_REVISION == "0014_typed_attribute_catalog"
+    assert EXPECTED_DB_REVISION == "0015_event_enrichment"
     sql = (root / "db/sql/0013_canonical_yield.sql").read_text()
     assert "CREATE TABLE canonical_processing_outcomes" in sql
     assert "UNIQUE (source_event_ref_id, content_hash)" in sql
