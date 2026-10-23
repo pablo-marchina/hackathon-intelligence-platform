@@ -84,6 +84,9 @@ def _verify_one(
         for item in load_source_definitions(ROOT / "db/seeds/sources_v0_1.json")
         if item.key == source_key
     )
+    # These E2E fixtures have dedicated DB families so durable seed cooldowns
+    # cannot mask the next test's API pages or bias per-run yield receipts.
+    source = source.model_copy(update={"source_family": f"ci-coverage-{source_key}-{tag}"})
     # Original API URLs stay on the approved source host; no event-website
     # fetches are allowed. The fixture must cover all expected seeds.
     assert set(str(item) for item in source.seed_urls) == set(pages)
