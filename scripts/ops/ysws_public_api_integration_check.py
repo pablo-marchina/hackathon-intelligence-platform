@@ -180,7 +180,9 @@ def verify() -> None:
         assert repeat["status"] == "SUCCEEDED", repeat
         assert repeat["run_outcomes"]["CREATED"] == 0, repeat
         assert repeat["catalog_delta_observed"] == 0, repeat
-        print("PASS: official YSWS synthetic API accepts two hackathons, rejects two programs, replays safely")
+        print(
+            "PASS: official YSWS synthetic API accepts two hackathons, rejects two programs, replays safely"
+        )
     finally:
         engine.dispose()
 
