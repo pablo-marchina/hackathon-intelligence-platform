@@ -220,6 +220,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:filters
       - run: npm run build
 
   dependency-security:
