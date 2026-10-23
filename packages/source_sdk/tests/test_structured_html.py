@@ -84,6 +84,11 @@ def test_extract_rich_multisite_graph_without_following_external_links():
                 ],
                 "organizer": {"@type": "Organization", "name": "Campus"},
                 "sponsor": [{"@type": "Organization", "name": "Startup"}],
+                "award": [
+                    {"@type": "Thing", "name": "Judges' choice award"},
+                    "Open source champion",
+                ],
+                "audience": {"@type": "Audience", "name": "Students aged 15–19"},
                 "offers": {
                     "@type": "Offer",
                     "url": "https://register.example/signup",
@@ -109,6 +114,8 @@ def test_extract_rich_multisite_graph_without_following_external_links():
     assert item.tags == ["AI", "fintech", "Sustainability"]
     assert item.metadata["organizers"] == ["Campus"]
     assert item.metadata["sponsors"] == ["Startup"]
+    assert item.metadata["prize_details_text"] == "Judges' choice award; Open source champion"
+    assert item.eligibility_raw == "Students aged 15–19"
     assert item.metadata["registration_url"] == "https://register.example/signup"
     assert item.metadata["image_url"] == "https://university.example/banner.png"
     assert item.metadata["ticket_price"] == "0"
