@@ -14,7 +14,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from hackathon_sources.backlog import SourceUrlBacklog
-from hackathon_sources.factory import build_adapter
+from hackathon_sources.live_adapters import HackClubHackathonsAdapter
 from hackathon_sources.models import FetchResult
 from hackathon_sources.persistent_runner import (
     MAX_API_PAGINATION_HOPS,
@@ -46,12 +46,13 @@ def local_test_database() -> str:
 
 
 class FixtureFetcher:
-    def __init__(self, pages: dict[str, dict]) -> None:
+    def __init__(self, pages: dict[str, dict], source_key: str) -> None:
         self.pages = pages
+        self.source_key = source_key
         self.requests: list[str] = []
 
     async def fetch(self, definition, url, *, etag=None, last_modified=None):
-        assert definition.key == "hackclub_hackathons"
+        assert definition.key == self.source_key
         assert url in self.pages, "unexpected/unapproved page requested"
         self.requests.append(url)
         return FetchResult(
@@ -77,7 +78,12 @@ def verify() -> None:
     # Otherwise staged (unprocessed) refs and refreshed seeds would affect
     # later CI jobs that exercise actual Hack Club source families.
     tag = uuid4().hex[:12]
-    source = source.model_copy(update={"source_family": f"ci-api-pagination-{tag}"})
+    source = source.model_copy(
+        update={
+            "key": f"ci_api_pagination_{tag}",
+            "source_family": f"ci-api-pagination-{tag}",
+        }
+    )
     seed = str(source.seed_urls[0])
     second = seed + "?page=2"
     third = seed + "?page=3"
@@ -109,7 +115,7 @@ def verify() -> None:
         third: page(3, None),
         deep: page(50, overlimit),
     }
-    fetcher = FixtureFetcher(pages)
+    fetcher = FixtureFetcher(pages, source.key)
     engine = create_engine(local_test_database(), pool_pre_ping=True)
     try:
         with engine.begin() as conn:
@@ -120,7 +126,7 @@ def verify() -> None:
         def run_one():
             with engine.connect() as conn:
                 return asyncio.run(
-                    run_source_persisted(build_adapter(source), fetcher, conn, max_pages=1)
+                    run_source_persisted(HackClubHackathonsAdapter(source), fetcher, conn, max_pages=1)
                 )
 
         first = run_one()
