@@ -4,6 +4,7 @@ Every cohort is DISTINCT (source_id, canonical_hackathon_id). Two raw source
 references from one source to the same hackathon are not two opportunities.
 Shared canonical records are not added to compute global unique coverage.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -191,9 +192,7 @@ class SourceOpportunityRepository:
                 else None
             )
             data["known_cost_percent"] = (
-                round(100 * (cohort - data["unknown_cost"]) / cohort, 1)
-                if cohort
-                else None
+                round(100 * (cohort - data["unknown_cost"]) / cohort, 1) if cohort else None
             )
             # Triaging does not authorize or execute crawling.
             eligible = bool(
@@ -215,10 +214,15 @@ class SourceOpportunityRepository:
             else:
                 data["suggested_next_step"] = "INVESTIGATE_SOURCE_OVERLAP"
             sources.append(data)
-        global_counts = {key: _count(totals[key]) for key in (
-            "total_active_canonicals", "canonicals_with_active_source",
-            "exclusive_to_one_source", "shared_across_sources",
-        )}
+        global_counts = {
+            key: _count(totals[key])
+            for key in (
+                "total_active_canonicals",
+                "canonicals_with_active_source",
+                "exclusive_to_one_source",
+                "shared_across_sources",
+            )
+        }
         global_counts["without_active_source"] = (
             global_counts["total_active_canonicals"]
             - global_counts["canonicals_with_active_source"]
