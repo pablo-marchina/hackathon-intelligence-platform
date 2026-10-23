@@ -33,6 +33,7 @@ def verify() -> None:
         with engine.connect() as conn:
             transaction = conn.begin()
             try:
+                baseline = SourceOpportunityRepository(conn).snapshot(as_of=now, days=30)
                 source_ids: dict[str, str] = {}
                 for key, permission in (
                     ("approved", "ALLOWED"),
@@ -142,11 +143,32 @@ def verify() -> None:
 
                 snapshot = SourceOpportunityRepository(conn).snapshot(as_of=now, days=30)
                 global_counts = snapshot["global"]
-                assert global_counts["total_active_canonicals"] == 4
-                assert global_counts["canonicals_with_active_source"] == 3
-                assert global_counts["exclusive_to_one_source"] == 2
-                assert global_counts["shared_across_sources"] == 1
-                assert global_counts["without_active_source"] == 1
+                previous = baseline["global"]
+                assert (
+                    global_counts["total_active_canonicals"]
+                    - previous["total_active_canonicals"]
+                    == 4
+                )
+                assert (
+                    global_counts["canonicals_with_active_source"]
+                    - previous["canonicals_with_active_source"]
+                    == 3
+                )
+                assert (
+                    global_counts["exclusive_to_one_source"]
+                    - previous["exclusive_to_one_source"]
+                    == 2
+                )
+                assert (
+                    global_counts["shared_across_sources"]
+                    - previous["shared_across_sources"]
+                    == 1
+                )
+                assert (
+                    global_counts["without_active_source"]
+                    - previous["without_active_source"]
+                    == 1
+                )
 
                 rows = {row["source_id"]: row for row in snapshot["sources"]}
                 a, b, empty = (rows[source_ids[key]] for key in ("approved", "review", "empty"))
