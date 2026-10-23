@@ -127,22 +127,23 @@ def verify() -> None:
                 report = HackathonFacetRepository(conn).summarize(
                     filters,
                     fields=[
-                        "format", "source_domain",
-                        "attrs.participation_requirements", "is_free",
+                        "format",
+                        "source_domain",
+                        "attrs.participation_requirements",
+                        "is_free",
                     ],
                 )
                 assert report["matched_total"] == 3, report
                 assert report["counts_scope"] == "ALL_MATCHES_NOT_CURRENT_PAGE"
+
                 def buckets(name: str) -> dict[str | None, int]:
-                    return {
-                        bucket["value"]: bucket["count"]
-                        for bucket in report["facets"][name]
-                    }
+                    return {bucket["value"]: bucket["count"] for bucket in report["facets"][name]}
 
                 assert buckets("format") == {"ONLINE": 2, "HYBRID": 1}
                 assert buckets("is_free") == {"true": 1, "false": 1, None: 1}
                 assert buckets("attrs.participation_requirements") == {
-                    "Students are welcome": 1, None: 2
+                    "Students are welcome": 1,
+                    None: 2,
                 }
                 assert buckets("source_domain") == {
                     f"ci-facets-{tag}-0.invalid": 2,
