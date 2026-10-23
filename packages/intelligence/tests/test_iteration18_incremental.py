@@ -25,6 +25,7 @@ def example(**updates):
         "ends_at_raw": "2027-04-03T18:00:00-03:00",
         "city": "São Paulo",
         "country": "Brazil",
+        "eligibility_raw": "Open to students and independent developers.",
         "metadata": {
             "extraction_method": "schema_org_json_ld",
             "is_accessible_for_free": False,
@@ -47,6 +48,13 @@ def test_projection_preserves_identity_dates_currency_consent():
     assert event.fields["is_free"][1] is False
     assert event.fields["participation_fee_currency"][1] == "BRL"
     assert event.fields["organizers"][1] == ["Campus"]
+    assert (
+        event.fields["participation_requirements"][1]
+        == "Open to students and independent developers."
+    )
+    assert "student_required" not in event.fields
+    assert "minimum_age" not in event.fields
+    assert "prize_pool_usd" not in event.fields
     assert "registration_close_at" not in event.fields
     assert event.fields["offer_valid_through"][1] == "2027-03-11T02:59:00+00:00"
 
