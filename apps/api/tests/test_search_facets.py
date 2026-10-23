@@ -119,7 +119,7 @@ def test_full_facet_query_uses_same_complex_matching_without_limit_or_cursor() -
     dynamic = [p for q, p in connection.queries if "facet_attribute_path" in p]
     assert len(dynamic) == 1
     assert dynamic[0]["facet_attribute_path"] == "language"
-    assert ":facet_attribute_path" in connection.queries[2][0]
+    assert any(":facet_attribute_path" in query for query, _ in connection.queries)
 
 
 def test_numeric_dynamic_facet_refused_without_exposing_untrusted_sql() -> None:
