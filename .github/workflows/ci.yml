@@ -70,6 +70,10 @@ jobs:
         env:
           HIP_ALLOW_BACKLOG_DB_DRILL: "1"
         run: python -m scripts.ops.source_url_backlog_integration_check
+      - name: Explicit country exclusions and unknown eligibility (PostgreSQL)
+        env:
+          HIP_ALLOW_ELIGIBILITY_DRILL: "1"
+        run: python -m scripts.ops.country_eligibility_integration_check
       - name: Typed canonical attributes and advanced filtering (PostgreSQL)
         env:
           HIP_ALLOW_ATTRIBUTES_DB_DRILL: "1"
@@ -216,6 +220,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:filters
       - run: npm run build
 
   dependency-security:

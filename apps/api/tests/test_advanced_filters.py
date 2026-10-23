@@ -242,3 +242,18 @@ def test_post_query_e2e_with_fake_database_and_bound_filter_values(
     assert response.status_code == 200
     assert response.json()["items"][0]["slug"] == "sample-hackathon"
     assert response.json()["next_cursor"] is None
+
+
+def test_explicitly_disallowed_countries_never_count_as_positive_eligibility() -> None:
+    """A country exclusion is not an allowed-country relation."""
+    for op, value in (("eq", "BR"), ("in", ["BR", "AR"])):
+        params: dict = {}
+        sql = compile_expression({"field": "eligible_country", "op": op, "value": value}, params)
+        assert "ec.allowed=true" in sql
+        assert "h.eligible_worldwide=true" in sql
+        assert "ec.country_code" in sql
+        assert "BR" not in sql and "AR" not in sql
+    for op in ("is_known", "is_unknown"):
+        sql = compile_expression({"field": "eligible_country", "op": op}, {})
+        assert "ec.allowed=true" in sql
+        assert "eligibility_countries ec" in sql

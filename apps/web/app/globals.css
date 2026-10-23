@@ -58,3 +58,14 @@
 .advanced-builder-actions button{flex:1;min-width:max-content}
 .advanced-builder .secondary{background:#18314b;color:var(--text);border:1px solid var(--line)}
 @media(max-width:880px){.advanced-search-layout{grid-template-columns:1fr}}
+
+/* Advanced query builder: bounded nested logical groups, accessible on mobile. */
+.advanced-root-group,.advanced-nested-group{border:1px solid var(--line);border-radius:14px;display:grid;gap:14px;padding:14px;min-width:0}
+.advanced-root-group{border-color:#385675}.advanced-nested-group{margin-left:10px;border-left:3px solid var(--accent2);background:#0b1727}
+.advanced-root-group legend,.advanced-nested-group legend{padding:0 8px;color:var(--accent2);font-weight:750}
+.advanced-group-toolbar{display:grid;gap:12px}
+.advanced-group-toolbar .advanced-inline-toggle{display:flex;align-items:center;gap:8px}
+.advanced-group-toolbar .advanced-inline-toggle input{width:auto}
+.advanced-group-buttons{display:flex;gap:8px;flex-wrap:wrap}
+.advanced-group-buttons button{font-size:.86rem;flex:1;min-width:max-content}
+@media(max-width:480px){.advanced-nested-group{margin-left:0;padding:10px}.advanced-root-group{padding:10px}.advanced-group-buttons button{min-width:100%}}
