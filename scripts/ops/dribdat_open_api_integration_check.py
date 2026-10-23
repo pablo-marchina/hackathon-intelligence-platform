@@ -162,7 +162,7 @@ def verify() -> None:
             assert len({row["canonical_id"] for row in accepted}) == 3
             older = next(row for row in accepted if "2015" in row["name"])
             assert older["start_at"].year == 2015
-            assert next(row for row in rows if "Workshop" in (row["name"] or "")) is None if False else True
+            assert sum(row["canonical_id"] is None for row in rows) == 1
             count_selected = conn.execute(
                 text("""
                     SELECT COUNT(*)
@@ -176,7 +176,8 @@ def verify() -> None:
                 {"family_a": glamhack.source_family, "family_b": astro.source_family},
             ).scalar_one()
             assert count_selected == 3
-            assert all(row["official_url"] != "https://organizer-" for row in accepted)
+            glamhack_event = next(row for row in accepted if "GLAMhack 2026" in row["name"])
+            assert glamhack_event["official_url"] == f"https://organizer-{tag}.invalid/2026"
 
         for source in selected:
             repeat = asyncio.run(
