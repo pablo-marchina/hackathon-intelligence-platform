@@ -191,8 +191,12 @@ def compare(
     batch_success = batch.get("status") == "SUCCEEDED"
     backlog_incomplete = any(
         row.get("budget_hit_with_pending_urls") is True
+        or int(row.get("unprocessed_backlog_urls") or 0) > 0
         or int((row.get("backlog_by_state") or {}).get("EXHAUSTED", 0)) > 0
         for row in batch.get("sources", [])
+    )
+    backlog_unverified = any(
+        row.get("backlog_tracked") is False for row in batch.get("sources", [])
     )
     return {
         "schema_version": "coverage-campaign-v1",
@@ -204,13 +208,14 @@ def compare(
             else "BELOW_TARGET"
             if not meets_threshold
             else "NEEDS_BACKLOG_FOLLOWUP"
-            if backlog_incomplete
+            if backlog_incomplete or backlog_unverified
             else "MEASURED"
         ),
         "batch_status": batch.get("status"),
         "minimum_net_unique_target": min_net_unique,
         "net_unique_target_met": meets_threshold,
         "has_incomplete_or_exhausted_backlog": backlog_incomplete,
+        "has_unverified_backlog_sources": backlog_unverified,
         "database_as_of": {"before": before["as_of"], "after": after["as_of"]},
         "net_deltas": {
             "catalog": count_change,
@@ -306,7 +311,10 @@ def main(argv: list[str] | None = None, *, env: dict[str, str] | None = None) ->
     print(json.dumps(result, sort_keys=True, ensure_ascii=False))
     if result["batch_status"] != "SUCCEEDED" or not result["net_unique_target_met"]:
         return 1
-    if args.require_drained and result["has_incomplete_or_exhausted_backlog"]:
+    if args.require_drained and (
+        result["has_incomplete_or_exhausted_backlog"]
+        or result["has_unverified_backlog_sources"]
+    ):
         return 1
     return 0
 
