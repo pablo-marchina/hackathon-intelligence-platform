@@ -158,6 +158,43 @@ def test_exhausted_pages_are_not_conflated_with_drained_backlog() -> None:
     assert report["has_incomplete_or_exhausted_backlog"] is True
 
 
+def test_pending_urls_and_untracked_sources_prevent_false_drained_claim() -> None:
+    still_pending = campaign.compare(
+        fixture(),
+        fixture(),
+        {
+            "status": "SUCCEEDED",
+            "sources": [
+                {
+                    "backlog_tracked": True,
+                    "unprocessed_backlog_urls": 2,
+                    "budget_hit_with_pending_urls": False,
+                    "backlog_by_state": {"PENDING": 2},
+                }
+            ],
+        },
+    )
+    assert still_pending["has_incomplete_or_exhausted_backlog"] is True
+    assert still_pending["status"] == "NEEDS_BACKLOG_FOLLOWUP"
+    untracked = campaign.compare(
+        fixture(),
+        fixture(),
+        {
+            "status": "SUCCEEDED",
+            "sources": [
+                {
+                    "backlog_tracked": False,
+                    "unprocessed_backlog_urls": None,
+                    "backlog_by_state": None,
+                }
+            ],
+        },
+    )
+    assert untracked["has_incomplete_or_exhausted_backlog"] is False
+    assert untracked["has_unverified_backlog_sources"] is True
+    assert untracked["status"] == "NEEDS_BACKLOG_FOLLOWUP"
+
+
 def test_missing_cohort_produces_null_delta_not_fake_zero() -> None:
     before, after = fixture(), fixture()
     before["source_cohorts"]["approved"]["attribution"] = None
