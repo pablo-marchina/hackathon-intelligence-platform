@@ -210,13 +210,16 @@ def verify() -> None:
                 params,
                 fields,
             )
-            assert conn.execute(
-                text(
-                    "SELECT count(*) FROM hackathons h "
-                    "WHERE h.id=CAST(:event_id AS uuid) AND " + predicate
-                ),
-                params,
-            ).scalar_one() == 1
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT count(*) FROM hackathons h "
+                        "WHERE h.id=CAST(:event_id AS uuid) AND " + predicate
+                    ),
+                    params,
+                ).scalar_one()
+                == 1
+            )
 
         repeat = asyncio.run(
             run_batch(engine, [directory, programs], pages=3, versions=10, runner=runner)
