@@ -310,6 +310,10 @@ def compile_expression(
                 identity += " AND ho.role::text IN ('ORGANIZER','CO_ORGANIZER','HOST')"
             elif node["field"] == "sponsor":
                 identity += " AND ho.role::text IN ('SPONSOR','PRIZE_PARTNER','TECHNOLOGY_PARTNER')"
+            elif node["field"] == "eligible_country":
+                # A recorded country exclusion is NOT positive eligibility.
+                # Worldwide eligibility remains an independent explicit flag.
+                identity += " AND ec.allowed=true"
             if op in ("is_known", "is_unknown"):
                 exists = f"EXISTS (SELECT 1 FROM {field.relation_from} WHERE {identity})"
                 if node["field"] == "eligible_country":
