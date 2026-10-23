@@ -7,6 +7,7 @@ import unicodedata
 from collections.abc import AsyncIterator, Iterable
 from datetime import date
 from typing import Any
+from urllib.parse import urlsplit
 
 from pydantic import HttpUrl
 
@@ -19,10 +20,22 @@ def _json(result: FetchResult) -> Any:
 
 
 def _valid_http_url(value: Any) -> str | None:
-    if not isinstance(value, str):
+    if not isinstance(value, str) or len(value) > 2048:
         return None
     value = value.strip()
-    return value if value.startswith(("https://", "http://")) else None
+    try:
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
+            return None
+        HttpUrl(value)
+    except ValueError:
+        return None
+    return value
 
 
 class ApiSeedAdapter(SourceAdapter):
@@ -151,8 +164,12 @@ class HackClubYswsProgramsAdapter(ApiSeedAdapter):
         rows = payload.get("data")
         if not isinstance(rows, list):
             return []
+        if len(rows) > 5000:
+            # Do not silently drop catalog records: a "successful" crawl
+            # of a truncated response would hide missing hackathons.
+            raise ValueError("YSWS API response exceeds the bounded record budget")
         records: list[SourceEventRecord] = []
-        for row in rows[:5000]:
+        for row in rows:
             if not isinstance(row, dict):
                 continue
             identifier = row.get("id")
