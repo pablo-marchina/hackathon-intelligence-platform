@@ -317,7 +317,10 @@ def compile_expression(
             if op in ("is_known", "is_unknown"):
                 exists = f"EXISTS (SELECT 1 FROM {field.relation_from} WHERE {identity})"
                 if node["field"] == "eligible_country":
-                    exists = f"(h.eligible_worldwide=true OR {exists})"
+                    # 'Unknown' must include NULL worldwide flags with no
+                    # explicitly allowed countries. Keep non-presence lookups
+                    # three-valued so NOT(country=BR) does not promote unknown.
+                    exists = f"(COALESCE(h.eligible_worldwide,false) OR {exists})"
                 return exists if op == "is_known" else "(NOT " + exists + ")"
             values = node["value"] if op == "in" else [node["value"]]
             values = [_typed_value(field, item) for item in values]
