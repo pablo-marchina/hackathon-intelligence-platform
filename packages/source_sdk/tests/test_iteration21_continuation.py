@@ -143,4 +143,4 @@ def test_migration_and_api_readiness_track_new_fields():
     assert "listing_offset" in ddl and "listing_hash" in ddl
     from hackathon_api.main import EXPECTED_DB_REVISION
 
-    assert EXPECTED_DB_REVISION == "0014_typed_attribute_catalog"
+    assert EXPECTED_DB_REVISION == "0015_event_enrichment"
