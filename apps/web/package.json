@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:filters": "node --experimental-strip-types --test tests/advanced-tree.test.mjs"
   },
   "dependencies": {
     "next": "16.3.5",
