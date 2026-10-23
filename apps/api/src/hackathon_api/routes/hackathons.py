@@ -11,8 +11,8 @@ from hackathon_api.db import connection_dependency, get_engine
 from hackathon_api.repositories.hackathons import HackathonRepository
 from hackathon_api.schemas import (
     AdvancedHackathonFilters,
-    HackathonFacetRequest,
     HackathonDetail,
+    HackathonFacetRequest,
     HackathonFilters,
     HackathonPage,
 )
