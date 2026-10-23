@@ -126,7 +126,9 @@ def verify() -> None:
         def run_one():
             with engine.connect() as conn:
                 return asyncio.run(
-                    run_source_persisted(HackClubHackathonsAdapter(source), fetcher, conn, max_pages=1)
+                    run_source_persisted(
+                        HackClubHackathonsAdapter(source), fetcher, conn, max_pages=1
+                    )
                 )
 
         first = run_one()
