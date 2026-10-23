@@ -245,9 +245,7 @@ class HackathonFacetRequest(AdvancedHackathonFilters):
     """Bounded facet request, reusing the validated advanced-search expression."""
 
     fields: list[str] = Field(
-        default_factory=lambda: [
-            "format", "country_code", "event_type", "source_domain"
-        ],
+        default_factory=lambda: ["format", "country_code", "event_type", "source_domain"],
         min_length=1,
         max_length=4,
     )
