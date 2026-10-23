@@ -180,6 +180,14 @@ def _record(node: dict[str, Any], result: FetchResult, source_key: str) -> Sourc
     organizer = _labels(node.get("organizer"))
     sponsors = _labels(node.get("sponsor"))
     audience = _first_dict(node.get("audience"))
+    # Awards are unstructured publisher text, not verified cash amounts.
+    # Preserve explicit labels only, without inferring amounts or currencies.
+    award_labels = [
+        label.strip()[:240]
+        for label in _labels(node.get("award") or node.get("awards"))[:10]
+        if label.strip()
+    ]
+    awards_text = "; ".join(award_labels)[:2000] if award_labels else None
     official = _safe_url(node.get("url"), result.final_url) or result.final_url
     # @id is often a *page* identifier reused each year; do not treat it as
     # an edition-stable external event ID for automatic entity merging.
@@ -205,6 +213,7 @@ def _record(node: dict[str, Any], result: FetchResult, source_key: str) -> Sourc
         "image_url": _safe_url(image, result.final_url),
         "organizers": organizer[:20],
         "sponsors": sponsors[:20],
+        "prize_details_text": awards_text,
         "registration_url": _safe_url(offer.get("url"), result.final_url),
         "ticket_price": _scalar(offer.get("price")),
         "ticket_currency": _scalar(offer.get("priceCurrency")),
