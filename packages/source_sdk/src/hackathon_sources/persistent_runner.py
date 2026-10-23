@@ -22,11 +22,11 @@ from .repositories import (
     SourcePayloadRepository,
 )
 from .structured_html import MAX_HTML_PAGINATION_HOPS
+from .syndication import MAX_FEED_PAGE_HOPS, MAX_SITEMAP_INDEX_DEPTH
 
 # Guard API link traversal across separate worker runs. This is a bound on
 # *page depth*, not a claim of complete historical API coverage.
 MAX_API_PAGINATION_HOPS = 50
-from .syndication import MAX_FEED_PAGE_HOPS, MAX_SITEMAP_INDEX_DEPTH
 
 
 class SourcePausedError(RuntimeError):
