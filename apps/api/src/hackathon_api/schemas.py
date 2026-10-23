@@ -259,7 +259,7 @@ class HackathonFacetRequest(AdvancedHackathonFilters):
         return validate_facet_fields(value)
 
     @model_validator(mode="after")
-    def no_facet_cursor(self):
+    def no_facet_cursor(self) -> HackathonFacetRequest:
         if self.cursor is not None:
             raise ValueError("facet requests cannot use the pagination cursor")
         return self
