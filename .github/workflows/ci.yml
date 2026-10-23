@@ -87,6 +87,10 @@ jobs:
         env:
           HIP_ALLOW_COVERAGE_API_DB_DRILL: "1"
         run: python -m scripts.ops.authorized_api_coverage_integration_check
+      - name: Marginal source coverage, dedup and enrichment gaps (PostgreSQL)
+        env:
+          HIP_ALLOW_SOURCE_OPPORTUNITIES_DRILL: "1"
+        run: python -m scripts.ops.source_opportunities_integration_check
       - name: Opt-in multi-source batch -> canonical link -> idempotent replay (synthetic PostgreSQL)
         env:
           HIP_ALLOW_BATCH_DB_DRILL: "1"
