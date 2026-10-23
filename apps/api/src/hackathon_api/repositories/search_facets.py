@@ -51,16 +51,12 @@ def validate_facet_fields(fields: list[str]) -> list[str]:
     if not 1 <= len(fields) <= MAX_FACET_FIELDS or len(set(fields)) != len(fields):
         raise ValueError("request 1 to 4 different facet fields")
     for field in fields:
-        if field not in STATIC_FACETS and not re.fullmatch(
-            r"attrs\.[a-z][a-z0-9_]{0,62}", field
-        ):
+        if field not in STATIC_FACETS and not re.fullmatch(r"attrs\.[a-z][a-z0-9_]{0,62}", field):
             raise ValueError("unsupported facet field")
     return fields
 
 
-def _bucket_sql(
-    field: str, dynamic_fields: dict[str, FilterField], params: dict[str, Any]
-) -> str:
+def _bucket_sql(field: str, dynamic_fields: dict[str, FilterField], params: dict[str, Any]) -> str:
     if field in SCALAR_BUCKETS:
         return f"SELECT {SCALAR_BUCKETS[field]} AS value"
     if field in RELATION_BUCKETS:
@@ -102,9 +98,7 @@ class HackathonFacetRepository:
         attribute_keys = expression_attribute_keys(filters.expression)
         attribute_keys.update(name[6:] for name in chosen if name.startswith("attrs."))
         definitions = load_attribute_fields(self.connection, attribute_keys)
-        joins, predicates, params = build_hackathon_predicates(
-            filters, dynamic_fields=definitions
-        )
+        joins, predicates, params = build_hackathon_predicates(filters, dynamic_fields=definitions)
         matched = (
             "WITH matched AS (SELECT DISTINCT h.id FROM hackathons h "
             + " ".join(joins)
@@ -131,10 +125,7 @@ class HackathonFacetRepository:
                 + "b.value ASC NULLS LAST LIMIT :facet_limit"
             )
             rows = self.connection.execute(text(statement), bucket_params).mappings().all()
-            result[field] = [
-                {"value": row["value"], "count": int(row["count"])}
-                for row in rows
-            ]
+            result[field] = [{"value": row["value"], "count": int(row["count"])} for row in rows]
         return {
             "schema_version": "hackathon-facets-v1",
             "matched_total": int(total),
