@@ -93,6 +93,15 @@ class SourceOpportunityRepository:
                                ) AND NOT EXISTS (
                                    SELECT 1 FROM prizes pr
                                     WHERE pr.hackathon_id=h.id
+                               ) AND NOT EXISTS (
+                                   SELECT 1 FROM canonical_field_selections cfs
+                                   JOIN source_observations obs
+                                     ON obs.id=cfs.selected_observation_id
+                                   WHERE cfs.hackathon_id=h.id
+                                     AND cfs.field_path='prize_details_text'
+                                     AND cfs.active
+                                     AND jsonb_typeof(obs.normalized_value_json)='string'
+                                     AND trim(obs.normalized_value_json #>> '{}') <> ''
                                )) AS missing_prize_details
                           FROM source_events se
                           JOIN providers p ON p.hackathon_id=se.hackathon_id
