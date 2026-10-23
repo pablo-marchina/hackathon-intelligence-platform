@@ -85,6 +85,10 @@ def project_structured_metadata(payload: dict[str, Any]) -> list[ProjectedObserv
             lambda v: v.strip()[:35] if isinstance(v, str) and v.strip() else None,
         ),
         "image_url": ("image_url", _url),
+        "prize_details_text": (
+            "prize_details_text",
+            lambda v: v.strip()[:2000] if isinstance(v, str) and v.strip() else None,
+        ),
         "registration_url": ("registration_url", _url),
         "registration_valid_through": ("offer_valid_through", _utc_datetime),
         "ticket_price": ("participation_fee", _price),
