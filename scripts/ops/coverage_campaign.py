@@ -86,9 +86,7 @@ def capture(engine: Engine, sources: list[SourceDefinition]) -> dict[str, Any]:
         conn.execute(text("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"))
         coverage = CoverageRepository(conn).snapshot()
         opportunities = SourceOpportunityRepository(conn).snapshot(limit=100)
-        by_source = {
-            str(row["source_id"]): row for row in opportunities["sources"]
-        }
+        by_source = {str(row["source_id"]): row for row in opportunities["sources"]}
         by_coverage = {str(row["source_id"]): row for row in coverage["sources"]}
         cohorts: dict[str, Any] = {}
         for source in sources:
@@ -133,8 +131,7 @@ def capture(engine: Engine, sources: list[SourceDefinition]) -> dict[str, Any]:
             "as_of": coverage["as_of"],
             "catalog": {field: int(coverage["catalog"][field]) for field in COUNTS},
             "field_counts": {
-                key: int(value)
-                for key, value in coverage["field_completeness"]["counts"].items()
+                key: int(value) for key, value in coverage["field_completeness"]["counts"].items()
             },
             "pipeline": {
                 key: int(value)
@@ -142,8 +139,7 @@ def capture(engine: Engine, sources: list[SourceDefinition]) -> dict[str, Any]:
                 if key != "backlog" and type(value) is int
             },
             "global_funnel": {
-                field: int(coverage["conversion_funnel"][field])
-                for field in FUNNEL_COUNTS
+                field: int(coverage["conversion_funnel"][field]) for field in FUNNEL_COUNTS
             },
             "source_cohorts": cohorts,
         }
