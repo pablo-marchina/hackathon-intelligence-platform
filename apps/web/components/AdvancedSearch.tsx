@@ -13,6 +13,17 @@ import type {GroupNode,RuleNode} from '../lib/advancedTree';
 type FilterField={key:string;type:'text'|'country'|'boolean'|'number'|'datetime';operators:string[];description:string};
 type Catalog={schema_version:string;fields:FilterField[];max_depth:number;max_nodes:number};
 type Expression=Record<string,unknown>;
+type FacetBucket={value:string|null;count:number};
+type FacetResult={
+  matched_total:number;
+  facets:Record<string,FacetBucket[]>;
+  counts_scope:'ALL_MATCHES_NOT_CURRENT_PAGE';
+};
+const facetDefaults=['format','country_code','event_type','source_domain'];
+const facetStatics=[
+  'format','country_code','event_type','status','is_free',
+  'edition_year','source_domain','track','technology',
+];
 const labels:Record<string,string>={
   eq:'equals',ne:'does not equal',in:'one of',gt:'greater than',
   gte:'at least',lt:'less than',lte:'at most',between:'between',
@@ -138,6 +149,10 @@ export function AdvancedSearch(){
   const [error,setError]=useState('');
   const [page,setPage]=useState<HackathonPage|null>(null);
   const [activeRequest,setActiveRequest]=useState<Record<string,unknown>|null>(null);
+  const [facets,setFacets]=useState<FacetResult|null>(null);
+  const [facetField,setFacetField]=useState('format');
+  const [facetError,setFacetError]=useState('');
+  const latestFacet=useRef(0);
 
   useEffect(()=>{
     const controller=new AbortController();
@@ -199,6 +214,26 @@ export function AdvancedSearch(){
     return {limit:30,sort:'deadline',expression};
   };
 
+  async function loadFacets(request:Record<string,unknown>,field:string){
+    const current=++latestFacet.current;
+    setFacetError('');
+    try{
+      const fields=[...new Set([field,...facetDefaults])].slice(0,4);
+      const response=await fetch(`${browserApiBase()}/v1/hackathons/facets`,{
+        method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({...request,cursor:null,fields,bucket_limit:10}),
+      });
+      if(!response.ok)throw new Error('Result breakdown is temporarily unavailable.');
+      const result=await response.json() as FacetResult;
+      if(current===latestFacet.current)setFacets(result);
+    }catch{
+      if(current===latestFacet.current){
+        setFacetError('Result breakdown is temporarily unavailable.');
+        setFacets(null);
+      }
+    }
+  }
+
   async function execute(request:Record<string,unknown>,more=false){
     setBusy(true);setError('');
     try{
@@ -212,6 +247,7 @@ export function AdvancedSearch(){
       const data=await response.json() as HackathonPage;
       setPage(old=>more&&old?{...data,items:[...old.items,...data.items]}:data);
       setActiveRequest(request);
+      if(!more)void loadFacets(request,facetField);
     }catch(err){setError(err instanceof Error?err.message:'Search failed');}
     finally{setBusy(false);}
   }
@@ -219,6 +255,8 @@ export function AdvancedSearch(){
     try{
       const request=buildRequest();
       setPage(null);
+      setFacets(null);
+      latestFacet.current++;
       void execute(request);
     }catch(err){setError(err instanceof Error?err.message:'Invalid search');}
   };
@@ -226,6 +264,7 @@ export function AdvancedSearch(){
     const field=catalog?.fields.find(f=>f.key==='format')??catalog?.fields[0];
     setTree({...newRoot(),children:field?[newRule(nextId.current++,field.key,field.operators[0])]:[]});
     setError('');setPage(null);setActiveRequest(null);
+    setFacets(null);setFacetError('');latestFacet.current++;
   };
 
   return <div className="advanced-search-layout">
@@ -246,6 +285,41 @@ export function AdvancedSearch(){
     </section>
     <section aria-live="polite">
       <h2>Matching hackathons</h2>
+      {page&&<section className="advanced-facets" aria-label="Counts by searchable attribute">
+        <h3>Break down matching events</h3>
+        <p className="muted">Exact counts across all matching canonical editions, not just the current page. Missing information is shown as unknown.</p>
+        <label>Explore attribute
+          <select value={facetField} onChange={e=>{
+            const next=e.target.value;
+            setFacetField(next);
+            if(activeRequest)void loadFacets(activeRequest,next);
+          }}>
+            {[
+              ...facetStatics,
+              ...(catalog?.fields.filter(f=>f.key.startsWith('attrs.')&&
+                (f.type==='text'||f.type==='boolean')).map(f=>f.key)??[]),
+            ].map(field=><option key={field} value={field}>{title(field)}</option>)}
+          </select>
+        </label>
+        {facetError&&<p role="status" className="muted">{facetError}</p>}
+        {facets&&<>
+          <p><strong>{facets.matched_total.toLocaleString()}</strong> matching hackathons in the catalog</p>
+          <div className="advanced-facet-grid">
+            {Object.entries(facets.facets).map(([field,buckets])=>
+              <div key={field} className="advanced-facet-group">
+                <strong>{title(field)}</strong>
+                <ul>
+                  {buckets.map(bucket=><li key={bucket.value??'null'}>
+                    <span>{bucket.value??'Unknown'}</span>
+                    <span>{bucket.count.toLocaleString()}</span>
+                  </li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+          <p className="muted">Events may appear in multiple source or technology buckets. Bucket totals must not be added to calculate unique events.</p>
+        </>}
+      </section>}
       {!page?<p className="muted">Choose filters and run a search.</p>:
         <>
           <p className="muted">{page.items.length} hackathon(s) loaded. Results may have additional pages.</p>
