@@ -38,27 +38,31 @@ class FakeConnection:
         query = str(sql)
         self.queries.append((query, params))
         if "attribute_definitions" in query:
-            return Rows([
-                {
-                    "key": "language",
-                    "data_type": "text",
-                    "description": "Language",
-                    "unit": None,
-                },
-                {
-                    "key": "team_capacity",
-                    "data_type": "number",
-                    "description": "Capacity",
-                    "unit": None,
-                },
-            ])
+            return Rows(
+                [
+                    {
+                        "key": "language",
+                        "data_type": "text",
+                        "description": "Language",
+                        "unit": None,
+                    },
+                    {
+                        "key": "team_capacity",
+                        "data_type": "number",
+                        "description": "Capacity",
+                        "unit": None,
+                    },
+                ]
+            )
         if "SELECT COUNT(*) FROM matched" in query:
             return Rows(43)
         if "GROUP BY b.value" in query:
-            return Rows([
-                {"value": "ONLINE", "count": 29},
-                {"value": None, "count": 14},
-            ])
+            return Rows(
+                [
+                    {"value": "ONLINE", "count": 29},
+                    {"value": None, "count": 14},
+                ]
+            )
         raise AssertionError("unexpected SQL in facet repository")
 
 
@@ -67,8 +71,15 @@ def test_facet_fields_are_strict_bounded_and_deduplicated() -> None:
         "format",
         "source_domain",
     ]
-    for bad in [[], ["format"] * 2, ["format"] * 5, ["name"], ["minimum_age"],
-                ["attrs.foo);DROP TABLE sources;--"], ["attrs.Upper"]]:
+    for bad in [
+        [],
+        ["format"] * 2,
+        ["format"] * 5,
+        ["name"],
+        ["minimum_age"],
+        ["attrs.foo);DROP TABLE sources;--"],
+        ["attrs.Upper"],
+    ]:
         with pytest.raises(ValueError):
             validate_facet_fields(bad)
 
@@ -163,7 +174,10 @@ def test_facet_api_with_fake_database(monkeypatch) -> None:
     monkeypatch.setattr(routes, "get_engine", lambda: Engine())
     resp = TestClient(app).post(
         "/v1/hackathons/facets",
-        json={"fields": ["format"], "expression": {"field": "format", "op": "eq", "value": "ONLINE"}},
+        json={
+            "fields": ["format"],
+            "expression": {"field": "format", "op": "eq", "value": "ONLINE"},
+        },
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["matched_total"] == 43
