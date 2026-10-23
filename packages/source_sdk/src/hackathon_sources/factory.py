@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from .adapter import SourceAdapter
+from .dribdat_adapter import DribdatOpenEventsAdapter
 from .live_adapters import (
     AgendaTechBrasilAdapter,
     HackClubCommunityEventsAdapter,
@@ -22,6 +23,8 @@ _LIVE_ADAPTERS: dict[str, type[SourceAdapter]] = {
     "hackclub_hackathons": HackClubHackathonsAdapter,
     "hackclub_programs": HackClubProgramsAdapter,
     "hackclub_ysws_programs": HackClubYswsProgramsAdapter,
+    "dribdat_glamhack": DribdatOpenEventsAdapter,
+    "dribdat_imprs_astro": DribdatOpenEventsAdapter,
     "hackclub_community_events": HackClubCommunityEventsAdapter,
 }
 
