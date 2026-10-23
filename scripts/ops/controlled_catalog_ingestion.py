@@ -99,9 +99,7 @@ def _backlog_coverage(result: Any, *, max_pages: int, tracked: bool) -> dict[str
         "backlog_by_state": stats,
         "unprocessed_backlog_urls": open_count,
         "backlog_exhausted_urls": int(stats.get("EXHAUSTED", 0)),
-        "budget_hit_with_pending_urls": (
-            result.fetched_pages >= max_pages and open_count > 0
-        ),
+        "budget_hit_with_pending_urls": (result.fetched_pages >= max_pages and open_count > 0),
     }
 
 
