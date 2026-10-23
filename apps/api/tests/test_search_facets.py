@@ -6,9 +6,7 @@ from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
-from hackathon_api.advanced_filters import FilterField
 from hackathon_api.main import app
-from hackathon_api.repositories import search_facets
 from hackathon_api.repositories.search_facets import (
     HackathonFacetRepository,
     validate_facet_fields,
