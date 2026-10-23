@@ -191,7 +191,9 @@ def verify() -> None:
             )
             assert repeat["run_outcomes"]["CREATED"] == 0, repeat
             assert repeat["catalog_delta_observed"] == 0, repeat
-        print("PASS: two self-published Dribdat APIs, three canonical editions, one rejected workshop")
+        print(
+            "PASS: two self-published Dribdat APIs, three canonical editions, one rejected workshop"
+        )
     finally:
         engine.dispose()
 
