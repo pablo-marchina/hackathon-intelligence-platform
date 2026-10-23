@@ -103,6 +103,7 @@ def verify() -> None:
                     "format": "both",
                     "status": "upcoming",
                     "description": "Teams build projects at this hackathon.",
+                    "requirements": "Participants must submit a working prototype.",
                 }
             ]
             if status == "upcoming"
@@ -164,6 +165,61 @@ def verify() -> None:
             )
             assert canonical["name"] == name
             assert canonical["source_count"] >= 2
+
+            requirement = conn.execute(
+                text("""
+                    SELECT er.eligibility_raw_text
+                      FROM eligibility_rules er
+                     WHERE er.hackathon_id=CAST(:id AS uuid)
+                """),
+                {"id": rows[0]},
+            ).scalar_one()
+            assert requirement == "Participants must submit a working prototype."
+            selection = (
+                conn.execute(
+                    text("""
+                        SELECT so.normalized_value_json AS value,
+                               so.evidence_locator AS locator,
+                               so.source_event_ref_id::text AS origin_ref
+                          FROM canonical_field_selections cfs
+                          JOIN source_observations so ON so.id=cfs.selected_observation_id
+                         WHERE cfs.hackathon_id=CAST(:id AS uuid)
+                           AND cfs.field_path='participation_requirements'
+                           AND cfs.active
+                    """),
+                    {"id": rows[0]},
+                )
+                .mappings()
+                .one()
+            )
+            assert selection["value"] == "Participants must submit a working prototype."
+            assert selection["locator"] == "source_event_ref.payload.eligibility_raw"
+            assert selection["origin_ref"] is not None
+
+            from hackathon_api.advanced_filters import compile_expression
+            from hackathon_api.attribute_catalog import load_attribute_fields
+
+            fields = load_attribute_fields(conn, {"participation_requirements"})
+            params = {"event_id": rows[0]}
+            predicate = compile_expression(
+                {
+                    "field": "attrs.participation_requirements",
+                    "op": "contains",
+                    "value": "working prototype",
+                },
+                params,
+                fields,
+            )
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT count(*) FROM hackathons h "
+                        "WHERE h.id=CAST(:event_id AS uuid) AND " + predicate
+                    ),
+                    params,
+                ).scalar_one()
+                == 1
+            )
 
         repeat = asyncio.run(
             run_batch(engine, [directory, programs], pages=3, versions=10, runner=runner)

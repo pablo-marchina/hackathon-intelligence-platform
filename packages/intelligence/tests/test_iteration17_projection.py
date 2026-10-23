@@ -19,6 +19,7 @@ def test_jsonld_source_projection_preserves_evidence_and_normalized_values():
             "is_accessible_for_free": False,
             "organizers": ["Community Org"],
             "sponsors": ["Sponsor A"],
+            "prize_details_text": "Best climate project; Community choice",
             "maximum_attendee_capacity": 100,
         }
     }
@@ -30,6 +31,8 @@ def test_jsonld_source_projection_preserves_evidence_and_normalized_values():
     assert entries["offer_valid_through"].normalized == "2026-10-20T23:00:00+00:00"
     assert "registration_close_at" not in entries
     assert entries["registration_url"].evidence_locator.endswith("registration_url")
+    assert entries["prize_details_text"].normalized == "Best climate project; Community choice"
+    assert entries["prize_details_text"].evidence_locator.endswith("prize_details_text")
     assert PROJECTION_VERSION.startswith("jsonld")
 
 

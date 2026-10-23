@@ -363,7 +363,7 @@ def test_match_migration_and_readiness_are_coherent():
 
     root = Path(__file__).resolve().parents[3]
     head = ScriptDirectory.from_config(Config(str(root / "db/alembic.ini"))).get_current_head()
-    assert head == "0014_typed_attribute_catalog"
+    assert head == "0015_event_enrichment"
     assert head == api_main.EXPECTED_DB_REVISION
     ddl = (root / "db/sql/0009_w6_alert_match.sql").read_text()
     assert "PRIMARY KEY" in ddl and "hackathons_match_scan_idx" in ddl
