@@ -69,6 +69,8 @@ def event_kind(name: str, tags: list[str]) -> str | None:
         ("datathon", "datathon"),
         ("game jam", "game_jam"),
         ("ideathon", "ideathon"),
+        ("glamhack", "hackathon"),
+        ("hackdays", "hackathon"),
         ("hack day", "hackathon"),
     ):
         if needle in value:
@@ -152,8 +154,12 @@ def prepare_event(
             "API",
             "source_event_ref.payload.eligibility_raw",
         )
-    if source_key == "hackclub_programs":
-        # The official documented Events API publishes factual descriptions
+    if source_key in {
+        "hackclub_programs",
+        "dribdat_glamhack",
+        "dribdat_imprs_astro",
+    }:
+        # Approved official APIs publish factual descriptions
         # and lifecycle statuses. These stay source-evidenced, not inferred
         # deadlines or permission to scrape the linked event website.
         metadata = payload.get("metadata")
