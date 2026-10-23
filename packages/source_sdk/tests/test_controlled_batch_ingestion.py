@@ -33,16 +33,10 @@ def test_plan_without_explicit_sources_orders_approved_and_has_zero_side_effects
 ) -> None:
     allowed = fixture_source("official", priority=80)
     other = fixture_source("community", priority=45)
-    denied = fixture_source(
-        "devpost", permission_status=PermissionStatus.RESTRICTED, priority=100
-    )
+    denied = fixture_source("devpost", permission_status=PermissionStatus.RESTRICTED, priority=100)
     monkeypatch.setattr(batch, "load_source_definitions", lambda path: [other, denied, allowed])
-    monkeypatch.setattr(
-        batch, "create_engine", lambda *a, **kw: pytest.fail("dry run reached DB")
-    )
-    monkeypatch.setattr(
-        batch, "run_once", lambda *a, **kw: pytest.fail("dry run reached fetch")
-    )
+    monkeypatch.setattr(batch, "create_engine", lambda *a, **kw: pytest.fail("dry run reached DB"))
+    monkeypatch.setattr(batch, "run_once", lambda *a, **kw: pytest.fail("dry run reached fetch"))
     assert batch.main(["--max-pages", "2"], env={}) == 0
     report = __import__("json").loads(capsys.readouterr().out)
     assert report["status"] == "PLAN_ONLY"
@@ -79,9 +73,7 @@ def test_invalid_source_in_batch_causes_whole_selection_failure() -> None:
     ("pages", "versions", "number"),
     [(0, 5, 2), (21, 5, 1), (1, 1001, 1), (20, 1000, 5)],
 )
-def test_bounded_budget_rejects_invalid_requests(
-    pages: int, versions: int, number: int
-) -> None:
+def test_bounded_budget_rejects_invalid_requests(pages: int, versions: int, number: int) -> None:
     with pytest.raises(ValueError, match="budget|source"):
         batch.validate_budget(
             [fixture_source(f"approved{i}") for i in range(number)], pages, versions
@@ -130,16 +122,17 @@ def test_run_batch_isolates_denied_source_and_secret_containing_exception(
             "references_persisted": 2,
             "versions_processed": 2,
             "run_outcomes": {"CREATED": 1, "LINKED": 1, "UPDATED": 0, "REJECTED": 0},
-            "processed_this_invocation": {
-                "CREATED": 0, "LINKED": 2, "UPDATED": 0, "REJECTED": 0
-            },
+            "processed_this_invocation": {"CREATED": 0, "LINKED": 2, "UPDATED": 0, "REJECTED": 0},
             "catalog_delta_observed": 1,
         }
 
     report = asyncio.run(
         batch.run_batch(
-            SimpleNamespace(), [one, blocked, failed],
-            pages=2, versions=10, runner=runner,
+            SimpleNamespace(),
+            [one, blocked, failed],
+            pages=2,
+            versions=10,
+            runner=runner,
         )
     )
     assert report["status"] == "PARTIAL"
@@ -162,9 +155,7 @@ def test_run_batch_refuses_authorization_change_mid_batch(
     counts = iter([0, 1])
     monkeypatch.setattr(batch, "_catalog_count", lambda engine: next(counts))
     approved = iter([True, False])
-    monkeypatch.setattr(
-        batch, "check_postgres_active", lambda engine, source: next(approved)
-    )
+    monkeypatch.setattr(batch, "check_postgres_active", lambda engine, source: next(approved))
     observed = []
 
     async def runner(engine, source, **kwargs):
