@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -213,6 +213,19 @@ class HackathonFilters(BaseModel):
     @classmethod
     def normalize_eligible_country(cls, value: str | None) -> str | None:
         return value.upper() if value else value
+
+
+class AdvancedHackathonFilters(HackathonFilters):
+    """POST-only extension; keeps the legacy GET and natural-language schemas stable."""
+
+    expression: dict[str, Any] | None = None
+
+    @field_validator("expression")
+    @classmethod
+    def validate_advanced_expression(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        from hackathon_api.advanced_filters import validate_expression
+
+        return validate_expression(value)
 
 
 class HackathonPage(BaseModel):
