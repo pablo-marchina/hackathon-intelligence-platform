@@ -10,6 +10,7 @@ from hackathon_sources.registry import load_source_definitions
 
 from scripts.ops.controlled_catalog_ingestion import _backlog_coverage
 
+
 def test_only_explicitly_authorized_registry_apis_opt_into_durable_pages() -> None:
     from pathlib import Path
 
