@@ -78,7 +78,9 @@ def event_kind(name: str, tags: list[str]) -> str | None:
 
 def normalize_format(value: Any) -> str:
     word = normalized_name(str(value or ""))
-    if "hybrid" in word or "hibrid" in word:
+    if word in {"both", "online and in person", "online e presencial"} or (
+        "hybrid" in word or "hibrid" in word
+    ):
         return "HYBRID"
     if any(w in word for w in ("online", "virtual", "remote")):
         return "ONLINE"
@@ -138,6 +140,29 @@ def prepare_event(
     for key, value in direct.items():
         if value is not None and value != "":
             fields[key] = (value, value, "API", "source_event_ref.payload." + key)
+    if source_key == "hackclub_programs":
+        # The official documented Events API publishes factual descriptions
+        # and lifecycle statuses. These stay source-evidenced, not inferred
+        # deadlines or permission to scrape the linked event website.
+        metadata = payload.get("metadata")
+        if isinstance(metadata, dict):
+            description = metadata.get("description")
+            if isinstance(description, str) and description.strip():
+                text_value = description.strip()[:2000]
+                fields["short_description"] = (
+                    description,
+                    text_value,
+                    "API",
+                    "source_event_ref.payload.metadata.description",
+                )
+            status = metadata.get("status")
+            if status in {"upcoming", "ongoing", "ended"}:
+                fields["source_event_status"] = (
+                    status,
+                    status,
+                    "API",
+                    "source_event_ref.payload.metadata.status",
+                )
     for evidence in project_structured_metadata(payload):
         # A dedicated structured field wins over any less reliable generic field.
         fields[evidence.field_path] = (

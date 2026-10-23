@@ -368,9 +368,11 @@
       "hackclub.com"
     ],
     "seed_urls": [
-      "https://hackclub.com/api/v1/events"
+      "https://hackclub.com/api/v1/events?status=upcoming&limit=100",
+      "https://hackclub.com/api/v1/events?status=ongoing&limit=100",
+      "https://hackclub.com/api/v1/events?status=ended&limit=100"
     ],
-    "notes": "Documented official API linked directly from Hack Club Programs; classifier filters hackathon-like programs."
+    "notes": "Official documented Hack Club Events API (OpenAPI v1). Bounded, distinct upcoming/ongoing/ended partitions, each limited to 100. No offset/page exists; historic coverage above 100 ended events is not guaranteed. API program records are subject to hackathon classifier; API descriptions and timestamps are factual evidence only."
   },
   {
     "key": "hackclub_community_events",

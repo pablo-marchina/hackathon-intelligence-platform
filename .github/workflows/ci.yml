@@ -83,6 +83,10 @@ jobs:
           HIP_ALLOW_MATCH_DB_DRILL: "1"
           SOURCE_SCHEDULER_ENABLED: "false"
         run: python -m scripts.ops.saved_search_match_integration_check
+      - name: Authorized Hack Club/Agenda historical coverage (synthetic PostgreSQL E2E)
+        env:
+          HIP_ALLOW_COVERAGE_API_DB_DRILL: "1"
+        run: python -m scripts.ops.authorized_api_coverage_integration_check
       - name: Controlled single-source ingestion with fake HTTP and real PostgreSQL
         env:
           HIP_ALLOW_CONTROLLED_INGESTION_DRILL: "1"
