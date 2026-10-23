@@ -95,6 +95,10 @@ jobs:
         env:
           HIP_ALLOW_API_PAGINATION_DRILL: "1"
         run: python -m scripts.ops.official_api_pagination_integration_check
+      - name: Public Swiss/German Dribdat APIs -> historic editions (synthetic PostgreSQL)
+        env:
+          HIP_ALLOW_DRIBDAT_DB_DRILL: "1"
+        run: python -m scripts.ops.dribdat_open_api_integration_check
       - name: Official public Hack Club YSWS API -> canonical, reject general programs (synthetic)
         env:
           HIP_ALLOW_YSWS_DB_DRILL: "1"

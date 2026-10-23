@@ -61,6 +61,8 @@ def test_live_adapter_registry_contains_all_authorized_public_api_sources() -> N
         "hackclub_programs",
         "hackclub_community_events",
         "hackclub_ysws_programs",
+        "dribdat_glamhack",
+        "dribdat_imprs_astro",
     }
 
 
