@@ -91,6 +91,10 @@ jobs:
           HIP_ALLOW_MATCH_DB_DRILL: "1"
           SOURCE_SCHEDULER_ENABLED: "false"
         run: python -m scripts.ops.saved_search_match_integration_check
+      - name: Official API pagination resumes after page budgets and operator pauses
+        env:
+          HIP_ALLOW_API_PAGINATION_DRILL: "1"
+        run: python -m scripts.ops.official_api_pagination_integration_check
       - name: Authorized Hack Club/Agenda historical coverage (synthetic PostgreSQL E2E)
         env:
           HIP_ALLOW_COVERAGE_API_DB_DRILL: "1"
