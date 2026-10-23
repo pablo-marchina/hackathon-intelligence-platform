@@ -37,39 +37,60 @@ class FakeConnection:
         sql = str(stmt)
         self.executed.append((sql, params))
         if "gap_summary" in sql:
-            return Rows([
-                {
-                    "source_id": "first", "name": "First",
-                    "permission_status": "ALLOWED", "active": True,
-                    "discovery_enabled": True, "detail_extraction_enabled": True,
-                    "ingestion_mode": "API", "priority": 60,
-                    "attributed_unique_active": 2, "exclusive_canonicals": 1,
-                    "shared_canonicals": 1, "missing_registration_deadline": 1,
-                    "unknown_cost": 2, "missing_prize_details": 1,
-                    "recent_created": 1, "recent_linked": 1,
-                },
-                {
-                    "source_id": "review", "name": "Unapproved",
-                    "permission_status": "REVIEW_REQUIRED", "active": True,
-                    "discovery_enabled": False, "detail_extraction_enabled": False,
-                    "ingestion_mode": "DISCOVERY_ONLY", "priority": 20,
-                    "attributed_unique_active": 1, "exclusive_canonicals": 0,
-                    "shared_canonicals": 1,
-                },
-                {
-                    "source_id": "empty", "name": "Empty",
-                    "permission_status": "ALLOWED", "active": True,
-                    "discovery_enabled": True, "detail_extraction_enabled": True,
-                    "ingestion_mode": "API", "priority": 80,
-                },
-            ])
+            return Rows(
+                [
+                    {
+                        "source_id": "first",
+                        "name": "First",
+                        "permission_status": "ALLOWED",
+                        "active": True,
+                        "discovery_enabled": True,
+                        "detail_extraction_enabled": True,
+                        "ingestion_mode": "API",
+                        "priority": 60,
+                        "attributed_unique_active": 2,
+                        "exclusive_canonicals": 1,
+                        "shared_canonicals": 1,
+                        "missing_registration_deadline": 1,
+                        "unknown_cost": 2,
+                        "missing_prize_details": 1,
+                        "recent_created": 1,
+                        "recent_linked": 1,
+                    },
+                    {
+                        "source_id": "review",
+                        "name": "Unapproved",
+                        "permission_status": "REVIEW_REQUIRED",
+                        "active": True,
+                        "discovery_enabled": False,
+                        "detail_extraction_enabled": False,
+                        "ingestion_mode": "DISCOVERY_ONLY",
+                        "priority": 20,
+                        "attributed_unique_active": 1,
+                        "exclusive_canonicals": 0,
+                        "shared_canonicals": 1,
+                    },
+                    {
+                        "source_id": "empty",
+                        "name": "Empty",
+                        "permission_status": "ALLOWED",
+                        "active": True,
+                        "discovery_enabled": True,
+                        "detail_extraction_enabled": True,
+                        "ingestion_mode": "API",
+                        "priority": 80,
+                    },
+                ]
+            )
         if "provider_count" in sql:
-            return Rows({
-                "total_active_canonicals": 4,
-                "canonicals_with_active_source": 2,
-                "exclusive_to_one_source": 1,
-                "shared_across_sources": 1,
-            })
+            return Rows(
+                {
+                    "total_active_canonicals": 4,
+                    "canonicals_with_active_source": 2,
+                    "exclusive_to_one_source": 1,
+                    "shared_across_sources": 1,
+                }
+            )
         raise AssertionError("unexpected SQL")
 
 
