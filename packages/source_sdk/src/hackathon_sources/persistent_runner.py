@@ -22,6 +22,10 @@ from .repositories import (
     SourcePayloadRepository,
 )
 from .structured_html import MAX_HTML_PAGINATION_HOPS
+
+# Guard API link traversal across separate worker runs. This is a bound on
+# *page depth*, not a claim of complete historical API coverage.
+MAX_API_PAGINATION_HOPS = 50
 from .syndication import MAX_FEED_PAGE_HOPS, MAX_SITEMAP_INDEX_DEPTH
 
 
@@ -131,6 +135,9 @@ async def run_source_persisted(
         IngestionMode.RSS,
         IngestionMode.SITEMAP,
         IngestionMode.STATIC_HTML,
+    ) or (
+        adapter.definition.ingestion_mode == IngestionMode.API
+        and adapter.definition.durable_api_pages
     )
     backlog_repo = SourceUrlBacklog(connection) if backlogged else None
     allowed_hosts = {
@@ -383,7 +390,16 @@ async def run_source_persisted(
                             "discovery_method": item.discovery_method,
                             "parent_url": str(item.parent_url) if item.parent_url else None,
                         }
-                        if item.discovery_method in {"rss_pagination", "html_pagination"}:
+                        if adapter.definition.ingestion_mode == IngestionMode.API:
+                            # API mode is explicitly configured and may only
+                            # follow pagination, never arbitrary event/detail links.
+                            if item.discovery_method != "api_pagination":
+                                continue
+                            depth = (claim.pagination_depth if claim else 0) + 1
+                            if depth > MAX_API_PAGINATION_HOPS:
+                                continue
+                            metadata["pagination_depth"] = depth
+                        elif item.discovery_method in {"rss_pagination", "html_pagination"}:
                             # Durable hop budget: malicious or broken feeds must
                             # not generate an infinite chain across worker runs.
                             depth = (claim.pagination_depth if claim else 0) + 1
