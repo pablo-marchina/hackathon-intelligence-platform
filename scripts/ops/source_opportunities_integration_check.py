@@ -224,8 +224,7 @@ def verify() -> None:
                 )
                 updated = SourceOpportunityRepository(conn).snapshot(as_of=now)
                 approved_after = next(
-                    row for row in updated["sources"]
-                    if row["source_id"] == source_ids["approved"]
+                    row for row in updated["sources"] if row["source_id"] == source_ids["approved"]
                 )
                 assert approved_after["missing_prize_details"] == a["missing_prize_details"] - 1
                 assert updated["global"] == snapshot["global"]
