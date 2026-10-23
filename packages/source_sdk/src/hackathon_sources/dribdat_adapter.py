@@ -10,6 +10,7 @@ import json
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from pydantic import HttpUrl, ValidationError
 
@@ -34,11 +35,13 @@ def _url(value: Any) -> HttpUrl | None:
     if not isinstance(value, str) or not value.strip() or len(value) > 2048:
         return None
     try:
-        url = HttpUrl(value.strip())
-        if url.scheme not in {"http", "https"}:
+        parts = urlsplit(value.strip())
+        if parts.scheme not in {"http", "https"} or not parts.hostname:
             return None
-        return url
-    except ValidationError:
+        if parts.username is not None or parts.password is not None:
+            return None
+        return HttpUrl(value.strip())
+    except (ValidationError, ValueError):
         return None
 
 
@@ -89,6 +92,7 @@ class DribdatOpenEventsAdapter(ApiSeedAdapter):
             summary = _label(row.get("summary"), limit=2000)
             location = _label(row.get("location"), limit=300)
             host = _label(row.get("hostname"), limit=300)
+            logo_url = _url(row.get("logo_url"))
             records.append(
                 SourceEventRecord(
                     source_key=self.definition.key,
@@ -103,7 +107,7 @@ class DribdatOpenEventsAdapter(ApiSeedAdapter):
                         "location_text": location,
                         "host_venue": host,
                         "hashtags": _label(row.get("hashtags")),
-                        "logo_url": str(_url(row.get("logo_url"))) if _url(row.get("logo_url")) else None,
+                        "logo_url": str(logo_url) if logo_url else None,
                         "source_finished_flag": row.get("has_finished")
                         if isinstance(row.get("has_finished"), bool)
                         else None,
