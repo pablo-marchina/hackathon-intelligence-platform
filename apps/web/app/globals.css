@@ -69,3 +69,13 @@
 .advanced-group-buttons{display:flex;gap:8px;flex-wrap:wrap}
 .advanced-group-buttons button{font-size:.86rem;flex:1;min-width:max-content}
 @media(max-width:480px){.advanced-nested-group{margin-left:0;padding:10px}.advanced-root-group{padding:10px}.advanced-group-buttons button{min-width:100%}}
+
+/* Search facets: counts reflect the entire matching canonical cohort. */
+.advanced-facets{border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0 22px}
+.advanced-facets>label{display:grid;max-width:340px;gap:6px}
+.advanced-facet-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:12px}
+.advanced-facet-group{border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+.advanced-facet-group ul{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.advanced-facet-group li{display:flex;justify-content:space-between;gap:10px;font-size:.88rem}
+.advanced-facet-group li span:first-child{overflow-wrap:anywhere}
+.advanced-facet-group li span:last-child{font-variant-numeric:tabular-nums;font-weight:700}

@@ -74,6 +74,10 @@ jobs:
         env:
           HIP_ALLOW_ELIGIBILITY_DRILL: "1"
         run: python -m scripts.ops.country_eligibility_integration_check
+      - name: Advanced search facets across canonical editions (PostgreSQL)
+        env:
+          HIP_ALLOW_FACETS_DB_DRILL: "1"
+        run: python -m scripts.ops.search_facets_integration_check
       - name: Typed canonical attributes and advanced filtering (PostgreSQL)
         env:
           HIP_ALLOW_ATTRIBUTES_DB_DRILL: "1"

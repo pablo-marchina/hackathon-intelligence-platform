@@ -241,6 +241,30 @@ class AdvancedHackathonFilters(HackathonFilters):
         return validate_expression(value)
 
 
+class HackathonFacetRequest(AdvancedHackathonFilters):
+    """Bounded facet request, reusing the validated advanced-search expression."""
+
+    fields: list[str] = Field(
+        default_factory=lambda: ["format", "country_code", "event_type", "source_domain"],
+        min_length=1,
+        max_length=4,
+    )
+    bucket_limit: int = Field(default=10, ge=1, le=15)
+
+    @field_validator("fields")
+    @classmethod
+    def validate_fields(cls, value: list[str]) -> list[str]:
+        from hackathon_api.repositories.search_facets import validate_facet_fields
+
+        return validate_facet_fields(value)
+
+    @model_validator(mode="after")
+    def no_facet_cursor(self) -> HackathonFacetRequest:
+        if self.cursor is not None:
+            raise ValueError("facet requests cannot use the pagination cursor")
+        return self
+
+
 class HackathonPage(BaseModel):
     items: list[HackathonListItem]
     next_cursor: str | None

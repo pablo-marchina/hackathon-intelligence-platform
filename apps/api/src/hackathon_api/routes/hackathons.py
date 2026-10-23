@@ -12,6 +12,7 @@ from hackathon_api.repositories.hackathons import HackathonRepository
 from hackathon_api.schemas import (
     AdvancedHackathonFilters,
     HackathonDetail,
+    HackathonFacetRequest,
     HackathonFilters,
     HackathonPage,
 )
@@ -96,6 +97,20 @@ def query_hackathons(filters: AdvancedHackathonFilters) -> HackathonPage:
     try:
         with get_engine().begin() as connection:
             return HackathonRepository(connection).search(filters)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/facets")
+def query_facets(request: HackathonFacetRequest) -> dict[str, object]:
+    """Count ALL matching canonical editions, independent of result pagination."""
+    from hackathon_api.repositories.search_facets import HackathonFacetRepository
+
+    try:
+        with get_engine().begin() as connection:
+            return HackathonFacetRepository(connection).summarize(
+                request, fields=request.fields, bucket_limit=request.bucket_limit
+            )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
