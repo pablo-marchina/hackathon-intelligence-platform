@@ -312,8 +312,7 @@ def main(argv: list[str] | None = None, *, env: dict[str, str] | None = None) ->
     if result["batch_status"] != "SUCCEEDED" or not result["net_unique_target_met"]:
         return 1
     if args.require_drained and (
-        result["has_incomplete_or_exhausted_backlog"]
-        or result["has_unverified_backlog_sources"]
+        result["has_incomplete_or_exhausted_backlog"] or result["has_unverified_backlog_sources"]
     ):
         return 1
     return 0
