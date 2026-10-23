@@ -95,6 +95,10 @@ jobs:
         env:
           HIP_ALLOW_API_PAGINATION_DRILL: "1"
         run: python -m scripts.ops.official_api_pagination_integration_check
+      - name: Official public Hack Club YSWS API -> canonical, reject general programs (synthetic)
+        env:
+          HIP_ALLOW_YSWS_DB_DRILL: "1"
+        run: python -m scripts.ops.ysws_public_api_integration_check
       - name: Authorized Hack Club/Agenda historical coverage (synthetic PostgreSQL E2E)
         env:
           HIP_ALLOW_COVERAGE_API_DB_DRILL: "1"
