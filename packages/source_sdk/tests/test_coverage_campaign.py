@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+
 from scripts.ops import coverage_campaign as campaign
 
 
