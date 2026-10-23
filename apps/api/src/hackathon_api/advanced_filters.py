@@ -34,6 +34,7 @@ class FilterField:
     relation_from: str | None = None
     relation_value: str | None = None
     description: str = ""
+    attribute_key: str | None = None
 
 
 FIELDS: dict[str, FilterField] = {
@@ -132,7 +133,10 @@ FIELDS: dict[str, FilterField] = {
 }
 
 
-def filter_field_catalog() -> dict[str, object]:
+def filter_field_catalog(
+    dynamic_fields: dict[str, FilterField] | None = None,
+) -> dict[str, object]:
+    fields = {**FIELDS, **(dynamic_fields or {})}
     return {
         "schema_version": "advanced-filter-v1",
         "max_depth": MAX_DEPTH,
@@ -144,13 +148,21 @@ def filter_field_catalog() -> dict[str, object]:
                 "operators": list(spec.operators),
                 "description": spec.description,
             }
-            for name, spec in FIELDS.items()
+            for name, spec in fields.items()
         ],
     }
 
 
 def _typed_value(field: FilterField, value: Any) -> Any:
     kind = field.kind
+    if kind == "provisional":
+        if type(value) is bool:
+            return value
+        if type(value) in (int, float) and math.isfinite(value) and abs(value) <= 1e12:
+            return value
+        if isinstance(value, str) and 1 <= len(value) <= 200:
+            return value
+        raise ValueError("invalid dynamic attribute value")
     if kind == "boolean":
         if type(value) is not bool:
             raise ValueError("boolean filter values must be true or false")
@@ -176,7 +188,21 @@ def _typed_value(field: FilterField, value: Any) -> Any:
     return value
 
 
-def validate_expression(expression: dict[str, Any] | None) -> dict[str, Any] | None:
+def _field_for(name: Any, dynamic_fields: dict[str, FilterField] | None) -> FilterField:
+    if isinstance(name, str) and name in FIELDS:
+        return FIELDS[name]
+    if isinstance(name, str) and re.fullmatch(r"attrs\.[a-z][a-z0-9_]{0,62}", name):
+        if dynamic_fields is None:
+            return FilterField("provisional", (*NUMBER_OPERATORS, "contains"))
+        if name in dynamic_fields:
+            return dynamic_fields[name]
+    raise ValueError("unknown or non-filterable field")
+
+
+def validate_expression(
+    expression: dict[str, Any] | None,
+    dynamic_fields: dict[str, FilterField] | None = None,
+) -> dict[str, Any] | None:
     """Validate every node before database access, including complete query complexity."""
     if expression is None:
         return None
@@ -201,9 +227,7 @@ def validate_expression(expression: dict[str, Any] | None) -> dict[str, Any] | N
                 walk(child, depth + 1)
         elif keys in ({"field", "op", "value"}, {"field", "op"}):
             name, op = node.get("field"), node.get("op")
-            if not isinstance(name, str) or name not in FIELDS:
-                raise ValueError("unknown or non-filterable field")
-            field = FIELDS[name]
+            field = _field_for(name, dynamic_fields)
             if not isinstance(op, str) or op not in field.operators:
                 raise ValueError("unsupported operator for field")
             if op in ("is_known", "is_unknown"):
@@ -233,9 +257,13 @@ def validate_expression(expression: dict[str, Any] | None) -> dict[str, Any] | N
     return expression
 
 
-def compile_expression(expression: dict[str, Any], params: dict[str, Any]) -> str:
+def compile_expression(
+    expression: dict[str, Any],
+    params: dict[str, Any],
+    dynamic_fields: dict[str, FilterField] | None = None,
+) -> str:
     """Compile a validated expression to static SQL fragments plus bound params."""
-    validate_expression(expression)
+    validate_expression(expression, dynamic_fields)
     index = 0
 
     def bound(value: Any) -> str:
@@ -252,9 +280,29 @@ def compile_expression(expression: dict[str, Any], params: dict[str, Any]) -> st
             return "(" + " OR ".join(compile_node(child) for child in node["or"]) + ")"
         if "not" in node:
             return "(NOT " + compile_node(node["not"]) + ")"
-        field = FIELDS[node["field"]]
+        field = _field_for(node["field"], dynamic_fields)
         op = node["op"]
-        if field.relation_from is not None:
+        if field.attribute_key is not None:
+            # Field path is always bound; no untrusted column names or SQL are emitted.
+            path = bound(field.attribute_key)
+            raw = "so.normalized_value_json"
+            if field.kind == "text":
+                typed = f"CASE WHEN jsonb_typeof({raw})='string' THEN {raw} #>> '{{}}' END"
+            elif field.kind == "number":
+                typed = (
+                    f"CASE WHEN jsonb_typeof({raw})='number' THEN ({raw} #>> '{{}}')::numeric END"
+                )
+            else:
+                typed = (
+                    f"CASE WHEN jsonb_typeof({raw})='boolean' THEN ({raw} #>> '{{}}')::boolean END"
+                )
+            column = (
+                f"(SELECT {typed} FROM canonical_field_selections cfs "
+                f"JOIN source_observations so ON so.id=cfs.selected_observation_id "
+                f"WHERE cfs.hackathon_id=h.id AND cfs.field_path={path} "
+                f"AND cfs.active=true LIMIT 1)"
+            )
+        elif field.relation_from is not None:
             assert field.relation_value is not None
             alias = field.relation_from.split(" ")[1]
             identity = f"{alias}.hackathon_id=h.id"
@@ -279,8 +327,9 @@ def compile_expression(expression: dict[str, Any], params: dict[str, Any]) -> st
             if node["field"] == "eligible_country":
                 return f"(h.eligible_worldwide=true OR {exists})"
             return exists
-        assert field.column is not None
-        column = field.column
+        else:
+            assert field.column is not None
+            column = field.column
         if op == "is_known":
             return f"({column} IS NOT NULL)"
         if op == "is_unknown":

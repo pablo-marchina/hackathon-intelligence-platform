@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from hackathon_api.advanced_filters import filter_field_catalog
+from hackathon_api.attribute_catalog import load_attribute_fields
 from hackathon_api.db import connection_dependency, get_engine
 from hackathon_api.repositories.hackathons import HackathonRepository
 from hackathon_api.schemas import (
@@ -84,8 +85,9 @@ def list_hackathons(
 
 @router.get("/filter-fields")
 def get_filter_fields() -> dict[str, object]:
-    """Describe allowlisted fields and operators for the advanced filter builder."""
-    return filter_field_catalog()
+    """Describe allowlisted fields and curated DB-backed attributes."""
+    with get_engine().connect() as connection:
+        return filter_field_catalog(load_attribute_fields(connection))
 
 
 @router.post("/query", response_model=HackathonPage)

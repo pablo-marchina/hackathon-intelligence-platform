@@ -6,8 +6,14 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from hackathon_api.advanced_filters import compile_expression
+from hackathon_api.advanced_filters import FilterField, compile_expression
+from hackathon_api.attribute_catalog import (
+    expression_attribute_keys,
+    load_attribute_fields,
+    selected_attributes,
+)
 from hackathon_api.schemas import (
+    AttributeSummary,
     CanonicalChangeSummary,
     EligibilitySummary,
     ExternalLinkSummary,
@@ -114,7 +120,12 @@ def _cursor_predicate(filters, rank, quality, start, deadline, params):
     return f"({start}>CAST(:cursor_start AS timestamptz) OR ({start}=CAST(:cursor_start AS timestamptz) AND {quality}<:cursor_quality) OR ({start}=CAST(:cursor_start AS timestamptz) AND {quality}=:cursor_quality AND h.id>CAST(:cursor_id AS uuid)))"
 
 
-def build_hackathon_query(filters: HackathonFilters, *, target_id: str | None = None) -> QuerySpec:
+def build_hackathon_query(
+    filters: HackathonFilters,
+    *,
+    target_id: str | None = None,
+    dynamic_fields: dict[str, FilterField] | None = None,
+) -> QuerySpec:
     params = {"limit": filters.limit + 1}
     joins = ["LEFT JOIN locations l ON l.id=h.primary_location_id"]
     where = ["h.is_active=true"]
@@ -213,7 +224,7 @@ def build_hackathon_query(filters: HackathonFilters, *, target_id: str | None = 
         )
     expression = getattr(filters, "expression", None)
     if expression is not None:
-        where.append(compile_expression(expression, params))
+        where.append(compile_expression(expression, params, dynamic_fields))
     freshness = "CASE WHEN h.last_verified_at IS NULL THEN 0.0 ELSE GREATEST(0.0,1.0-LEAST(EXTRACT(EPOCH FROM (now()-h.last_verified_at))/86400.0,30.0)/30.0) END"
     rank = (
         f"ROUND((ts_rank_cd(sd.document,websearch_to_tsquery('simple',:q))+COALESCE(h.quality_score,0)/100.0*0.10+({freshness})*0.05)::numeric,6)"
@@ -245,7 +256,10 @@ class HackathonRepository:
         self.connection = connection
 
     def search(self, filters: HackathonFilters) -> HackathonPage:
-        spec = build_hackathon_query(filters)
+        expression = getattr(filters, "expression", None)
+        keys = expression_attribute_keys(expression)
+        fields = load_attribute_fields(self.connection, keys)
+        spec = build_hackathon_query(filters, dynamic_fields=fields)
         rows = [
             dict(r) for r in self.connection.execute(text(spec.sql), spec.params).mappings().all()
         ]
@@ -411,6 +425,10 @@ class HackathonRepository:
             )
             .mappings()
             .all()
+        ]
+        b["attributes"] = [
+            AttributeSummary.model_validate(item)
+            for item in selected_attributes(self.connection, hid)
         ]
         b["evidence"] = [
             SourceEvidenceSummary.model_validate(dict(r))

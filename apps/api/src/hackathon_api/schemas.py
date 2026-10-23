@@ -141,6 +141,18 @@ class HackathonListItem(BaseModel):
     rank_score: float | None = None
 
 
+class AttributeSummary(BaseModel):
+    key: str
+    label: str
+    data_type: str
+    unit: str | None = None
+    value: Any
+    confidence: float | None = None
+    observed_at: datetime
+    source_name: str | None = None
+    source_url: str | None = None
+
+
 class HackathonDetail(HackathonListItem):
     subtitle: str | None = None
     full_description: str | None = None
@@ -162,6 +174,7 @@ class HackathonDetail(HackathonListItem):
     links: list[ExternalLinkSummary] = Field(default_factory=list)
     recent_changes: list[CanonicalChangeSummary] = Field(default_factory=list)
     evidence: list[SourceEvidenceSummary] = Field(default_factory=list)
+    attributes: list[AttributeSummary] = Field(default_factory=list)
     series_slug: str | None = None
     series_name: str | None = None
     edition_label: str | None = None
