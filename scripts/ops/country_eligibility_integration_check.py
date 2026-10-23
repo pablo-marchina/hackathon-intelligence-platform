@@ -2,6 +2,7 @@
 
 Uses synthetic hackathons in a disposable database; no HTTP or real users.
 """
+
 from __future__ import annotations
 
 import os
@@ -77,17 +78,16 @@ def verify() -> None:
                     return result is not None
 
                 br = {"field": "eligible_country", "op": "eq", "value": "BR"}
-                br_or_ar = {
-                    "field": "eligible_country", "op": "in", "value": ["BR", "AR"]
-                }
+                br_or_ar = {"field": "eligible_country", "op": "in", "value": ["BR", "AR"]}
                 known = {"field": "eligible_country", "op": "is_known"}
                 unknown = {"field": "eligible_country", "op": "is_unknown"}
                 assert matches("allowed", br) is True
                 assert matches("denied", br) is False
                 assert matches("denied", br_or_ar) is False
-                assert matches("denied", {
-                    "field": "eligible_country", "op": "eq", "value": "US"
-                }) is True
+                assert (
+                    matches("denied", {"field": "eligible_country", "op": "eq", "value": "US"})
+                    is True
+                )
                 assert matches("worldwide", br) is True
                 assert matches("unknown", br) is False
                 assert matches("allowed", known) is True
