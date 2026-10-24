@@ -20,7 +20,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_database() -> str:
-    if os.environ.get("APP_ENV") != "test" or os.environ.get("HIP_ALLOW_STAGING_PREFLIGHT_DRILL") != "1":
+    if (
+        os.environ.get("APP_ENV") != "test"
+        or os.environ.get("HIP_ALLOW_STAGING_PREFLIGHT_DRILL") != "1"
+    ):
         raise RuntimeError("explicit local PostgreSQL test opt-in required")
     dsn = os.environ["DATABASE_URL"]
     parsed = make_url(dsn)
@@ -59,7 +62,9 @@ def verify() -> None:
 
         with engine.begin() as conn:
             conn.execute(
-                text("UPDATE sources SET permission_status='RESTRICTED' WHERE id=CAST(:id AS uuid)"),
+                text(
+                    "UPDATE sources SET permission_status='RESTRICTED' WHERE id=CAST(:id AS uuid)"
+                ),
                 {"id": inserted[1]},
             )
         try:
@@ -70,7 +75,9 @@ def verify() -> None:
 
         with engine.begin() as conn:
             conn.execute(
-                text("UPDATE sources SET permission_status='ALLOWED',active=false WHERE id=CAST(:id AS uuid)"),
+                text(
+                    "UPDATE sources SET permission_status='ALLOWED',active=false WHERE id=CAST(:id AS uuid)"
+                ),
                 {"id": inserted[1]},
             )
         try:
@@ -85,7 +92,9 @@ def verify() -> None:
         except DispatchRefusal as exc:
             assert exc.code == "DATABASE_SERVER_IDENTITY_MISMATCH"
 
-        print("PASS: PostgreSQL schema-current + all-sources staging preflight, permission revocation and pause")
+        print(
+            "PASS: PostgreSQL schema-current + all-sources staging preflight, permission revocation and pause"
+        )
     finally:
         if inserted:
             with engine.begin() as conn:
