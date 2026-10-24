@@ -115,6 +115,10 @@ jobs:
         env:
           HIP_ALLOW_SOURCE_OPPORTUNITIES_DRILL: "1"
         run: python -m scripts.ops.source_opportunities_integration_check
+      - name: "Staging coverage dispatcher preflight: migrations and all-source approval (PostgreSQL)"
+        env:
+          HIP_ALLOW_STAGING_PREFLIGHT_DRILL: "1"
+        run: python -m scripts.ops.staging_campaign_preflight_integration_check
       - name: Opt-in multi-source batch -> canonical link -> idempotent replay (synthetic PostgreSQL)
         env:
           HIP_ALLOW_BATCH_DB_DRILL: "1"
@@ -213,8 +217,25 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -e '.[dev]'
-      - name: Install PostgreSQL client tooling
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client-16
+      - name: Install PostgreSQL 16 CLI wrappers from the matching service image
+        # A newer Ubuntu pg_restore emits SET transaction_timeout, which pg16
+        # cannot parse. Run clients from the same major version as the DB.
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hip-pg16-client"
+          for command in pg_dump pg_restore psql; do
+            cat > "$RUNNER_TEMP/hip-pg16-client/$command" <<'CLIENT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec docker run --rm --network host \
+            --user "$(id -u):$(id -g)" --volume /tmp:/tmp \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE \
+            pgvector/pgvector:pg16 "$(basename "$0")" "$@"
+          CLIENT
+            chmod +x "$RUNNER_TEMP/hip-pg16-client/$command"
+          done
+          echo "$RUNNER_TEMP/hip-pg16-client" >> "$GITHUB_PATH"
       - name: Start ephemeral MinIO
         run: >-
           docker run -d --rm --name hip-dr-minio -p 9000:9000

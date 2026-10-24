@@ -1,0 +1,139 @@
+name: staging-coverage-campaign
+
+# No schedule, push or pull_request triggers. Operators must intentionally
+# dispatch a run from main and separately approve the protected apply environment.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Plan only, or execute a guarded staging campaign?"
+        type: choice
+        required: true
+        default: plan
+        options: [plan, apply]
+      profile:
+        description: "Curated groups of already-approved official/open sources"
+        type: choice
+        required: true
+        default: dribdat
+        options: [dribdat, hackclub, all]
+      max_pages:
+        description: "Maximum fetched pages per source"
+        type: choice
+        required: true
+        default: "1"
+        options: ["1", "3", "5"]
+      max_versions:
+        description: "Maximum normalized versions per source"
+        type: choice
+        required: true
+        default: "25"
+        options: ["25", "100", "200"]
+      min_net_unique:
+        description: "Required net increase in active unique canonical editions"
+        type: choice
+        required: true
+        default: "0"
+        options: ["0", "1", "5"]
+      require_drained:
+        description: "Fail the acceptance gate if any selected source has unverified/incomplete backlog"
+        type: boolean
+        required: true
+        default: false
+      confirm:
+        description: "For apply only: type RUN_STAGING_COVERAGE exactly"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hip-staging-coverage
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main' && inputs.mode == 'plan'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Validate and generate network-free campaign plan
+        env:
+          HIP_PROFILE: ${{ inputs.profile }}
+          HIP_PAGES: ${{ inputs.max_pages }}
+          HIP_VERSIONS: ${{ inputs.max_versions }}
+          HIP_TARGET: ${{ inputs.min_net_unique }}
+          HIP_DRAINED: ${{ inputs.require_drained }}
+          HIP_RECEIPT: ${{ runner.temp }}/hip-staging-coverage.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--mode plan --profile "$HIP_PROFILE"
+                --max-pages "$HIP_PAGES" --max-versions "$HIP_VERSIONS"
+                --min-net-unique "$HIP_TARGET" --receipt "$HIP_RECEIPT")
+          if [[ "$HIP_DRAINED" == "true" ]]; then args+=(--require-drained); fi
+          python -m scripts.ops.staging_campaign_dispatch "${args[@]}"
+      - name: Upload redacted plan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hip-staging-coverage-plan
+          path: ${{ runner.temp }}/hip-staging-coverage.json
+          if-no-files-found: error
+          retention-days: 14
+
+  apply:
+    # An operator must type the confirmation, and the staging-coverage
+    # environment should also require approved reviewers in GitHub Settings.
+    if: github.ref == 'refs/heads/main' && inputs.mode == 'apply'
+    runs-on: ubuntu-latest
+    environment: staging-coverage
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+      - name: Guarded staging coverage (fail closed before any HTTP)
+        shell: bash
+        env:
+          APP_ENV: staging
+          HIP_ALLOW_LIVE_INGESTION: "1"
+          HIP_ALLOW_BATCH_INGESTION: "1"
+          HIP_ALLOW_COVERAGE_CAMPAIGN: "1"
+          # Configure this secret on the protected environment, not the repo.
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          HIP_STAGING_EXPECTED_DB_NAME: ${{ vars.STAGING_DATABASE_NAME }}
+          HIP_CONFIRM: ${{ inputs.confirm }}
+          HIP_PROFILE: ${{ inputs.profile }}
+          HIP_PAGES: ${{ inputs.max_pages }}
+          HIP_VERSIONS: ${{ inputs.max_versions }}
+          HIP_TARGET: ${{ inputs.min_net_unique }}
+          HIP_DRAINED: ${{ inputs.require_drained }}
+          HIP_RECEIPT: ${{ runner.temp }}/hip-staging-coverage.json
+        run: |
+          set -euo pipefail
+          args=(--mode apply --profile "$HIP_PROFILE" --confirm "$HIP_CONFIRM"
+                --max-pages "$HIP_PAGES" --max-versions "$HIP_VERSIONS"
+                --min-net-unique "$HIP_TARGET" --receipt "$HIP_RECEIPT")
+          if [[ "$HIP_DRAINED" == "true" ]]; then args+=(--require-drained); fi
+          python -m scripts.ops.staging_campaign_dispatch "${args[@]}"
+      - name: Upload redacted staging campaign receipt, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hip-staging-coverage-receipt
+          path: ${{ runner.temp }}/hip-staging-coverage.json
+          if-no-files-found: error
+          retention-days: 14
