@@ -48,9 +48,7 @@ def verified_receipt() -> dict:
             },
             "has_unverified_backlog_sources": False,
             "has_incomplete_or_exhausted_backlog": False,
-            "sources": [
-                {"key": key, "status": "SUCCEEDED"} for key in PROFILES["all"]
-            ],
+            "sources": [{"key": key, "status": "SUCCEEDED"} for key in PROFILES["all"]],
         },
     }
 
@@ -123,9 +121,7 @@ def test_valid_full_staging_evidence_only_requests_independent_review() -> None:
             "nonnegative_coherent_catalog",
         ),
         (
-            lambda r: r["results"]["post_global_funnel"].update(
-                unique_searchable_hackathons=1
-            ),
+            lambda r: r["results"]["post_global_funnel"].update(unique_searchable_hackathons=1),
             "minimum_searchable_unique",
         ),
         (
@@ -160,8 +156,7 @@ def test_empty_and_false_are_not_treated_as_unknown_but_null_is() -> None:
     report = gate.evaluate(receipt, now=CLOCK)
     assert report["status"] == "NOT_READY"
     assert not next(
-        x["passed"] for x in report["checks"]
-        if x["id"] == "known_registration_close_completeness"
+        x["passed"] for x in report["checks"] if x["id"] == "known_registration_close_completeness"
     )
 
 
@@ -190,9 +185,7 @@ def test_read_file_and_write_privacy_safe_review(tmp_path, monkeypatch, capsys) 
     assert output.stat().st_mode & 0o077 == 0
 
 
-def test_no_receipt_fails_closed_and_advisory_does_not_claim_readiness(
-    tmp_path, capsys
-) -> None:
+def test_no_receipt_fails_closed_and_advisory_does_not_claim_readiness(tmp_path, capsys) -> None:
     output = tmp_path / "review.json"
     args = ["--receipt", str(tmp_path / "missing.json"), "--output", str(output)]
     assert gate.main(args) == 1
