@@ -63,8 +63,7 @@ def test_valid_full_staging_evidence_only_requests_independent_review() -> None:
     assert report["status"] == "READY_FOR_INDEPENDENT_REVIEW"
     assert report["checks_passed"] == report["checks_total"]
     assert report["checks_total"] >= 12
-    assert "NOT launch" not in report["limitations"]
-    assert "NOT launch" in report["limitations"].replace("launch authorization", "launch")
+    assert "NOT launch authorization" in report["limitations"]
     assert "global" in report["limitations"]
 
 
@@ -175,7 +174,8 @@ def test_gates_are_versioned_and_no_external_sources_are_contacted(monkeypatch) 
 
 
 def test_read_file_and_write_privacy_safe_review(tmp_path, monkeypatch, capsys) -> None:
-    monkeypatch.setattr(gate, "evaluate", lambda data: gate.evaluate(data, now=CLOCK))
+    original_evaluate = gate.evaluate
+    monkeypatch.setattr(gate, "evaluate", lambda data: original_evaluate(data, now=CLOCK))
     receipt_file = tmp_path / "source.json"
     output = tmp_path / "review.json"
     data = verified_receipt()
