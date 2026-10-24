@@ -57,29 +57,38 @@ def evaluate(
         raise ValueError("expected staging receipt object")
     check("supported_receipt", receipt.get("schema_version") == RECEIPT_SCHEMA)
     check("actual_staging_execution", receipt.get("mode") == "apply")
-    check("complete_required_portfolio", (
-        receipt.get("profile") == rules["required_profile"]
-        and isinstance(receipt.get("source_keys"), list)
-        and len(receipt["source_keys"]) == rules["required_source_count"]
-        and set(receipt["source_keys"]) == set(PROFILES[rules["required_profile"]])
-    ))
+    check(
+        "complete_required_portfolio",
+        (
+            receipt.get("profile") == rules["required_profile"]
+            and isinstance(receipt.get("source_keys"), list)
+            and len(receipt["source_keys"]) == rules["required_source_count"]
+            and set(receipt["source_keys"]) == set(PROFILES[rules["required_profile"]])
+        ),
+    )
     preflight = receipt.get("preflight")
-    check("authorized_current_schema", (
-        isinstance(preflight, dict)
-        and preflight.get("database_identity_verified") is True
-        and preflight.get("schema_current") is True
-        and preflight.get("source_permissions_checked") == rules["required_source_count"]
-    ))
+    check(
+        "authorized_current_schema",
+        (
+            isinstance(preflight, dict)
+            and preflight.get("database_identity_verified") is True
+            and preflight.get("schema_current") is True
+            and preflight.get("source_permissions_checked") == rules["required_source_count"]
+        ),
+    )
     result = receipt.get("results")
     if not isinstance(result, dict):
         result = {}
-    check("measured_successful_batch", (
-        receipt.get("status") == "MEASURED"
-        and result.get("status") == "MEASURED"
-        and result.get("evidence_kind") == EXPECTED_EVIDENCE
-        and result.get("batch_status") == "SUCCEEDED"
-        and result.get("net_unique_target_met") is True
-    ))
+    check(
+        "measured_successful_batch",
+        (
+            receipt.get("status") == "MEASURED"
+            and result.get("status") == "MEASURED"
+            and result.get("evidence_kind") == EXPECTED_EVIDENCE
+            and result.get("batch_status") == "SUCCEEDED"
+            and result.get("net_unique_target_met") is True
+        ),
+    )
     observed_at = result.get("observed_at")
     age_hours: float | None = None
     if isinstance(observed_at, str):
@@ -89,10 +98,10 @@ def evaluate(
                 age_hours = (clock - instant.astimezone(UTC)).total_seconds() / 3600
         except ValueError:
             pass
-    check("recent_database_evidence", (
-        age_hours is not None
-        and -5 / 60 <= age_hours <= rules["maximum_evidence_age_hours"]
-    ))
+    check(
+        "recent_database_evidence",
+        (age_hours is not None and -5 / 60 <= age_hours <= rules["maximum_evidence_age_hours"]),
+    )
     catalog = result.get("post_catalog")
     catalog = catalog if isinstance(catalog, dict) else {}
     values = {field: _nonnegative(catalog.get(field)) for field in EXPECTED_METRICS}
@@ -103,22 +112,32 @@ def evaluate(
         and (values["upcoming_by_date"] or 0) <= active
     )
     check("nonnegative_coherent_catalog", consistent)
-    check("minimum_active_unique", (
-        active is not None and active >= rules["minimum_active_unique"]
-    ), active)
-    check("minimum_upcoming_unique", (
-        values["upcoming_by_date"] is not None
-        and values["upcoming_by_date"] >= rules["minimum_upcoming_unique"]
-    ), values["upcoming_by_date"])
+    check(
+        "minimum_active_unique",
+        (active is not None and active >= rules["minimum_active_unique"]),
+        active,
+    )
+    check(
+        "minimum_upcoming_unique",
+        (
+            values["upcoming_by_date"] is not None
+            and values["upcoming_by_date"] >= rules["minimum_upcoming_unique"]
+        ),
+        values["upcoming_by_date"],
+    )
     funnel = result.get("post_global_funnel")
     funnel = funnel if isinstance(funnel, dict) else {}
     searchable = _nonnegative(funnel.get("unique_searchable_hackathons"))
-    check("minimum_searchable_unique", (
-        searchable is not None
-        and active is not None
-        and searchable <= active
-        and searchable >= rules["minimum_searchable_unique"]
-    ), searchable)
+    check(
+        "minimum_searchable_unique",
+        (
+            searchable is not None
+            and active is not None
+            and searchable <= active
+            and searchable >= rules["minimum_searchable_unique"]
+        ),
+        searchable,
+    )
 
     def percent(numerator: int | None) -> float | None:
         if numerator is None or active is None or active == 0 or not consistent:
@@ -145,20 +164,29 @@ def evaluate(
 
     sources = result.get("sources")
     sources = sources if isinstance(sources, list) else []
-    by_key = {x.get("key"): x for x in sources if isinstance(x, dict) and isinstance(x.get("key"), str)}
-    check("all_sources_succeeded", (
-        len(sources) == rules["required_source_count"]
-        and len(by_key) == rules["required_source_count"]
-        and set(by_key) == set(PROFILES[rules["required_profile"]])
-        and all(x.get("status") == "SUCCEEDED" for x in by_key.values())
-    ), sum(x.get("status") == "SUCCEEDED" for x in by_key.values()))
+    by_key = {
+        x.get("key"): x for x in sources if isinstance(x, dict) and isinstance(x.get("key"), str)
+    }
+    check(
+        "all_sources_succeeded",
+        (
+            len(sources) == rules["required_source_count"]
+            and len(by_key) == rules["required_source_count"]
+            and set(by_key) == set(PROFILES[rules["required_profile"]])
+            and all(x.get("status") == "SUCCEEDED" for x in by_key.values())
+        ),
+        sum(x.get("status") == "SUCCEEDED" for x in by_key.values()),
+    )
     backlog_unknown = result.get("has_unverified_backlog_sources")
     backlog_open = result.get("has_incomplete_or_exhausted_backlog")
-    check("all_backlog_evidence_verified", (
-        backlog_unknown is False and backlog_open is False
-        if rules["require_drained_and_tracked_backlog"]
-        else True
-    ))
+    check(
+        "all_backlog_evidence_verified",
+        (
+            backlog_unknown is False and backlog_open is False
+            if rules["require_drained_and_tracked_backlog"]
+            else True
+        ),
+    )
     # Observational evidence qualifies for *human launch review* only.
     passed = all(row["passed"] for row in checks)
     return {
@@ -190,7 +218,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--receipt", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
-        "--advisory", action="store_true",
+        "--advisory",
+        action="store_true",
         help="write NOT_READY evidence without failing the data-collection workflow",
     )
     args = parser.parse_args(argv)
@@ -205,11 +234,15 @@ def main(argv: list[str] | None = None) -> int:
             "limitations": "No trustworthy staging evidence available; never approve a release.",
         }
     write_receipt(args.output, result)
-    print(json.dumps({
-        "status": result["status"],
-        "checks_passed": result.get("checks_passed", 0),
-        "checks_total": result.get("checks_total", 0),
-    }))
+    print(
+        json.dumps(
+            {
+                "status": result["status"],
+                "checks_passed": result.get("checks_passed", 0),
+                "checks_total": result.get("checks_total", 0),
+            }
+        )
+    )
     return 0 if result["status"] == "READY_FOR_INDEPENDENT_REVIEW" or args.advisory else 1
 
 
