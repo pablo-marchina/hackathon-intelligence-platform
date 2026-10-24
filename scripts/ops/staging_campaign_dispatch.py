@@ -19,13 +19,13 @@ from typing import Any
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from hackathon_sources.models import SourceDefinition
+from hackathon_sources.registry import load_source_definitions
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 
 from scripts.ops.controlled_batch_ingestion import _url, plan, select_sources
 from scripts.ops.coverage_campaign import require_campaign_apply, run_campaign
-from hackathon_sources.models import SourceDefinition
-from hackathon_sources.registry import load_source_definitions
 
 ROOT = Path(__file__).resolve().parents[2]
 RECEIPT_SCHEMA = "staging-coverage-dispatch-v1"
