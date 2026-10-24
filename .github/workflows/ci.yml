@@ -115,7 +115,7 @@ jobs:
         env:
           HIP_ALLOW_SOURCE_OPPORTUNITIES_DRILL: "1"
         run: python -m scripts.ops.source_opportunities_integration_check
-      - name: Staging coverage dispatcher preflight: migrations and all-source approval (PostgreSQL)
+      - name: "Staging coverage dispatcher preflight: migrations and all-source approval (PostgreSQL)"
         env:
           HIP_ALLOW_STAGING_PREFLIGHT_DRILL: "1"
         run: python -m scripts.ops.staging_campaign_preflight_integration_check
