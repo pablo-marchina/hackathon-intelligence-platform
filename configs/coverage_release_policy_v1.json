@@ -1,0 +1,14 @@
+{
+  "schema_version": "coverage-release-policy-v1",
+  "description": "Minimum staging evidence for an independent launch review, not production authorization.",
+  "required_profile": "all",
+  "required_source_count": 7,
+  "maximum_evidence_age_hours": 72,
+  "minimum_active_unique": 250,
+  "minimum_upcoming_unique": 20,
+  "minimum_searchable_unique": 200,
+  "minimum_official_url_percent": 80,
+  "minimum_start_and_end_percent": 70,
+  "minimum_known_registration_close_percent": 20,
+  "require_drained_and_tracked_backlog": true
+}
