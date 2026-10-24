@@ -27,17 +27,25 @@ def staging_env() -> dict[str, str]:
 
 def invoke(mode="plan", profile="dribdat", env=None, confirmation="") -> tuple[int, dict[str, Any]]:
     return dispatch.run_dispatch(
-        mode=mode, profile=profile, confirmation=confirmation,
-        pages=1, versions=25, min_net_unique=0, require_drained=False,
+        mode=mode,
+        profile=profile,
+        confirmation=confirmation,
+        pages=1,
+        versions=25,
+        min_net_unique=0,
+        require_drained=False,
         env={} if env is None else env,
     )
 
 
-@pytest.mark.parametrize("profile,expected", [
-    ("dribdat", 2),
-    ("hackclub", 5),
-    ("all", 7),
-])
+@pytest.mark.parametrize(
+    "profile,expected",
+    [
+        ("dribdat", 2),
+        ("hackclub", 5),
+        ("all", 7),
+    ],
+)
 def test_plan_has_no_db_network_or_secrets(monkeypatch, profile: str, expected: int) -> None:
     def forbidden(*args, **kwargs):
         pytest.fail("plan attempted DB, migrations, network or secret access")
@@ -68,31 +76,41 @@ def test_invalid_selection_is_rejected_before_db(
     monkeypatch, mode, profile, pages, versions, target
 ) -> None:
     monkeypatch.setattr(
-        dispatch, "create_engine",
+        dispatch,
+        "create_engine",
         lambda *args, **kwargs: pytest.fail("invalid selection opened DB"),
     )
     code, receipt = dispatch.run_dispatch(
-        mode=mode, profile=profile, confirmation=dispatch.CONFIRMATION,
-        pages=pages, versions=versions, min_net_unique=target,
-        require_drained=False, env=staging_env(),
+        mode=mode,
+        profile=profile,
+        confirmation=dispatch.CONFIRMATION,
+        pages=pages,
+        versions=versions,
+        min_net_unique=target,
+        require_drained=False,
+        env=staging_env(),
     )
     assert code == 2
     assert receipt["status"] == "BLOCKED"
     assert receipt["database_accessed"] is False
 
 
-@pytest.mark.parametrize("missing", [
-    "DATABASE_URL",
-    "HIP_ALLOW_LIVE_INGESTION",
-    "HIP_ALLOW_BATCH_INGESTION",
-    "HIP_ALLOW_COVERAGE_CAMPAIGN",
-    "HIP_STAGING_EXPECTED_DB_NAME",
-])
+@pytest.mark.parametrize(
+    "missing",
+    [
+        "DATABASE_URL",
+        "HIP_ALLOW_LIVE_INGESTION",
+        "HIP_ALLOW_BATCH_INGESTION",
+        "HIP_ALLOW_COVERAGE_CAMPAIGN",
+        "HIP_STAGING_EXPECTED_DB_NAME",
+    ],
+)
 def test_apply_fails_before_opening_connection_when_opt_in_missing(
     monkeypatch, missing: str
 ) -> None:
     monkeypatch.setattr(
-        dispatch, "create_engine",
+        dispatch,
+        "create_engine",
         lambda *args, **kwargs: pytest.fail("missing secret/flag opened DB"),
     )
     env = staging_env()
@@ -104,7 +122,8 @@ def test_apply_fails_before_opening_connection_when_opt_in_missing(
 
 def test_wrong_confirmation_and_production_db_refused_before_connect(monkeypatch) -> None:
     monkeypatch.setattr(
-        dispatch, "create_engine",
+        dispatch,
+        "create_engine",
         lambda *args, **kwargs: pytest.fail("unapproved run opened DB"),
     )
     code, receipt = invoke("apply", env=staging_env(), confirmation="YES")
@@ -155,23 +174,25 @@ def sample_report() -> dict[str, Any]:
             "catalog": {"unique_active": 2, "upcoming_by_date": 1},
             "field_counts": {"with_known_format": 1},
         },
-        "per_source": {"dribdat_glamhack": {
-            "net_deltas": {"attribution": {"attributed_unique_active": 2}}
-        }},
+        "per_source": {
+            "dribdat_glamhack": {"net_deltas": {"attribution": {"attributed_unique_active": 2}}}
+        },
         "snapshots": {"before": {"SECRET": "private"}, "after": {}},
         "batch": {
             "status": "SUCCEEDED",
             "sources": [
                 {
-                    "source": "dribdat_glamhack", "status": "SUCCEEDED",
-                    "pages_fetched": 1, "versions_processed": 2,
+                    "source": "dribdat_glamhack",
+                    "status": "SUCCEEDED",
+                    "pages_fetched": 1,
+                    "versions_processed": 2,
                     "crawl_run_id": "private-crawl-id",
                     "run_outcomes": {"CREATED": 2},
                     "backlog_by_state": {"DONE": 1},
                     "unprocessed_backlog_urls": 0,
                     "private": "SECRET",
                 },
-                {"source": "dribdat_imprs_astro", "status": "SUCCEEDED"}
+                {"source": "dribdat_imprs_astro", "status": "SUCCEEDED"},
             ],
         },
     }
@@ -210,8 +231,13 @@ def test_strict_drained_gate_blocks_partial_campaign_without_hiding_stats(monkey
 
     monkeypatch.setattr(dispatch, "run_campaign", unfinished)
     kwargs = {
-        "mode": "apply", "profile": "dribdat", "confirmation": dispatch.CONFIRMATION,
-        "pages": 1, "versions": 25, "min_net_unique": 0, "env": staging_env(),
+        "mode": "apply",
+        "profile": "dribdat",
+        "confirmation": dispatch.CONFIRMATION,
+        "pages": 1,
+        "versions": 25,
+        "min_net_unique": 0,
+        "env": staging_env(),
     }
     code, receipt = dispatch.run_dispatch(**kwargs, require_drained=True)
     assert code == 1 and receipt["status"] == "NEEDS_BACKLOG_FOLLOWUP"
@@ -221,7 +247,8 @@ def test_strict_drained_gate_blocks_partial_campaign_without_hiding_stats(monkey
 
 def test_exception_redaction_does_not_leak_database_secret(monkeypatch) -> None:
     monkeypatch.setattr(
-        dispatch, "create_engine",
+        dispatch,
+        "create_engine",
         lambda *args, **kwargs: (_ for _ in ()).throw(
             RuntimeError("failure includes SECRET and connection details")
         ),
