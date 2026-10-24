@@ -177,7 +177,22 @@ def sample_report() -> dict[str, Any]:
         "per_source": {
             "dribdat_glamhack": {"net_deltas": {"attribution": {"attributed_unique_active": 2}}}
         },
-        "snapshots": {"before": {"SECRET": "private"}, "after": {}},
+        "snapshots": {
+            "before": {"SECRET": "private"},
+            "after": {
+                "as_of": "2026-10-24T03:30:00+00:00",
+                "catalog": {
+                    "unique_active": 250,
+                    "upcoming_by_date": 45,
+                    "ongoing_by_date": 3,
+                    "confirmed_registration_window": 10,
+                    "unknown_registration_close": 100,
+                    "with_official_url": 230,
+                    "with_start_end": 210,
+                },
+                "global_funnel": {"unique_searchable_hackathons": 225},
+            },
+        },
         "batch": {
             "status": "SUCCEEDED",
             "sources": [

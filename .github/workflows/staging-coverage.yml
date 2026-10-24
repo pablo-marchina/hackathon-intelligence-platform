@@ -129,6 +129,23 @@ jobs:
                 --min-net-unique "$HIP_TARGET" --receipt "$HIP_RECEIPT")
           if [[ "$HIP_DRAINED" == "true" ]]; then args+=(--require-drained); fi
           python -m scripts.ops.staging_campaign_dispatch "${args[@]}"
+      - name: Evaluate versioned launch review gates (advisory, never deploy)
+        if: always()
+        shell: bash
+        env:
+          HIP_RECEIPT: ${{ runner.temp }}/hip-staging-coverage.json
+          HIP_REVIEW: ${{ runner.temp }}/hip-release-review.json
+        run: |
+          python -m scripts.ops.coverage_release_gate \
+            --receipt "$HIP_RECEIPT" --output "$HIP_REVIEW" --advisory
+      - name: Upload redacted launch review gate findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hip-staging-launch-review
+          path: ${{ runner.temp }}/hip-release-review.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload redacted staging campaign receipt, including failures
         if: always()
         uses: actions/upload-artifact@v4

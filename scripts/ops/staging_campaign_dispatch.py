@@ -150,9 +150,32 @@ def summarized_report(report: dict[str, Any], selected: list[SourceDefinition]) 
     """Explicit allowlist prevents accidentally uploading private event data or DSN."""
     batch = report.get("batch") or {}
     src = {row.get("source"): row for row in batch.get("sources", []) if isinstance(row, dict)}
+    after = report["snapshots"]["after"]
+    catalog = after["catalog"]
+    # The only absolute numbers released publicly are approved, aggregate,
+    # non-personal catalog metrics; individual events, URLs and crawl IDs
+    # remain excluded from GitHub artifacts.
     return {
         "status": report["status"],
         "evidence_kind": report["evidence_kind"],
+        "observed_at": str(after["as_of"]),
+        "post_catalog": {
+            key: int(catalog[key])
+            for key in (
+                "unique_active",
+                "upcoming_by_date",
+                "ongoing_by_date",
+                "confirmed_registration_window",
+                "unknown_registration_close",
+                "with_official_url",
+                "with_start_end",
+            )
+        },
+        "post_global_funnel": {
+            "unique_searchable_hackathons": int(
+                after["global_funnel"]["unique_searchable_hackathons"]
+            ),
+        },
         "batch_status": report["batch_status"],
         "net_unique_target_met": report["net_unique_target_met"],
         "minimum_net_unique_target": report["minimum_net_unique_target"],
