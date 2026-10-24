@@ -74,9 +74,7 @@ def _selection(profile: str, pages: int, versions: int) -> tuple[list[SourceDefi
     return selected, preview
 
 
-def validate_apply(
-    env: dict[str, str], *, confirmation: str, db_name: str | None
-) -> str:
+def validate_apply(env: dict[str, str], *, confirmation: str, db_name: str | None) -> str:
     """Gate side effects before create_engine(), even when called outside Actions."""
     if confirmation != CONFIRMATION:
         raise DispatchRefusal("MANUAL_CONFIRMATION_REQUIRED")
@@ -123,7 +121,9 @@ def preflight(engine: Engine, selected: list[SourceDefinition], expected: str) -
         if database != expected:
             raise DispatchRefusal("DATABASE_SERVER_IDENTITY_MISMATCH")
         head = expected_revision()
-        revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalars().all()
+        revision = (
+            connection.execute(text("SELECT version_num FROM alembic_version")).scalars().all()
+        )
         if revision != [head]:
             raise DispatchRefusal("SCHEMA_MIGRATION_NOT_CURRENT")
         for source in selected:
@@ -139,8 +139,11 @@ def preflight(engine: Engine, selected: list[SourceDefinition], expected: str) -
             ).scalar_one_or_none()
             if permitted is not True:
                 raise DispatchRefusal("SOURCE_NOT_AUTHORIZED_IN_STAGING")
-        return {"database_identity_verified": True, "schema_current": True,
-                "source_permissions_checked": len(selected)}
+        return {
+            "database_identity_verified": True,
+            "schema_current": True,
+            "source_permissions_checked": len(selected),
+        }
 
 
 def summarized_report(report: dict[str, Any], selected: list[SourceDefinition]) -> dict:
@@ -172,17 +175,22 @@ def summarized_report(report: dict[str, Any], selected: list[SourceDefinition]) 
                     for key, value in (src.get(source.key, {}).get("run_outcomes") or {}).items()
                     if key in {"CREATED", "LINKED", "UPDATED", "REJECTED"}
                 },
-                "unprocessed_backlog_urls": src.get(source.key, {}).get(
-                    "unprocessed_backlog_urls"
-                ),
+                "unprocessed_backlog_urls": src.get(source.key, {}).get("unprocessed_backlog_urls"),
                 "backlog_by_state": {
                     key: int(value)
-                    for key, value in (src.get(source.key, {}).get("backlog_by_state") or {}).items()
+                    for key, value in (
+                        src.get(source.key, {}).get("backlog_by_state") or {}
+                    ).items()
                     if key in {"PENDING", "RETRY", "CLAIMED", "DONE", "EXHAUSTED"}
                 },
                 "attributed_active_delta": (
-                    (report.get("per_source", {}).get(source.key, {}).get("net_deltas", {})
-                     .get("attribution") or {}).get("attributed_unique_active")
+                    (
+                        report.get("per_source", {})
+                        .get(source.key, {})
+                        .get("net_deltas", {})
+                        .get("attribution")
+                        or {}
+                    ).get("attributed_unique_active")
                 ),
             }
             for source in selected
@@ -221,7 +229,8 @@ def run_dispatch(
         selected, preview = _selection(profile, pages, versions)
         receipt["source_keys"] = [item.key for item in selected]
         receipt["budgets"] = {
-            "pages_per_source": pages, "versions_per_source": versions,
+            "pages_per_source": pages,
+            "versions_per_source": versions,
             "max_total_pages": preview["max_total_pages"],
             "max_total_versions": preview["max_total_versions"],
         }
@@ -238,16 +247,13 @@ def run_dispatch(
         engine = create_engine(dsn, pool_pre_ping=True, connect_args={"connect_timeout": 5})
         try:
             receipt["database_accessed"] = True
-            receipt["preflight"] = preflight(
-                engine, selected, env["HIP_STAGING_EXPECTED_DB_NAME"]
-            )
+            receipt["preflight"] = preflight(engine, selected, env["HIP_STAGING_EXPECTED_DB_NAME"])
             # From here the existing collector performs its own transactional,
             # per-page authorization checks, even after an operator revokes a source.
             receipt["network_attempted"] = True
             report = asyncio.run(
                 run_campaign(
-                    engine, selected, pages=pages, versions=versions,
-                    min_net_unique=min_net_unique
+                    engine, selected, pages=pages, versions=versions, min_net_unique=min_net_unique
                 )
             )
             safe = summarized_report(report, selected)
@@ -303,17 +309,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--receipt", type=Path, required=True)
     args = parser.parse_args(argv)
     exit_code, receipt = run_dispatch(
-        mode=args.mode, profile=args.profile, confirmation=args.confirm,
-        pages=args.max_pages, versions=args.max_versions,
-        min_net_unique=args.min_net_unique, require_drained=args.require_drained,
+        mode=args.mode,
+        profile=args.profile,
+        confirmation=args.confirm,
+        pages=args.max_pages,
+        versions=args.max_versions,
+        min_net_unique=args.min_net_unique,
+        require_drained=args.require_drained,
         env=dict(os.environ),
     )
     write_receipt(args.receipt, receipt)
-    print(json.dumps({
-        "status": receipt["status"], "profile": receipt["profile"],
-        "source_count": len(receipt["source_keys"]), "exit_code": exit_code,
-        "receipt_written": True,
-    }))
+    print(
+        json.dumps(
+            {
+                "status": receipt["status"],
+                "profile": receipt["profile"],
+                "source_count": len(receipt["source_keys"]),
+                "exit_code": exit_code,
+                "receipt_written": True,
+            }
+        )
+    )
     return exit_code
 
 
