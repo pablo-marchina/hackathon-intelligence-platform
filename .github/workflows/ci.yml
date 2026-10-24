@@ -218,7 +218,9 @@ jobs:
           cache: pip
       - run: pip install -e '.[dev]'
       - name: Install PostgreSQL client tooling
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client-16
+        # Use the distro's supported current client; pg_dump/pg_restore support
+        # earlier PostgreSQL server versions (our disposable service runs 16).
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Start ephemeral MinIO
         run: >-
           docker run -d --rm --name hip-dr-minio -p 9000:9000
