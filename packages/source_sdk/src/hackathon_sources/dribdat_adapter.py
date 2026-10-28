@@ -65,7 +65,9 @@ _HACKATHON_HASHTAG = re.compile(
 def _explicit_hackathon_tags(value: Any) -> list[str]:
     if not isinstance(value, str):
         return []
-    return list(dict.fromkeys(match.group(1).lower() for match in _HACKATHON_HASHTAG.finditer(value[:1000])))
+    return list(
+        dict.fromkeys(match.group(1).lower() for match in _HACKATHON_HASHTAG.finditer(value[:1000]))
+    )
 
 
 class DribdatOpenEventsAdapter(ApiSeedAdapter):
