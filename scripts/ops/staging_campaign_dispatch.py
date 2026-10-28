@@ -33,6 +33,7 @@ CONFIRMATION = "RUN_STAGING_COVERAGE"
 PROFILES: dict[str, tuple[str, ...]] = {
     "hackalendar": ("hackalendar",),
     "dribdat": ("dribdat_glamhack", "dribdat_imprs_astro", "dribdat_opendata_ch"),
+    "dribdat_community": ("dribdat_hack4socialgood", "dribdat_echtzeit"),
     "hackclub": (
         "hackclub_hackathons",
         "hackclub_programs",

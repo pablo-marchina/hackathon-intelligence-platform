@@ -42,6 +42,7 @@ def invoke(mode="plan", profile="dribdat", env=None, confirmation="") -> tuple[i
     "profile,expected",
     [
         ("dribdat", 3),
+        ("dribdat_community", 2),
         ("hackalendar", 1),
         ("hackclub", 5),
         ("all", 8),
