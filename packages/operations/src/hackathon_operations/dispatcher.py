@@ -10,8 +10,8 @@ from pathlib import Path
 
 from hackathon_intelligence.incremental import CanonicalProcessor
 from hackathon_sources.factory import build_adapter, live_adapter_keys
-from hackathon_sources.models import IngestionMode, PermissionStatus, SourceDefinition
 from hackathon_sources.fetcher import FetchEngine
+from hackathon_sources.models import IngestionMode, PermissionStatus, SourceDefinition
 from hackathon_sources.persistent_runner import run_source_persisted
 from hackathon_sources.registry import SourceRegistryRepository, load_source_definitions
 from sqlalchemy import Engine, text
