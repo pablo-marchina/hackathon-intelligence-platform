@@ -88,7 +88,7 @@ def normalize_scheduled_source(
                 return outcomes
             if status == "SKIPPED_UNAUTHORIZED":
                 raise PermissionError("canonical source authorization was revoked")
-            if exact not in outcomes:
+            if exact is None or exact not in outcomes:
                 raise ValueError("unexpected canonical processing outcome")
             if not should_continue():
                 raise LeaseLostError("source lease lost during canonical processing")
