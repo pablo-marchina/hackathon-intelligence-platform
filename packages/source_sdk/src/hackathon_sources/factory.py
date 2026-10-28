@@ -25,6 +25,7 @@ _LIVE_ADAPTERS: dict[str, type[SourceAdapter]] = {
     "hackclub_ysws_programs": HackClubYswsProgramsAdapter,
     "dribdat_glamhack": DribdatOpenEventsAdapter,
     "dribdat_imprs_astro": DribdatOpenEventsAdapter,
+    "dribdat_opendata_ch": DribdatOpenEventsAdapter,
     "hackclub_community_events": HackClubCommunityEventsAdapter,
 }
 
