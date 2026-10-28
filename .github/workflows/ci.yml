@@ -99,6 +99,10 @@ jobs:
         env:
           HIP_ALLOW_API_PAGINATION_DRILL: "1"
         run: python -m scripts.ops.official_api_pagination_integration_check
+      - name: Public OpenData.ch hackdays API -> canonical, tag verified (synthetic PostgreSQL)
+        env:
+          HIP_ALLOW_OPENDATA_DB_DRILL: "1"
+        run: python -m scripts.ops.opendata_hackdays_integration_check
       - name: Public Swiss/German Dribdat APIs -> historic editions (synthetic PostgreSQL)
         env:
           HIP_ALLOW_DRIBDAT_DB_DRILL: "1"
