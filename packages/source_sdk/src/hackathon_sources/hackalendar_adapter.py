@@ -44,12 +44,17 @@ def _text(value: Any, *, limit: int = 300) -> str | None:
 
 def _date(value: Any) -> str | None:
     # Preserve the publisher's precision (YYYY-MM-DD or ISO with explicit time).
-    return _text(value, limit=80)
+    # Do not turn a truncated invalid timestamp into an apparent valid date.
+    return value.strip() if isinstance(value, str) and 0 < len(value.strip()) <= 80 else None
 
 
 def _page_url(url: str) -> tuple[str, int, int] | None:
     parts = urlsplit(url)
-    if parts.scheme != "https" or parts.hostname != API_HOST or parts.port not in (None, 443):
+    try:
+        port = parts.port
+    except ValueError:
+        return None
+    if parts.scheme != "https" or parts.hostname != API_HOST or port not in (None, 443):
         return None
     if parts.username or parts.password or parts.path != API_PATH or parts.fragment:
         return None
@@ -83,7 +88,12 @@ class HackalendarPublicEventsAdapter(ApiSeedAdapter):
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            slug = _text(row.get("slug"), limit=200)
+            raw_slug = row.get("slug")
+            slug = (
+                raw_slug.strip()
+                if isinstance(raw_slug, str) and 0 < len(raw_slug.strip()) <= 200
+                else None
+            )
             name = _text(row.get("name"))
             if slug is None or name is None or slug in ids:
                 continue
@@ -114,6 +124,7 @@ class HackalendarPublicEventsAdapter(ApiSeedAdapter):
                 else None,
                 "timezone": _text(row.get("timezone"), limit=80),
                 "description": _text(row.get("description"), limit=2000),
+                "location_text": _text(location, limit=500) if isinstance(location, str) else None,
                 "is_free": row.get("isFree") if type(row.get("isFree")) is bool else None,
                 "prize_pool_raw": row.get("prizePool")
                 if isinstance(row.get("prizePool"), (str, int, float))
@@ -150,9 +161,9 @@ class HackalendarPublicEventsAdapter(ApiSeedAdapter):
         _, limit, offset = parts
         _, meta = _payload(result)
         has_more = meta.get("hasMore")
+        if has_more is False:
+            return []
         if has_more is not True:
-            if has_more is False or has_more is None:
-                return []
             raise ValueError("Hackalendar hasMore must be boolean")
         next_offset = meta.get("nextOffset")
         if (
