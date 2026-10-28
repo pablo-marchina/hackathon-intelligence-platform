@@ -24,6 +24,7 @@ def test_only_explicitly_authorized_registry_apis_opt_into_durable_pages() -> No
         and item.durable_api_pages
     }
     assert approved == {
+        "hackalendar",
         "hackclub_hackathons",
         "hackclub_programs",
         "hackclub_community_events",
