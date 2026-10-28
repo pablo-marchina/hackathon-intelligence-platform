@@ -26,7 +26,7 @@ def verified_receipt() -> dict:
         "preflight": {
             "database_identity_verified": True,
             "schema_current": True,
-            "source_permissions_checked": 7,
+            "source_permissions_checked": 8,
         },
         "results": {
             "status": "MEASURED",
