@@ -13,7 +13,7 @@ from hackathon_sources.factory import build_adapter, live_adapter_keys
 from hackathon_sources.fetcher import FetchEngine
 from hackathon_sources.models import IngestionMode, PermissionStatus, SourceDefinition
 from hackathon_sources.persistent_runner import run_source_persisted
-from hackathon_sources.registry import SourceRegistryRepository, load_source_definitions
+from hackathon_sources.registry import load_source_definitions
 from sqlalchemy import Engine, text
 
 from .lease_heartbeat import LeaseHeartbeat, LeaseLostError
@@ -115,12 +115,10 @@ async def run_scheduler_cycle(
         raise ValueError("limit/pages must be 1 to 20 and versions must be 1 to 1000")
     definitions = load_source_definitions(root / "db/seeds/sources_v0_1.json")
     definitions = select_scheduled_sources(definitions)
-    # Register only known live adapters, without network access. Operational
-    # overrides on existing records are never reset by this seed import.
+    # Only a separately registered/approved PostgreSQL source can be claimed.
+    # Do NOT upsert seed policy here: inserting ALLOWED seeds would silently
+    # grant DB permission without an independent operator approval.
     with engine.begin() as conn:
-        registry = SourceRegistryRepository(conn)
-        for definition in definitions:
-            registry.upsert(definition)
         result = maintain_sources(conn)
     if not dispatch:
         return DispatchResult(
