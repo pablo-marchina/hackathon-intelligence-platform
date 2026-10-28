@@ -75,7 +75,11 @@ def fixture():
 
 def test_two_verified_organizer_instances_are_independently_authorized_and_rate_limited():
     sources = approved_sources()
-    assert {source.key for source in sources} == {"dribdat_glamhack", "dribdat_imprs_astro"}
+    assert {source.key for source in sources} == {
+        "dribdat_glamhack",
+        "dribdat_imprs_astro",
+        "dribdat_opendata_ch",
+    }
     for source in sources:
         assert source.ingestion_mode is IngestionMode.API
         assert source.permission_status is PermissionStatus.ALLOWED
