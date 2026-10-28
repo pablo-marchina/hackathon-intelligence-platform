@@ -40,8 +40,12 @@ def test_scheduler_selects_only_approved_parseable_sources() -> None:
         source("rss_allowed", IngestionMode.RSS),
         source("sitemap_allowed", IngestionMode.SITEMAP),
         source("generic_api_without_parser", IngestionMode.API),
-        source("html_review", IngestionMode.STATIC_HTML, permission=PermissionStatus.REVIEW_REQUIRED),
-        source("html_restricted", IngestionMode.STATIC_HTML, permission=PermissionStatus.RESTRICTED),
+        source(
+            "html_review", IngestionMode.STATIC_HTML, permission=PermissionStatus.REVIEW_REQUIRED
+        ),
+        source(
+            "html_restricted", IngestionMode.STATIC_HTML, permission=PermissionStatus.RESTRICTED
+        ),
         source("html_paused_capability", IngestionMode.STATIC_HTML, detail=False),
         source("html_no_discovery", IngestionMode.STATIC_HTML, discovery=False),
         source("html_no_seeds", IngestionMode.STATIC_HTML, seeds=False),
