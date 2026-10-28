@@ -177,6 +177,22 @@ def evaluate(
         ),
         sum(x.get("status") == "SUCCEEDED" for x in by_key.values()),
     )
+    # A status flag alone is not proof that each source was actually queried.
+    # Strict positive-page evidence and consistent processed counts are needed
+    # before an operator can independently review a candidate launch.
+    allowed_outcomes = {"CREATED", "LINKED", "UPDATED", "REJECTED"}
+    min_pages = rules["minimum_fetched_pages_per_source"]
+    complete_fetch = len(by_key) == rules["required_source_count"] and all(
+        _nonnegative(row.get("pages_fetched")) is not None
+        and row["pages_fetched"] >= min_pages
+        and _nonnegative(row.get("versions_processed")) is not None
+        and isinstance(row.get("run_outcomes"), dict)
+        and set(row["run_outcomes"]) == allowed_outcomes
+        and all(_nonnegative(value) is not None for value in row["run_outcomes"].values())
+        and sum(row["run_outcomes"].values()) <= row["versions_processed"]
+        for row in by_key.values()
+    )
+    check("each_source_has_fetch_and_processing_evidence", complete_fetch)
     backlog_unknown = result.get("has_unverified_backlog_sources")
     backlog_open = result.get("has_incomplete_or_exhausted_backlog")
     check(

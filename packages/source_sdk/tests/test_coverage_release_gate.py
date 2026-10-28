@@ -48,7 +48,21 @@ def verified_receipt() -> dict:
             },
             "has_unverified_backlog_sources": False,
             "has_incomplete_or_exhausted_backlog": False,
-            "sources": [{"key": key, "status": "SUCCEEDED"} for key in PROFILES["all"]],
+            "sources": [
+                {
+                    "key": key,
+                    "status": "SUCCEEDED",
+                    "pages_fetched": 1,
+                    "versions_processed": 3,
+                    "run_outcomes": {
+                        "CREATED": 1,
+                        "LINKED": 0,
+                        "UPDATED": 0,
+                        "REJECTED": 0,
+                    },
+                }
+                for key in PROFILES["all"]
+            ],
         },
     }
 
@@ -148,6 +162,32 @@ def test_missing_inconsistent_or_weak_evidence_is_never_ready(mutator, failed: s
     report = gate.evaluate(candidate, now=CLOCK)
     assert report["status"] == "NOT_READY"
     assert any(row["id"] == failed and not row["passed"] for row in report["checks"])
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda row: row.pop("pages_fetched"),
+        lambda row: row.update(pages_fetched=0),
+        lambda row: row.update(pages_fetched=True),
+        lambda row: row.update(versions_processed=None),
+        lambda row: row.update(versions_processed=-1),
+        lambda row: row.update(run_outcomes={}),
+        lambda row: row["run_outcomes"].update(CREATED=4),
+        lambda row: row["run_outcomes"].update(REJECTED=-1),
+        lambda row: row["run_outcomes"].update(UNKNOWN=1),
+    ],
+)
+def test_review_rejects_success_claim_without_real_fetch_evidence(change) -> None:
+    receipt = verified_receipt()
+    change(receipt["results"]["sources"][0])
+    report = gate.evaluate(receipt, now=CLOCK)
+    assert report["status"] == "NOT_READY"
+    assert not next(
+        row["passed"]
+        for row in report["checks"]
+        if row["id"] == "each_source_has_fetch_and_processing_evidence"
+    )
 
 
 def test_empty_and_false_are_not_treated_as_unknown_but_null_is() -> None:
