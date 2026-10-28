@@ -144,10 +144,10 @@ def test_integration_guard_blocks_non_ci_database(monkeypatch: pytest.MonkeyPatc
         module.verify()
 
 
-def test_dispatcher_bootstraps_only_live_sources_before_planning():
+def test_dispatcher_bootstraps_only_schedulable_sources_before_planning():
     code = (
         Path(__file__).resolve().parents[1] / "src/hackathon_operations/dispatcher.py"
     ).read_text()
-    assert "if d.key in live_adapter_keys()" in code
+    assert "select_scheduled_sources(definitions)" in code
     assert "registry.upsert(definition)" in code
     assert code.index("registry.upsert(definition)") < code.index("result = maintain_sources(conn)")
