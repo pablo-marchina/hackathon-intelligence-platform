@@ -65,6 +65,8 @@ def test_live_adapter_registry_contains_all_authorized_public_api_sources() -> N
         "dribdat_glamhack",
         "dribdat_imprs_astro",
         "dribdat_opendata_ch",
+        "dribdat_hack4socialgood",
+        "dribdat_echtzeit",
     }
 
 
