@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RECEIPT_SCHEMA = "staging-coverage-dispatch-v1"
 CONFIRMATION = "RUN_STAGING_COVERAGE"
 PROFILES: dict[str, tuple[str, ...]] = {
-    "dribdat": ("dribdat_glamhack", "dribdat_imprs_astro"),
+    "dribdat": ("dribdat_glamhack", "dribdat_imprs_astro", "dribdat_opendata_ch"),
     "hackclub": (
         "hackclub_hackathons",
         "hackclub_programs",
@@ -47,6 +47,7 @@ PROFILES: dict[str, tuple[str, ...]] = {
         "agenda_tech_brasil",
         "dribdat_glamhack",
         "dribdat_imprs_astro",
+        "dribdat_opendata_ch",
     ),
 }
 PAGE_OPTIONS = (1, 3, 5)
