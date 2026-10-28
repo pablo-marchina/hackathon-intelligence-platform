@@ -124,16 +124,22 @@ def prepare_event(
         # Both publishers explicitly curate a hackathon-only public feed.
         # Never extend this exemption to general event calendars.
         kind = "hackathon"
-    if kind is None and source_key == "dribdat_hack4socialgood":
-        # An explicitly verified, recurring organiser's hackathon series.
-        # Do not promote the same portal's generic Data Toolbox/workshops.
-        if re.fullmatch(r"hack4socialgood(?: 20\\d{2})?", normalized_name(name)):
-            kind = "hackathon"
-    if kind is None and source_key == "dribdat_echtzeit":
-        # The publisher calls Graffathon 2022 a two-day hackathon. The
-        # 2026 Echtzeit Graffathon is described as a workshop: no exemption.
-        if normalized_name(name) == "graffathon 2022":
-            kind = "hackathon"
+    # Only this publisher's explicitly verified recurring hackathon series
+    # gets an exception; its Data Toolbox and workshops remain unclassified.
+    if (
+        kind is None
+        and source_key == "dribdat_hack4socialgood"
+        and re.fullmatch(r"hack4socialgood(?: 20\\d{2})?", normalized_name(name))
+    ):
+        kind = "hackathon"
+    # The publisher calls Graffathon 2022 a two-day hackathon. The 2026
+    # Echtzeit Graffathon is described as a workshop: no exception.
+    if (
+        kind is None
+        and source_key == "dribdat_echtzeit"
+        and normalized_name(name) == "graffathon 2022"
+    ):
+        kind = "hackathon"
     if kind is None:
         return None
     start, end = parse_date(payload.get("starts_at_raw")), parse_date(payload.get("ends_at_raw"))
