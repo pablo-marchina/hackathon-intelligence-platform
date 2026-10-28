@@ -16,7 +16,7 @@ on:
         type: choice
         required: true
         default: dribdat
-        options: [dribdat, hackclub, hackalendar, all]
+        options: [dribdat, dribdat_community, hackclub, hackalendar, all]
       max_pages:
         description: "Maximum fetched pages per source"
         type: choice
