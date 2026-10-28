@@ -151,7 +151,9 @@ def verify() -> None:
         )
         assert repeat["run_outcomes"]["CREATED"] == 0, repeat
         assert repeat["catalog_delta_observed"] == 0, repeat
-        print("PASS: OpenData.ch two hackdays, explicit hashtag, festival rejected, replay idempotent")
+        print(
+            "PASS: OpenData.ch two hackdays, explicit hashtag, festival rejected, replay idempotent"
+        )
     finally:
         engine.dispose()
 
