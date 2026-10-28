@@ -248,6 +248,34 @@ def test_schema_mismatch_does_not_claim_success(body: object) -> None:
         asyncio.run(adapter.parse_events(fetched(body)))
 
 
+def test_malformed_pagination_cannot_be_mistaken_for_complete_coverage() -> None:
+    adapter = HackalendarPublicEventsAdapter(source())
+    with pytest.raises(ValueError, match="hasMore"):
+        asyncio.run(adapter.parse_listing(fetched({"data": [event()], "meta": {}})))
+    with pytest.raises(ValueError, match="hasMore"):
+        asyncio.run(
+            adapter.parse_listing(
+                fetched({"data": [event()], "meta": {"hasMore": "yes", "nextOffset": 1}})
+            )
+        )
+
+
+def test_long_source_slugs_are_rejected_instead_of_truncated_and_colliding() -> None:
+    adapter = HackalendarPublicEventsAdapter(source())
+    records = asyncio.run(
+        adapter.parse_events(
+            response(
+                [
+                    event(slug="a" * 201, name="First Hackathon"),
+                    event(slug="a" * 200 + "b", name="Second Hackathon"),
+                    event(slug="valid", name="Third Hackathon"),
+                ]
+            )
+        )
+    )
+    assert [record.source_event_id for record in records] == ["valid"]
+
+
 def test_bounded_two_page_discovery_never_follows_organizer_urls() -> None:
     class FakeFetcher:
         def __init__(self) -> None:
