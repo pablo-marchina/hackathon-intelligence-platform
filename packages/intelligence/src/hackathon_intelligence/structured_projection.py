@@ -8,6 +8,7 @@ separately. Unverified fields stay unknown rather than becoming False or zero.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
@@ -75,7 +76,7 @@ def project_structured_metadata(payload: dict[str, Any]) -> list[ProjectedObserv
     metadata = payload.get("metadata")
     if not isinstance(metadata, dict) or metadata.get("extraction_method") != "schema_org_json_ld":
         return []
-    specs = {
+    specs: dict[str, tuple[str, Callable[[Any], Any]]] = {
         "description": (
             "short_description",
             lambda v: v[:2000] if isinstance(v, str) and v.strip() else None,
