@@ -48,7 +48,21 @@ def verified_receipt() -> dict:
             },
             "has_unverified_backlog_sources": False,
             "has_incomplete_or_exhausted_backlog": False,
-            "sources": [{"key": key, "status": "SUCCEEDED"} for key in PROFILES["all"]],
+            "sources": [
+                {
+                    "key": key,
+                    "status": "SUCCEEDED",
+                    "pages_fetched": 1,
+                    "versions_processed": 3,
+                    "run_outcomes": {
+                        "CREATED": 1,
+                        "LINKED": 0,
+                        "UPDATED": 0,
+                        "REJECTED": 0,
+                    },
+                }
+                for key in PROFILES["all"]
+            ],
         },
     }
 
