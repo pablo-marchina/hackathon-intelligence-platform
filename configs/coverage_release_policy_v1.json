@@ -2,7 +2,7 @@
   "schema_version": "coverage-release-policy-v1",
   "description": "Minimum staging evidence for an independent launch review, not production authorization.",
   "required_profile": "all",
-  "required_source_count": 7,
+  "required_source_count": 8,
   "maximum_evidence_age_hours": 72,
   "minimum_active_unique": 250,
   "minimum_upcoming_unique": 20,
