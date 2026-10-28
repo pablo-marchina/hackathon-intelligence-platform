@@ -144,10 +144,10 @@ def test_integration_guard_blocks_non_ci_database(monkeypatch: pytest.MonkeyPatc
         module.verify()
 
 
-def test_dispatcher_bootstraps_only_schedulable_sources_before_planning():
+def test_scheduler_never_auto_approves_new_sources_during_maintenance():
     code = (
         Path(__file__).resolve().parents[1] / "src/hackathon_operations/dispatcher.py"
     ).read_text()
     assert "select_scheduled_sources(definitions)" in code
-    assert "registry.upsert(definition)" in code
-    assert code.index("registry.upsert(definition)") < code.index("result = maintain_sources(conn)")
+    assert "registry.upsert(definition)" not in code
+    assert "result = maintain_sources(conn)" in code
