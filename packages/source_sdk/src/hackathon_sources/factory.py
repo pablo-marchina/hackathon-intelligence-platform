@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from .adapter import SourceAdapter
 from .dribdat_adapter import DribdatOpenEventsAdapter
+from .hackalendar_adapter import HackalendarPublicEventsAdapter
 from .live_adapters import (
     AgendaTechBrasilAdapter,
     HackClubCommunityEventsAdapter,
@@ -20,6 +21,7 @@ AdapterFactory = Callable[[SourceDefinition], SourceAdapter]
 
 _LIVE_ADAPTERS: dict[str, type[SourceAdapter]] = {
     "agenda_tech_brasil": AgendaTechBrasilAdapter,
+    "hackalendar": HackalendarPublicEventsAdapter,
     "hackclub_hackathons": HackClubHackathonsAdapter,
     "hackclub_programs": HackClubProgramsAdapter,
     "hackclub_ysws_programs": HackClubYswsProgramsAdapter,

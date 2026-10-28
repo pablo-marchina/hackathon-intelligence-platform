@@ -571,5 +571,29 @@
     ],
     "durable_api_pages": false,
     "notes": "Organizer-hosted public Open Data API (About -> Open data), manually verified 2026-10-28. Contains multi-year Swiss open data hackdays: energy, public sector, agriculture, GovTech, GLAMhack, and non-hackathon events. Apply strict hackathon name/hashtag classification. Some editions overlap with dribdat_glamhack and other portals; do not sum sources as unique. API seed only, do not follow organizer links. Separate operator DB approval still mandatory. No list pagination documented."
+  },
+  {
+    "key": "hackalendar",
+    "name": "Hackalendar — curated public hackathon events API",
+    "domain": "hackalendar.com",
+    "source_family": "hackalendar",
+    "source_type": "curated_hackathon_public_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 86,
+    "trust_score": 0.87,
+    "refresh_interval_seconds": 43200,
+    "rate_limit_per_minute": 2,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "hackalendar.com"
+    ],
+    "seed_urls": [
+      "https://hackalendar.com/api/events?limit=200&offset=0"
+    ],
+    "durable_api_pages": true,
+    "notes": "Publisher publicly offers free no-key JSON API for developers at https://hackalendar.com/api and documents schema/pagination at https://hackalendar.com/agents (reviewed 2026-10-28). Link to original organiser registration URL, retain provenance and date precision. Only GET /api/events with limit/offset. No /api/submissions or subscription/private access; never crawl external registration/organizer URLs. DB operator approval and staging receipts separately required. Offset 0-100000, max 200 rows/page and MAX_API_PAGINATION_HOPS. OSM-derived venue addresses not imported. No new production coverage asserted."
   }
 ]

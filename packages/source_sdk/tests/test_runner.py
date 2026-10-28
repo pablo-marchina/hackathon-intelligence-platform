@@ -57,6 +57,7 @@ def source() -> SourceDefinition:
 def test_live_adapter_registry_contains_all_authorized_public_api_sources() -> None:
     assert live_adapter_keys() == {
         "agenda_tech_brasil",
+        "hackalendar",
         "hackclub_hackathons",
         "hackclub_programs",
         "hackclub_community_events",

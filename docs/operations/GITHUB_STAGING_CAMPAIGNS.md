@@ -69,6 +69,7 @@ Os perfis permitem rodadas pequenas e isoladas:
 | Perfil | Fontes no registry |
 | --- | --- |
 | `dribdat` | `dribdat_glamhack`, `dribdat_imprs_astro`, `dribdat_opendata_ch` |
+| `hackalendar` | `hackalendar` (API pública com paginação; validar separadamente) |
 | `hackclub` | `hackclub_hackathons`, `hackclub_programs`, `hackclub_community_events`, `hackclub_ysws_programs`, `agenda_tech_brasil` |
 | `all` | Todas as 8 fontes acima |
 
