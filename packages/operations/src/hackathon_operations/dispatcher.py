@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from hackathon_intelligence.incremental import CanonicalProcessor
 from hackathon_sources.factory import build_adapter, live_adapter_keys
+from hackathon_sources.models import IngestionMode, PermissionStatus, SourceDefinition
 from hackathon_sources.fetcher import FetchEngine
 from hackathon_sources.persistent_runner import run_source_persisted
 from hackathon_sources.registry import SourceRegistryRepository, load_source_definitions
@@ -26,6 +30,70 @@ class DispatchResult:
     claimed: int
     succeeded: int
     failed: int
+    canonical_processed: int = 0
+
+
+_CANONICAL_OUTCOMES = ("CREATED", "LINKED", "UPDATED", "REJECTED")
+_GENERIC_SCHEDULED_MODES = frozenset(
+    {IngestionMode.STATIC_HTML, IngestionMode.RSS, IngestionMode.SITEMAP}
+)
+
+
+def select_scheduled_sources(definitions: list[SourceDefinition]) -> list[SourceDefinition]:
+    """Only explicitly approved, parseable sources may enter the scheduler.
+
+    A generic API seed has no event parser and is not scheduled. Generic
+    HTML/RSS/sitemap adapters remain subject to DB authorization, robots,
+    host allowlists and the persistent runner's commit fence.
+    """
+    known_apis = live_adapter_keys()
+    return [
+        definition
+        for definition in definitions
+        if definition.permission_status is PermissionStatus.ALLOWED
+        and definition.discovery_enabled
+        and definition.detail_extraction_enabled
+        and definition.seed_urls
+        and (
+            (definition.ingestion_mode is IngestionMode.API and definition.key in known_apis)
+            or definition.ingestion_mode in _GENERIC_SCHEDULED_MODES
+        )
+    ]
+
+
+def normalize_scheduled_source(
+    engine: Engine,
+    *,
+    source_key: str,
+    max_versions: int,
+    should_continue: Callable[[], bool],
+) -> dict[str, int]:
+    """Consume a bounded source backlog with one commit per canonical version.
+
+    Run in a worker thread so the async lease heartbeat remains responsive.
+    CanonicalProcessor rechecks DB-owned source permissions under row locks.
+    The lease check before commit prevents accepting work after a lost claim.
+    """
+    if not 1 <= max_versions <= 1000:
+        raise ValueError("canonical version budget must be 1 to 1000")
+    outcomes = dict.fromkeys(_CANONICAL_OUTCOMES, 0)
+    for _ in range(max_versions):
+        if not should_continue():
+            raise LeaseLostError("source lease lost before canonical processing")
+        with engine.begin() as connection:
+            processor = CanonicalProcessor(connection, source_key=source_key)
+            status = processor.process_one()
+            exact = processor.last_outcome or status
+            if status is None:
+                return outcomes
+            if status == "SKIPPED_UNAUTHORIZED":
+                raise PermissionError("canonical source authorization was revoked")
+            if exact not in outcomes:
+                raise ValueError("unexpected canonical processing outcome")
+            if not should_continue():
+                raise LeaseLostError("source lease lost during canonical processing")
+        outcomes[exact] += 1
+    return outcomes
 
 
 async def run_scheduler_cycle(
@@ -35,17 +103,18 @@ async def run_scheduler_cycle(
     dispatch: bool = False,
     limit: int = 3,
     max_pages: int = 5,
+    max_versions: int = 100,
 ) -> DispatchResult:
-    """Plan health/recrawls and optionally execute approved, due live adapters.
+    """Plan health/recrawls and optionally ingest/normalize approved due sources.
 
     The DB claim is committed *before* network activity. The persisted runner
     rechecks the operator pause switch on every page. A failed source cannot
     abort other sources in this batch.
     """
-    if not 1 <= limit <= 20 or not 1 <= max_pages <= 20:
-        raise ValueError("limit and max_pages must be between 1 and 20")
+    if not 1 <= limit <= 20 or not 1 <= max_pages <= 20 or not 1 <= max_versions <= 1000:
+        raise ValueError("limit/pages must be 1 to 20 and versions must be 1 to 1000")
     definitions = load_source_definitions(root / "db/seeds/sources_v0_1.json")
-    definitions = [d for d in definitions if d.key in live_adapter_keys()]
+    definitions = select_scheduled_sources(definitions)
     # Register only known live adapters, without network access. Operational
     # overrides on existing records are never reset by this seed import.
     with engine.begin() as conn:
@@ -64,7 +133,7 @@ async def run_scheduler_cycle(
         )
 
     keyed = {(d.domain.lower(), d.source_family): d for d in definitions}
-    claimed = succeeded = failed = 0
+    claimed = succeeded = failed = canonical_processed = 0
     async with FetchEngine() as fetcher:
         for _ in range(limit):
             with engine.begin() as conn:
@@ -106,6 +175,17 @@ async def run_scheduler_cycle(
                         )
                     if heartbeat.lost:
                         raise LeaseLostError("scheduler lease lost during source run")
+                    if run.status in {"SUCCEEDED", "PARTIAL"}:
+                        counts = await asyncio.to_thread(
+                            normalize_scheduled_source,
+                            engine,
+                            source_key=definition.key,
+                            max_versions=max_versions,
+                            should_continue=lambda: not heartbeat.lost,
+                        )
+                        canonical_processed += sum(counts.values())
+                    # A PARTIAL run is deliberately retried, even if some versions
+                    # were committed. The canonical processor is idempotent.
                 ok = run.status == "SUCCEEDED"
             except Exception as exc:
                 # Isolate a broken source, but preserve a sanitized diagnostic in logs.
@@ -138,4 +218,5 @@ async def run_scheduler_cycle(
         claimed,
         succeeded,
         failed,
+        canonical_processed,
     )
