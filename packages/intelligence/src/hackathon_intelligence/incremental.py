@@ -217,7 +217,7 @@ class CanonicalProcessor:
         self.source_key = source_key
         self.last_outcome: str | None = None
 
-    def _execute(self, statement: str, params: dict[str, Any] | None = None):
+    def _execute(self, statement: str, params: dict[str, Any] | None = None) -> Any:
         return self.connection.execute(text(statement), params or {})
 
     def process_one(self) -> str | None:
