@@ -104,6 +104,7 @@ class HackalendarPublicEventsAdapter(ApiSeedAdapter):
             )
             registration_url = _valid_http_url(row.get("registrationUrl"))
             organizer_url = _valid_http_url(row.get("url"))
+            official_url = registration_url or organizer_url
             metadata = {
                 "registration_url": registration_url,
                 "registration_deadline_raw": _date(row.get("registrationDeadline")),
@@ -129,9 +130,7 @@ class HackalendarPublicEventsAdapter(ApiSeedAdapter):
                     source_event_id=slug,
                     name=name,
                     source_url=HttpUrl(result.final_url),
-                    official_url=HttpUrl(registration_url or organizer_url)
-                    if registration_url or organizer_url
-                    else None,
+                    official_url=HttpUrl(official_url) if official_url is not None else None,
                     starts_at_raw=_date(row.get("startsAt")),
                     ends_at_raw=_date(row.get("endsAt")),
                     format_raw=_text(row.get("mode"), limit=30),
