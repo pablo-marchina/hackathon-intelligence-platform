@@ -25,6 +25,7 @@ def main() -> None:
         "--limit", type=int, default=3, help="max sources claimed in this cycle (1-20)"
     )
     parser.add_argument("--max-pages", type=int, default=5, help="max pages per source (1-20)")
+    parser.add_argument("--max-versions", type=int, default=100, help="max canonical versions per source (1-1000)")
     args = parser.parse_args()
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -40,6 +41,7 @@ def main() -> None:
                 dispatch=args.dispatch,
                 limit=args.limit,
                 max_pages=args.max_pages,
+                max_versions=args.max_versions,
             )
         )
         print(json.dumps(asdict(report)))
