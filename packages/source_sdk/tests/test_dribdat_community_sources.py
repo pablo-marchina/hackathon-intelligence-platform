@@ -102,12 +102,8 @@ def test_publisher_scoped_hackathon_labels_without_generic_workshop_false_positi
 
 
 def test_publisher_name_does_not_grant_global_hackathon_classifier_override() -> None:
-    assert prepare_event(
-        {"name": "Hack4SocialGood 2026"}, source_key="dribdat_echtzeit"
-    ) is None
-    assert prepare_event(
-        {"name": "GRAFFATHON 2022"}, source_key="dribdat_hack4socialgood"
-    ) is None
+    assert prepare_event({"name": "Hack4SocialGood 2026"}, source_key="dribdat_echtzeit") is None
+    assert prepare_event({"name": "GRAFFATHON 2022"}, source_key="dribdat_hack4socialgood") is None
 
 
 def test_same_page_duplicate_ids_are_dropped_without_fusing_other_editions() -> None:
