@@ -106,12 +106,18 @@ def test_curated_hackathon_events_preserve_identity_and_unknown_precision() -> N
             response(
                 [
                     event(),
-                    event(slug="ai-builder-2026", name="AI Builder Weekend",
-                          startsAt="2026-11-01T09:00:00+01:00", endsAt=None,
-                          registrationDeadline="2026-10-30T23:00:00+01:00",
-                          location={"city": "Paris", "country": "France"},
-                          countryCode="FR", isFree=False,
-                          registrationUrl="javascript:alert(1)", prizePool="Unknown"),
+                    event(
+                        slug="ai-builder-2026",
+                        name="AI Builder Weekend",
+                        startsAt="2026-11-01T09:00:00+01:00",
+                        endsAt=None,
+                        registrationDeadline="2026-10-30T23:00:00+01:00",
+                        location={"city": "Paris", "country": "France"},
+                        countryCode="FR",
+                        isFree=False,
+                        registrationUrl="javascript:alert(1)",
+                        prizePool="Unknown",
+                    ),
                     event(slug="treehacks-2027", name="same edition again"),
                     event(slug=None, name="Missing slug"),
                     {"slug": "unlabeled", "name": ""},
@@ -155,8 +161,14 @@ def test_explicit_timezone_registration_deadline_becomes_canonical_observation()
     adapter = HackalendarPublicEventsAdapter(source())
     records = asyncio.run(
         adapter.parse_events(
-            response([event(registrationDeadline="2026-11-10T23:59:00+01:00",
-                            prizePool="Cash prizes TBD")])
+            response(
+                [
+                    event(
+                        registrationDeadline="2026-11-10T23:59:00+01:00",
+                        prizePool="Cash prizes TBD",
+                    )
+                ]
+            )
         )
     )
     candidate = prepare_event(records[0].model_dump(mode="json"), source_key="hackalendar")
@@ -167,8 +179,7 @@ def test_explicit_timezone_registration_deadline_becomes_canonical_observation()
 
     undated = asyncio.run(
         adapter.parse_events(
-            response([event(registrationDeadline="2026-11-10",
-                            isFree=None, registrationUrl=None)])
+            response([event(registrationDeadline="2026-11-10", isFree=None, registrationUrl=None)])
         )
     )[0]
     other = prepare_event(undated.model_dump(mode="json"), source_key="hackalendar")
@@ -184,9 +195,9 @@ def test_follow_only_documented_bounded_hackalendar_pagination() -> None:
     assert len(first) == 1
     assert str(first[0].url) == "https://hackalendar.com/api/events?limit=200&offset=1"
     assert first[0].discovery_method == "api_pagination"
-    assert asyncio.run(
-        adapter.parse_listing(response([event()], more=False, next_offset=None))
-    ) == []
+    assert (
+        asyncio.run(adapter.parse_listing(response([event()], more=False, next_offset=None))) == []
+    )
 
 
 @pytest.mark.parametrize(
@@ -216,7 +227,9 @@ def test_invalid_or_regressing_offsets_fail_closed(bad_offset: object) -> None:
 def test_parser_refuses_other_hosts_routes_and_parameters(bad_url: str) -> None:
     adapter = HackalendarPublicEventsAdapter(source())
     with pytest.raises(ValueError, match="API|endpoint"):
-        asyncio.run(adapter.parse_listing(response([event()], url=bad_url, more=True, next_offset=1)))
+        asyncio.run(
+            adapter.parse_listing(response([event()], url=bad_url, more=True, next_offset=1))
+        )
 
 
 @pytest.mark.parametrize(
