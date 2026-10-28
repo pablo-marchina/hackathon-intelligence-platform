@@ -22,7 +22,7 @@ def approved_sources():
     return [
         source
         for source in load_source_definitions(ROOT / "db/seeds/sources_v0_1.json")
-        if source.key in {"dribdat_glamhack", "dribdat_imprs_astro"}
+        if source.key in {"dribdat_glamhack", "dribdat_imprs_astro", "dribdat_opendata_ch"}
     ]
 
 
