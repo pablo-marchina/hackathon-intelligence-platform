@@ -129,7 +129,7 @@ def prepare_event(
     if (
         kind is None
         and source_key == "dribdat_hack4socialgood"
-        and re.fullmatch(r"hack4socialgood(?: 20\\d{2})?", normalized_name(name))
+        and re.fullmatch(r"hack4socialgood(?: 20\d{2})?", normalized_name(name))
     ):
         kind = "hackathon"
     # The publisher calls Graffathon 2022 a two-day hackathon. The 2026
