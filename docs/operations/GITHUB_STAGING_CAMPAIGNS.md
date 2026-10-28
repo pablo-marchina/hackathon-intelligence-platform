@@ -68,9 +68,9 @@ Os perfis permitem rodadas pequenas e isoladas:
 
 | Perfil | Fontes no registry |
 | --- | --- |
-| `dribdat` | `dribdat_glamhack`, `dribdat_imprs_astro` |
+| `dribdat` | `dribdat_glamhack`, `dribdat_imprs_astro`, `dribdat_opendata_ch` |
 | `hackclub` | `hackclub_hackathons`, `hackclub_programs`, `hackclub_community_events`, `hackclub_ysws_programs`, `agenda_tech_brasil` |
-| `all` | Todas as 7 fontes acima |
+| `all` | Todas as 8 fontes acima |
 
 O limite é **1, 3 ou 5 páginas por fonte**, com **25, 100 ou 200
 versões por fonte**. A campanha conserva também os tetos do batch existente.
