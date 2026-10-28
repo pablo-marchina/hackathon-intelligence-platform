@@ -62,6 +62,6 @@ def test_source_coverage_cli_is_offline_and_separates_eligibility():
 
     report = json.loads(proc.stdout)
     assert report["source_count"] >= 20
-    assert report["fetch_eligible_by_configuration"] == 7
+    assert report["fetch_eligible_by_configuration"] == 8
     assert report["requires_permission_review"] >= 10
     assert not report["validation_errors"]
