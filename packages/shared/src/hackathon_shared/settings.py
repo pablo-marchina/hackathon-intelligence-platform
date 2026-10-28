@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     source_scheduler_enabled: bool = False
     source_scheduler_batch_size: int = Field(default=3, ge=1, le=20)
     source_scheduler_max_pages: int = Field(default=5, ge=1, le=20)
+    source_scheduler_max_versions: int = Field(default=100, ge=1, le=1000)
 
     max_request_body_bytes: int = Field(default=1_048_576, ge=1, le=20_000_000)
 
