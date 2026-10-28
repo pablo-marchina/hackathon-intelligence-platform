@@ -22,7 +22,7 @@ def approved_sources():
     return [
         source
         for source in load_source_definitions(ROOT / "db/seeds/sources_v0_1.json")
-        if source.key in {"dribdat_glamhack", "dribdat_imprs_astro"}
+        if source.key in {"dribdat_glamhack", "dribdat_imprs_astro", "dribdat_opendata_ch"}
     ]
 
 
@@ -75,7 +75,11 @@ def fixture():
 
 def test_two_verified_organizer_instances_are_independently_authorized_and_rate_limited():
     sources = approved_sources()
-    assert {source.key for source in sources} == {"dribdat_glamhack", "dribdat_imprs_astro"}
+    assert {source.key for source in sources} == {
+        "dribdat_glamhack",
+        "dribdat_imprs_astro",
+        "dribdat_opendata_ch",
+    }
     for source in sources:
         assert source.ingestion_mode is IngestionMode.API
         assert source.permission_status is PermissionStatus.ALLOWED
@@ -186,3 +190,85 @@ def test_oversized_feed_fails_explicitly_instead_of_dropping_late_editions():
     }
     with pytest.raises(ValueError, match="exceeds"):
         asyncio.run(adapter.parse_events(response(payload)))
+
+
+def test_opendata_ch_public_feed_extracts_realistic_hackdays_without_promoting_festivals():
+    source = next(s for s in approved_sources() if s.key == "dribdat_opendata_ch")
+    assert source.permission_status is PermissionStatus.ALLOWED
+    assert source.allowed_hosts == ["new-hack.opendata.ch"]
+    assert source.seed_urls[0].host == "new-hack.opendata.ch"
+    assert source.concurrency_limit == 1
+    assert source.rate_limit_per_minute == 2
+    assert source.durable_api_pages is False
+
+    payload = {
+        "events": [
+            {
+                "id": 76,
+                "name": "Energy Data Hackdays 2025",
+                "starts_at": "Thu, 11 Sep 2025 07:00:00 GMT",
+                "ends_at": "Fri, 12 Sep 2025 15:00:00 GMT",
+                "summary": "University of Applied Sciences Northwestern Switzerland",
+                "hashtags": "#EnergyHackdays #EDHD2025",
+                "webpage_url": "https://energydatahackdays.ch/",
+            },
+            {
+                "id": 72,
+                "name": "Smart Regio Lab - Lenzburg",
+                "hashtags": "#lenzburg #hackathon #SmartRegioLab",
+                "starts_at": "Fri, 21 Mar 2025 09:00:00 GMT",
+                "webpage_url": "https://www.lenzburg.ch/themenaz/75187",
+            },
+            {
+                "id": 73,
+                "name": "Innovation and Mapping Festival",
+                "hashtags": "#innovationmappingfestival",
+                "starts_at": "Fri, 14 Mar 2025 08:00:00 GMT",
+            },
+            {
+                "id": 88,
+                "name": "General Workshop",
+                "hashtags": "#notahackathon #hackathonworkshop",
+            },
+        ]
+    }
+    records = asyncio.run(
+        build_adapter(source).parse_events(response(payload, url=str(source.seed_urls[0])))
+    )
+    assert [rec.source_event_id for rec in records] == ["76", "72", "73", "88"]
+    assert records[0].tags == []
+    assert records[1].tags == ["hackathon"]
+    assert records[2].tags == []
+    assert records[3].tags == []
+    results = [prepare_event(rec.model_dump(mode="json"), source_key=source.key) for rec in records]
+    assert results[0] is not None and results[0].start_at is not None
+    assert results[0].start_at.year == 2025
+    assert results[1] is not None and results[1].event_type == "hackathon"
+    assert results[2] is None and results[3] is None
+    assert results[0].fields["short_description"][1] == (
+        "University of Applied Sciences Northwestern Switzerland"
+    )
+    assert "registration_close_at" not in results[0].fields
+    assert "eligible_worldwide" not in results[0].fields
+
+
+def test_dribdat_source_title_cannot_invent_hackathon_from_partial_hashtag():
+    source = next(s for s in approved_sources() if s.key == "dribdat_opendata_ch")
+    record = asyncio.run(
+        build_adapter(source).parse_events(
+            response(
+                {
+                    "events": [
+                        {
+                            "id": 1,
+                            "name": "Civic Workshop",
+                            "hashtags": "#hacking #hackathon2026 #notahackathon",
+                        }
+                    ]
+                },
+                url=str(source.seed_urls[0]),
+            )
+        )
+    )[0]
+    assert record.tags == []
+    assert prepare_event(record.model_dump(mode="json"), source_key=source.key) is None

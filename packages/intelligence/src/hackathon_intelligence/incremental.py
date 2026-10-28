@@ -158,6 +158,7 @@ def prepare_event(
         "hackclub_programs",
         "dribdat_glamhack",
         "dribdat_imprs_astro",
+        "dribdat_opendata_ch",
     }:
         # Approved official APIs publish factual descriptions
         # and lifecycle statuses. These stay source-evidenced, not inferred

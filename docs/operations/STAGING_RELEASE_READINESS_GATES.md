@@ -22,8 +22,8 @@ solicitar revisão independente**, não de uma certificação de produção.
 
 | Critério | Limiar mínimo |
 | --- | --- |
-| Perfil e fonte de evidência | `all`, as sete fontes; modo `apply` |
-| Banco e permissões | Nome de staging, migrações atuais, sete fontes aprovadas |
+| Perfil e fonte de evidência | `all`, as oito fontes; modo `apply` |
+| Banco e permissões | Nome de staging, migrações atuais, oito fontes aprovadas |
 | Execução | `MEASURED`, `SUCCEEDED`, evidência observacional confiável |
 | Idade do snapshot | Até 72 horas, timezone explícito |
 | Hackathons canônicos ativos | Pelo menos 250 |

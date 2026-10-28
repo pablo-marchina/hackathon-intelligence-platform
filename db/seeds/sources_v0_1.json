@@ -547,5 +547,29 @@
     ],
     "durable_api_pages": false,
     "notes": "Self-published public /api/events.json open data link in About page; verified 2026-10-23. Includes historic IMPRS Astronomy Hackathon 2024 in Germany. Unknown registration costs/deadlines are not inferred. No pagination documented."
+  },
+  {
+    "key": "dribdat_opendata_ch",
+    "name": "Opendata.ch Hackdays — public organizer Dribdat API",
+    "domain": "new-hack.opendata.ch",
+    "source_family": "dribdat_opendata_ch",
+    "source_type": "organizer_open_events_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 78,
+    "trust_score": 0.94,
+    "refresh_interval_seconds": 43200,
+    "rate_limit_per_minute": 2,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "new-hack.opendata.ch"
+    ],
+    "seed_urls": [
+      "https://new-hack.opendata.ch/api/events.json"
+    ],
+    "durable_api_pages": false,
+    "notes": "Organizer-hosted public Open Data API (About -> Open data), manually verified 2026-10-28. Contains multi-year Swiss open data hackdays: energy, public sector, agriculture, GovTech, GLAMhack, and non-hackathon events. Apply strict hackathon name/hashtag classification. Some editions overlap with dribdat_glamhack and other portals; do not sum sources as unique. API seed only, do not follow organizer links. Separate operator DB approval still mandatory. No list pagination documented."
   }
 ]

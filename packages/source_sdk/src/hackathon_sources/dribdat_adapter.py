@@ -7,6 +7,7 @@ existing PostgreSQL permission gate. Never crawl an event's external webpage.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -50,6 +51,23 @@ def _label(value: Any, *, limit: int = 300) -> str | None:
         return None
     cleaned = value.strip()
     return cleaned[:limit] if cleaned else None
+
+
+# Publisher-controlled classification signals, not a guess from generic
+# Dribdat hosting. A full hashtag token is required, never a substring of
+# #notahackathon or #hackathonworkshop.
+_HACKATHON_HASHTAG = re.compile(
+    r"(?<!\w)#(hackathon|hackdays|datathon|buildathon|glamhack)(?!\w)",
+    re.IGNORECASE,
+)
+
+
+def _explicit_hackathon_tags(value: Any) -> list[str]:
+    if not isinstance(value, str):
+        return []
+    return list(
+        dict.fromkeys(match.group(1).lower() for match in _HACKATHON_HASHTAG.finditer(value[:1000]))
+    )
 
 
 class DribdatOpenEventsAdapter(ApiSeedAdapter):
@@ -102,6 +120,7 @@ class DribdatOpenEventsAdapter(ApiSeedAdapter):
                     official_url=_url(row.get("webpage_url")),
                     starts_at_raw=_date(row.get("starts_at")),
                     ends_at_raw=_date(row.get("ends_at")),
+                    tags=_explicit_hackathon_tags(row.get("hashtags")),
                     metadata={
                         "description": summary,
                         "location_text": location,

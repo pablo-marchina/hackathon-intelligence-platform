@@ -41,9 +41,9 @@ def invoke(mode="plan", profile="dribdat", env=None, confirmation="") -> tuple[i
 @pytest.mark.parametrize(
     "profile,expected",
     [
-        ("dribdat", 2),
+        ("dribdat", 3),
         ("hackclub", 5),
-        ("all", 7),
+        ("all", 8),
     ],
 )
 def test_plan_has_no_db_network_or_secrets(monkeypatch, profile: str, expected: int) -> None:
