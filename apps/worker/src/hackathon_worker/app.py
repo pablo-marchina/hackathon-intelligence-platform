@@ -76,6 +76,7 @@ def run_source_scheduler_task() -> dict[str, int]:
                 dispatch=True,
                 limit=config.source_scheduler_batch_size,
                 max_pages=config.source_scheduler_max_pages,
+                max_versions=config.source_scheduler_max_versions,
             )
         )
         return asdict(report)
