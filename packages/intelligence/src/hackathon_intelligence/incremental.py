@@ -120,7 +120,9 @@ def prepare_event(
     # The existing specialized Hack Club Hackathons feed was validated as a
     # hackathon-only category; its event names often end in "Hacks". Do not
     # silently trust arbitrary new source names as specialized categories.
-    if kind is None and source_key == "hackclub_hackathons":
+    if kind is None and source_key in {"hackclub_hackathons", "hackalendar"}:
+        # Both publishers explicitly curate a hackathon-only public feed.
+        # Never extend this exemption to general event calendars.
         kind = "hackathon"
     if kind is None:
         return None
@@ -181,6 +183,57 @@ def prepare_event(
                     status,
                     "API",
                     "source_event_ref.payload.metadata.status",
+                )
+    if source_key == "hackalendar":
+        metadata = payload.get("metadata")
+        if isinstance(metadata, dict):
+            # The publisher exposes these as explicit facts. No guessing about
+            # unprovided eligibility, prizes, registration opening or timezone.
+            registration = safe_url(metadata.get("registration_url"))
+            if registration:
+                fields["registration_url"] = (
+                    registration,
+                    registration,
+                    "API",
+                    "source_event_ref.payload.metadata.registration_url",
+                )
+            free = metadata.get("is_free")
+            if type(free) is bool:
+                fields["is_free"] = (
+                    free,
+                    free,
+                    "API",
+                    "source_event_ref.payload.metadata.is_free",
+                )
+            description = metadata.get("description")
+            if isinstance(description, str) and description.strip():
+                excerpt = description.strip()[:2000]
+                fields["short_description"] = (
+                    description,
+                    excerpt,
+                    "API",
+                    "source_event_ref.payload.metadata.description",
+                )
+            raw_deadline = metadata.get("registration_deadline_raw")
+            if isinstance(raw_deadline, str) and len(raw_deadline) > 10:
+                parsed_deadline = parse_date(raw_deadline)
+                if parsed_deadline is not None:
+                    deadline = parsed_deadline.isoformat()
+                    fields["registration_close_at"] = (
+                        raw_deadline,
+                        deadline,
+                        "API",
+                        "source_event_ref.payload.metadata.registration_deadline_raw",
+                    )
+            # An all-day, date-only deadline is retained as raw metadata
+            # without inventing 00:00 UTC or the organiser's local timezone.
+            prize_details = metadata.get("prize_pool_raw")
+            if isinstance(prize_details, str) and prize_details.strip():
+                fields["prize_details_text"] = (
+                    prize_details,
+                    prize_details.strip()[:2000],
+                    "API",
+                    "source_event_ref.payload.metadata.prize_pool_raw",
                 )
     for evidence in project_structured_metadata(payload):
         # A dedicated structured field wins over any less reliable generic field.
@@ -496,6 +549,12 @@ class CanonicalProcessor:
         elif field == "format":
             self._execute(
                 "UPDATE hackathons SET format=CAST(:value AS event_format) WHERE id=CAST(:id AS uuid)",
+                {"value": value, "id": event_id},
+            )
+        elif field == "registration_close_at" and isinstance(value, str):
+            self._execute(
+                "UPDATE hackathons SET registration_close_at=CAST(:value AS timestamptz) "
+                "WHERE id=CAST(:id AS uuid)",
                 {"value": value, "id": event_id},
             )
         elif field == "is_free" and type(value) is bool:
