@@ -257,8 +257,15 @@ def test_dribdat_source_title_cannot_invent_hackathon_from_partial_hashtag():
     record = asyncio.run(
         build_adapter(source).parse_events(
             response(
-                {"events": [{"id": 1, "name": "Civic Workshop",
-                             "hashtags": "#hacking #hackathon2026 #notahackathon"}]},
+                {
+                    "events": [
+                        {
+                            "id": 1,
+                            "name": "Civic Workshop",
+                            "hashtags": "#hacking #hackathon2026 #notahackathon",
+                        }
+                    ]
+                },
                 url=str(source.seed_urls[0]),
             )
         )
