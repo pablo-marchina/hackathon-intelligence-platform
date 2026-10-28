@@ -57,7 +57,7 @@ def _label(value: Any, *, limit: int = 300) -> str | None:
 # Dribdat hosting. A full hashtag token is required, never a substring of
 # #notahackathon or #hackathonworkshop.
 _HACKATHON_HASHTAG = re.compile(
-    r"(?<![\\w])#(hackathon|hackdays|datathon|buildathon|glamhack)(?![\\w])",
+    r"(?<!\w)#(hackathon|hackdays|datathon|buildathon|glamhack)(?!\w)",
     re.IGNORECASE,
 )
 
