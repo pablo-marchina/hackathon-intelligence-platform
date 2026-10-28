@@ -595,5 +595,53 @@
     ],
     "durable_api_pages": true,
     "notes": "Publisher publicly offers free no-key JSON API for developers at https://hackalendar.com/api and documents schema/pagination at https://hackalendar.com/agents (reviewed 2026-10-28). Link to original organiser registration URL, retain provenance and date precision. Only GET /api/events with limit/offset. No /api/submissions or subscription/private access; never crawl external registration/organizer URLs. DB operator approval and staging receipts separately required. Offset 0-100000, max 200 rows/page and MAX_API_PAGINATION_HOPS. OSM-derived venue addresses not imported. No new production coverage asserted."
+  },
+  {
+    "key": "dribdat_hack4socialgood",
+    "name": "Hack4SocialGood (Swiss social impact hackathons) — public Dribdat API",
+    "domain": "bd.hack4socialgood.ch",
+    "source_family": "dribdat_hack4socialgood",
+    "source_type": "organizer_open_events_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 75,
+    "trust_score": 0.94,
+    "refresh_interval_seconds": 86400,
+    "rate_limit_per_minute": 1,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "bd.hack4socialgood.ch"
+    ],
+    "seed_urls": [
+      "https://bd.hack4socialgood.ch/api/events.json"
+    ],
+    "durable_api_pages": false,
+    "notes": "Publisher explicitly lists open data /api/events.json in https://bd.hack4socialgood.ch/about/; reviewed 2026-10-28. Publisher shows Hack4SocialGood editions 2020, 2023–2026; mixed organizer tools and workshops should be rejected by source-specific name/classifier. Fetch only source-hosted JSON; never follow external webpage_url or project/participant URLs. No registration status or deadlines inferred. Separate operator-owned PostgreSQL approval still required; source policy cannot prove fetched pages."
+  },
+  {
+    "key": "dribdat_echtzeit",
+    "name": "Echtzeit digital-culture Graffathon — public Dribdat API",
+    "domain": "make.echtzeitkultur.org",
+    "source_family": "dribdat_echtzeit",
+    "source_type": "organizer_open_events_api",
+    "ingestion_mode": "API",
+    "permission_status": "ALLOWED",
+    "discovery_enabled": true,
+    "detail_extraction_enabled": true,
+    "priority": 59,
+    "trust_score": 0.89,
+    "refresh_interval_seconds": 86400,
+    "rate_limit_per_minute": 1,
+    "concurrency_limit": 1,
+    "allowed_hosts": [
+      "make.echtzeitkultur.org"
+    ],
+    "seed_urls": [
+      "https://make.echtzeitkultur.org/api/events.json"
+    ],
+    "durable_api_pages": false,
+    "notes": "Organizer publishes public JSON event API on https://make.echtzeitkultur.org/about/ (reviewed 2026-10-28). Mixed cultural/demo activities, including Graffathon 2022 explicitly described as a two-day hackathon. Do not automatically classify all Graffathon/workshop/demo events as hackathons; retain evidence and generic classifier. Fetch read-only documented API only, no project/participant data, no external webpage_url crawling. No pagination documented. Separate operator DB permission required."
   }
 ]
